@@ -1,0 +1,263 @@
+# Event Catalog v1
+#
+# All domain events emitted by the system.
+# Rules:
+# - Events are immutable once shipped. Add new version instead of changing existing.
+# - Every event payload MUST include: eventId, occurredAt, version, data
+# - Naming: entity.action, lowercase with dots as separators
+# - Add entry here BEFORE implementing event emission in code
+
+version: "1"
+
+standardPayload:
+  required: [eventId, occurredAt, version, data]
+  properties:
+    eventId: { type: string, format: uuid }
+    occurredAt: { type: string, format: date-time }
+    version: { type: integer }
+    data: { type: object }
+
+events:
+  customer.created:
+    description: Fired when a customer record is created.
+    version: 1
+    owner: customers-module
+    data:
+      required: [customerId, actorUserId, name, customerKind]
+      properties:
+        customerId: { type: string, format: uuid }
+        actorUserId: { type: string, format: uuid }
+        name: { type: string }
+        customerKind: { type: string, enum: [company, person] }
+
+  customer.updated:
+    description: Fired when customer core fields change.
+    version: 1
+    owner: customers-module
+    data:
+      required: [customerId, actorUserId, changedFields]
+      properties:
+        customerId: { type: string, format: uuid }
+        actorUserId: { type: string, format: uuid }
+        changedFields:
+          type: array
+          items: { type: string }
+
+  customer.status_changed:
+    description: Fired when customer lifecycle status changes.
+    version: 1
+    owner: customers-module
+    data:
+      required: [customerId, actorUserId, fromStatus, toStatus]
+      properties:
+        customerId: { type: string, format: uuid }
+        actorUserId: { type: string, format: uuid }
+        fromStatus: { type: string }
+        toStatus: { type: string }
+
+  customer.archived:
+    description: Fired when a customer is archived.
+    version: 1
+    owner: customers-module
+    data:
+      required: [customerId, actorUserId]
+      properties:
+        customerId: { type: string, format: uuid }
+        actorUserId: { type: string, format: uuid }
+        archiveReason: { type: string }
+
+  customer.restored:
+    description: Fired when an archived customer is restored.
+    version: 1
+    owner: customers-module
+    data:
+      required: [customerId, actorUserId]
+      properties:
+        customerId: { type: string, format: uuid }
+        actorUserId: { type: string, format: uuid }
+
+  customer.contact_created:
+    description: Fired when a contact is created for a customer.
+    version: 1
+    owner: customers-module
+    data:
+      required: [customerId, contactId, actorUserId]
+      properties:
+        customerId: { type: string, format: uuid }
+        contactId: { type: string, format: uuid }
+        actorUserId: { type: string, format: uuid }
+
+  customer.contact_updated:
+    description: Fired when a customer contact changes.
+    version: 1
+    owner: customers-module
+    data:
+      required: [customerId, contactId, actorUserId, changedFields]
+      properties:
+        customerId: { type: string, format: uuid }
+        contactId: { type: string, format: uuid }
+        actorUserId: { type: string, format: uuid }
+        changedFields:
+          type: array
+          items: { type: string }
+
+  customer.contact_archived:
+    description: Fired when a customer contact is archived.
+    version: 1
+    owner: customers-module
+    data:
+      required: [customerId, contactId, actorUserId]
+      properties:
+        customerId: { type: string, format: uuid }
+        contactId: { type: string, format: uuid }
+        actorUserId: { type: string, format: uuid }
+
+  customer.primary_contact_changed:
+    description: Fired when a customer's primary contact changes.
+    version: 1
+    owner: customers-module
+    data:
+      required: [customerId, contactId, actorUserId]
+      properties:
+        customerId: { type: string, format: uuid }
+        contactId: { type: string, format: uuid }
+        actorUserId: { type: string, format: uuid }
+
+  customer.billing_contact_changed:
+    description: Fired when a customer's billing contact changes.
+    version: 1
+    owner: customers-module
+    data:
+      required: [customerId, contactId, actorUserId]
+      properties:
+        customerId: { type: string, format: uuid }
+        contactId: { type: string, format: uuid }
+        actorUserId: { type: string, format: uuid }
+
+  customer.address_created:
+    description: Fired when an address is created for a customer.
+    version: 1
+    owner: customers-module
+    data:
+      required: [customerId, addressId, actorUserId]
+      properties:
+        customerId: { type: string, format: uuid }
+        addressId: { type: string, format: uuid }
+        actorUserId: { type: string, format: uuid }
+
+  customer.address_updated:
+    description: Fired when a customer address changes.
+    version: 1
+    owner: customers-module
+    data:
+      required: [customerId, addressId, actorUserId, changedFields]
+      properties:
+        customerId: { type: string, format: uuid }
+        addressId: { type: string, format: uuid }
+        actorUserId: { type: string, format: uuid }
+        changedFields:
+          type: array
+          items: { type: string }
+
+  customer.address_archived:
+    description: Fired when a customer address is archived.
+    version: 1
+    owner: customers-module
+    data:
+      required: [customerId, addressId, actorUserId]
+      properties:
+        customerId: { type: string, format: uuid }
+        addressId: { type: string, format: uuid }
+        actorUserId: { type: string, format: uuid }
+
+  customer.billing_address_changed:
+    description: Fired when a customer's billing address changes.
+    version: 1
+    owner: customers-module
+    data:
+      required: [customerId, addressId, actorUserId]
+      properties:
+        customerId: { type: string, format: uuid }
+        addressId: { type: string, format: uuid }
+        actorUserId: { type: string, format: uuid }
+
+  customer.note_created:
+    description: Fired when a note is created for a customer.
+    version: 1
+    owner: customers-module
+    data:
+      required: [customerId, noteId, actorUserId]
+      properties:
+        customerId: { type: string, format: uuid }
+        noteId: { type: string, format: uuid }
+        actorUserId: { type: string, format: uuid }
+
+  customer.note_updated:
+    description: Fired when a customer note changes.
+    version: 1
+    owner: customers-module
+    data:
+      required: [customerId, noteId, actorUserId]
+      properties:
+        customerId: { type: string, format: uuid }
+        noteId: { type: string, format: uuid }
+        actorUserId: { type: string, format: uuid }
+
+  customer.note_archived:
+    description: Fired when a customer note is archived.
+    version: 1
+    owner: customers-module
+    data:
+      required: [customerId, noteId, actorUserId]
+      properties:
+        customerId: { type: string, format: uuid }
+        noteId: { type: string, format: uuid }
+        actorUserId: { type: string, format: uuid }
+
+  project.created:
+    description: Fired when a project record is created.
+    version: 1
+    owner: projects-module
+    data:
+      required: [projectId, customerId, actorUserId, title]
+      properties:
+        projectId: { type: string, format: uuid }
+        customerId: { type: string, format: uuid }
+        actorUserId: { type: string }
+        title: { type: string }
+
+  project.updated:
+    description: Fired when project core fields change.
+    version: 1
+    owner: projects-module
+    data:
+      required: [projectId, actorUserId, changedFields]
+      properties:
+        projectId: { type: string, format: uuid }
+        actorUserId: { type: string }
+        changedFields:
+          type: array
+          items: { type: string }
+
+  project.archived:
+    description: Fired when a project is archived directly or by customer archive cascade.
+    version: 1
+    owner: projects-module
+    data:
+      required: [projectId, customerId, actorUserId]
+      properties:
+        projectId: { type: string, format: uuid }
+        customerId: { type: string, format: uuid }
+        actorUserId: { type: string }
+
+  project.status_changed:
+    description: Fired when project lifecycle status changes.
+    version: 1
+    owner: projects-module
+    data:
+      required: [projectId, actorUserId, fromStatus, toStatus]
+      properties:
+        projectId: { type: string, format: uuid }
+        actorUserId: { type: string }
+        fromStatus: { type: string }
+        toStatus: { type: string }

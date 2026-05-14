@@ -1,0 +1,27 @@
+services:
+  postgres:
+    image: postgres:16
+    container_name: stoneboyz_crm_postgres
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: stoneboyz
+      POSTGRES_PASSWORD: stoneboyz
+      POSTGRES_DB: stoneboyz_crm_dev
+    volumes:
+      - stoneboyz_postgres_data:/var/lib/postgresql/data
+
+  postgres_test:
+    image: postgres:16
+    container_name: stoneboyz_crm_postgres_test
+    ports:
+      - "5433:5432"
+    environment:
+      POSTGRES_USER: stoneboyz_test
+      POSTGRES_PASSWORD: stoneboyz_test
+      POSTGRES_DB: stoneboyz_crm_test
+    tmpfs:
+      - /var/lib/postgresql/data
+
+volumes:
+  stoneboyz_postgres_data:

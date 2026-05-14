@@ -1,0 +1,42 @@
+{
+  "name": "stoneboyz-crm",
+  "version": "0.1.0",
+  "private": true,
+  "packageManager": "pnpm@9.15.0",
+  "scripts": {
+    "spec:check": "node scripts/check-spec-sync.mjs",
+    "test": "vitest run --configLoader runner",
+    "test:spec": "node scripts/check-spec-sync.mjs",
+    "test:integration": "vitest run tests/integration --configLoader runner",
+    "typecheck": "tsc -p packages/domain/tsconfig.json --noEmit",
+    "dev:api": "pnpm -C apps/api build && pnpm -C apps/api start",
+    "dev:web": "wait-on http://localhost:3001/api/v1/health && pnpm -C apps/web dev",
+    "dev": "concurrently --names \"api,web\" --prefix-colors \"blue,green\" \"pnpm dev:api\" \"pnpm dev:web\"",
+    "typecheck:web": "tsc -p apps/web/tsconfig.json --noEmit",
+    "db:up": "docker compose up -d postgres",
+    "db:test:up": "docker compose up -d postgres_test",
+    "db:test:reset": "node scripts/db/reset-test-db.mjs",
+    "db:down": "docker compose down"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "@nestjs/event-emitter": "^3.1.0",
+    "pg": "^8.20.0",
+    "zod": "^4.4.3"
+  },
+  "devDependencies": {
+    "@nestjs/common": "^11.1.19",
+    "@nestjs/core": "^11.1.19",
+    "@nestjs/platform-express": "^11.1.19",
+    "@types/node": "^25.6.0",
+    "@types/pg": "^8.20.0",
+    "concurrently": "^9.1.2",
+    "reflect-metadata": "^0.2.2",
+    "rxjs": "^7.8.2",
+    "typescript": "^6.0.3",
+    "vitest": "^4.1.5",
+    "wait-on": "^8.0.3"
+  }
+}
