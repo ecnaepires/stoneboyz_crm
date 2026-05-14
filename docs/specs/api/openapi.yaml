@@ -62,6 +62,15 @@ components:
         type: string
         format: uuid
 
+    EventId:
+      name: eventId
+      in: path
+      required: true
+      description: UUID of the scheduled event
+      schema:
+        type: string
+        format: uuid
+
     Limit:
       name: limit
       in: query
@@ -1078,6 +1087,182 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/Quote'
+        nextCursor:
+          type: string
+          nullable: true
+        hasMore:
+          type: boolean
+
+    ScheduledEventType:
+      type: string
+      enum: [appointment, shop_job]
+
+    AppointmentType:
+      type: string
+      enum: [measure, template, install, follow_up, other]
+
+    ScheduledEventStatus:
+      type: string
+      enum: [scheduled, confirmed, in_progress, completed, cancelled]
+
+    ScheduledEvent:
+      type: object
+      required:
+        - id
+        - customerId
+        - eventType
+        - title
+        - scheduledAt
+        - durationMinutes
+        - assigneeUserIds
+        - status
+        - createdAt
+        - updatedAt
+      properties:
+        id:
+          type: string
+          format: uuid
+        customerId:
+          type: string
+          format: uuid
+        projectId:
+          type: string
+          format: uuid
+          nullable: true
+        eventType:
+          $ref: '#/components/schemas/ScheduledEventType'
+        appointmentType:
+          $ref: '#/components/schemas/AppointmentType'
+          nullable: true
+          description: Required when eventType is appointment; must be null when eventType is shop_job.
+        title:
+          type: string
+        scheduledAt:
+          type: string
+          format: date-time
+          description: Event start time in UTC.
+        durationMinutes:
+          type: integer
+          minimum: 1
+          default: 60
+        assigneeUserIds:
+          type: array
+          items:
+            type: string
+            format: uuid
+          minItems: 1
+          description: At least one assignee UUID required; no duplicates.
+        address:
+          type: string
+          nullable: true
+          description: Site address; most relevant for appointment events.
+        notes:
+          type: string
+          nullable: true
+        status:
+          $ref: '#/components/schemas/ScheduledEventStatus'
+        archivedAt:
+          type: string
+          format: date-time
+          nullable: true
+        archivedByUserId:
+          type: string
+          format: uuid
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    CreateScheduledEventRequest:
+      type: object
+      required: [actorUserId, title, eventType, scheduledAt, durationMinutes, assigneeUserIds]
+      properties:
+        actorUserId:
+          type: string
+          format: uuid
+        customerId:
+          type: string
+          format: uuid
+          description: Taken from the URL path; may be omitted in body.
+        projectId:
+          type: string
+          format: uuid
+        eventType:
+          $ref: '#/components/schemas/ScheduledEventType'
+        appointmentType:
+          $ref: '#/components/schemas/AppointmentType'
+          description: Required when eventType is appointment; must be omitted or null when eventType is shop_job.
+        title:
+          type: string
+          minLength: 1
+        scheduledAt:
+          type: string
+          format: date-time
+        durationMinutes:
+          type: integer
+          minimum: 1
+          default: 60
+        assigneeUserIds:
+          type: array
+          items:
+            type: string
+            format: uuid
+          minItems: 1
+        address:
+          type: string
+        notes:
+          type: string
+
+    UpdateScheduledEventRequest:
+      type: object
+      description: At least one updatable field is required in addition to actorUserId. Only allowed when status is scheduled or confirmed.
+      minProperties: 2
+      required: [actorUserId]
+      properties:
+        actorUserId:
+          type: string
+          format: uuid
+        projectId:
+          type: string
+          format: uuid
+          nullable: true
+        appointmentType:
+          $ref: '#/components/schemas/AppointmentType'
+          nullable: true
+        title:
+          type: string
+          minLength: 1
+        scheduledAt:
+          type: string
+          format: date-time
+          description: Updating this field also emits scheduled_event.rescheduled in addition to scheduled_event.updated.
+        durationMinutes:
+          type: integer
+          minimum: 1
+        assigneeUserIds:
+          type: array
+          items:
+            type: string
+            format: uuid
+          minItems: 1
+        address:
+          type: string
+          nullable: true
+        notes:
+          type: string
+          nullable: true
+
+    PaginatedScheduledEventsResponse:
+      type: object
+      required: [data, hasMore]
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/ScheduledEvent'
         nextCursor:
           type: string
           nullable: true
@@ -2500,6 +2685,343 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
         '409':
           description: Quote is not in draft status.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /customers/{customerId}/events:
+    get:
+      operationId: listCustomerEvents
+      summary: List scheduled events for a customer
+      parameters:
+        - $ref: '#/components/parameters/CustomerId'
+        - $ref: '#/components/parameters/Cursor'
+        - $ref: '#/components/parameters/Limit'
+        - name: eventType
+          in: query
+          required: false
+          schema:
+            $ref: '#/components/schemas/ScheduledEventType'
+        - name: status
+          in: query
+          required: false
+          schema:
+            $ref: '#/components/schemas/ScheduledEventStatus'
+        - name: projectId
+          in: query
+          required: false
+          schema:
+            type: string
+            format: uuid
+        - name: from
+          in: query
+          required: false
+          description: Filter events with scheduledAt on or after this date (ISO date).
+          schema:
+            type: string
+            format: date
+        - name: to
+          in: query
+          required: false
+          description: Filter events with scheduledAt on or before this date (ISO date).
+          schema:
+            type: string
+            format: date
+      responses:
+        '200':
+          description: Events returned. Default sort is scheduledAt ASC.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedScheduledEventsResponse'
+        '404':
+          description: Customer not found.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    post:
+      operationId: createCustomerEvent
+      summary: Create a scheduled event for a customer
+      parameters:
+        - $ref: '#/components/parameters/CustomerId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateScheduledEventRequest'
+      responses:
+        '201':
+          description: Event created.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ScheduledEvent'
+        '400':
+          description: Invalid request.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Customer not found.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /customers/{customerId}/events/{eventId}:
+    get:
+      operationId: getCustomerEvent
+      summary: Get scheduled event detail
+      parameters:
+        - $ref: '#/components/parameters/CustomerId'
+        - $ref: '#/components/parameters/EventId'
+      responses:
+        '200':
+          description: Event returned.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ScheduledEvent'
+        '404':
+          description: Event or customer not found.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    patch:
+      operationId: updateCustomerEvent
+      summary: Update event fields (scheduled or confirmed only)
+      parameters:
+        - $ref: '#/components/parameters/CustomerId'
+        - $ref: '#/components/parameters/EventId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateScheduledEventRequest'
+      responses:
+        '200':
+          description: Event updated.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ScheduledEvent'
+        '400':
+          description: Invalid request.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Event or customer not found.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Event status does not allow updates (must be scheduled or confirmed).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /customers/{customerId}/events/{eventId}/confirm:
+    post:
+      operationId: confirmCustomerEvent
+      summary: Transition event from scheduled to confirmed
+      parameters:
+        - $ref: '#/components/parameters/CustomerId'
+        - $ref: '#/components/parameters/EventId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ActorRequest'
+      responses:
+        '200':
+          description: Event transitioned to confirmed.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ScheduledEvent'
+        '400':
+          description: Invalid request.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Event or customer not found.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Event is not in scheduled status — transition not allowed.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /customers/{customerId}/events/{eventId}/start:
+    post:
+      operationId: startCustomerEvent
+      summary: Transition event from confirmed to in_progress
+      parameters:
+        - $ref: '#/components/parameters/CustomerId'
+        - $ref: '#/components/parameters/EventId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ActorRequest'
+      responses:
+        '200':
+          description: Event transitioned to in_progress.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ScheduledEvent'
+        '400':
+          description: Invalid request.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Event or customer not found.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Event is not in confirmed status — transition not allowed.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /customers/{customerId}/events/{eventId}/complete:
+    post:
+      operationId: completeCustomerEvent
+      summary: Transition event from in_progress to completed
+      parameters:
+        - $ref: '#/components/parameters/CustomerId'
+        - $ref: '#/components/parameters/EventId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ActorRequest'
+      responses:
+        '200':
+          description: Event transitioned to completed.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ScheduledEvent'
+        '400':
+          description: Invalid request.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Event or customer not found.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Event is not in in_progress status — transition not allowed.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /customers/{customerId}/events/{eventId}/cancel:
+    post:
+      operationId: cancelCustomerEvent
+      summary: Transition event to cancelled (any status except completed)
+      parameters:
+        - $ref: '#/components/parameters/CustomerId'
+        - $ref: '#/components/parameters/EventId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ActorRequest'
+      responses:
+        '200':
+          description: Event transitioned to cancelled.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ScheduledEvent'
+        '400':
+          description: Invalid request.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Event or customer not found.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Event is already completed — cancellation not allowed.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /customers/{customerId}/events/{eventId}/archive:
+    post:
+      operationId: archiveCustomerEvent
+      summary: Soft-delete a scheduled event (completed or cancelled only)
+      parameters:
+        - $ref: '#/components/parameters/CustomerId'
+        - $ref: '#/components/parameters/EventId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ActorRequest'
+      responses:
+        '200':
+          description: Event archived.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ScheduledEvent'
+        '400':
+          description: Invalid request.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Event or customer not found.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Event status is not completed or cancelled — archive not allowed.
           content:
             application/json:
               schema:

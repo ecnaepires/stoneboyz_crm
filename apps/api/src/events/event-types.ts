@@ -129,6 +129,27 @@ export interface QuoteLineItemUpdatedData {
   changedFields: string[];
 }
 
+export interface ScheduledEventEventData {
+  scheduledEventId: string;
+  customerId: string;
+  actorUserId: string;
+}
+
+export interface ScheduledEventUpdatedData {
+  scheduledEventId: string;
+  customerId: string;
+  actorUserId: string;
+  changedFields: string[];
+}
+
+export interface ScheduledEventRescheduledData {
+  scheduledEventId: string;
+  customerId: string;
+  actorUserId: string;
+  previousScheduledAt: string;
+  newScheduledAt: string;
+}
+
 export type CustomerEventName =
   | 'customer.created'
   | 'customer.updated'
@@ -165,4 +186,14 @@ export type QuoteEventName =
   | 'quote.line_item_updated'
   | 'quote.line_item_removed';
 
-export type AppEventName = CustomerEventName | ProjectEventName | QuoteEventName;
+export type ScheduledEventEventName =
+  | 'scheduled_event.created'
+  | 'scheduled_event.updated'
+  | 'scheduled_event.confirmed'
+  | 'scheduled_event.started'
+  | 'scheduled_event.completed'
+  | 'scheduled_event.cancelled'
+  | 'scheduled_event.rescheduled'
+  | 'scheduled_event.archived';
+
+export type AppEventName = CustomerEventName | ProjectEventName | QuoteEventName | ScheduledEventEventName;

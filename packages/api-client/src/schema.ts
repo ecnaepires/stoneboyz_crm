@@ -320,6 +320,267 @@ export interface paths {
         patch: operations["updateCustomerNote"];
         trace?: never;
     };
+    "/customers/{customerId}/quotes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List quotes for a customer */
+        get: operations["listCustomerQuotes"];
+        put?: never;
+        /** Create a quote for a customer */
+        post: operations["createCustomerQuote"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/customers/{customerId}/quotes/{quoteId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get quote detail with embedded line items */
+        get: operations["getCustomerQuote"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Update quote header fields (draft only) */
+        patch: operations["updateCustomerQuote"];
+        trace?: never;
+    };
+    "/customers/{customerId}/quotes/{quoteId}/send": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Transition quote from draft to sent */
+        post: operations["sendCustomerQuote"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/customers/{customerId}/quotes/{quoteId}/accept": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Transition quote from sent to accepted */
+        post: operations["acceptCustomerQuote"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/customers/{customerId}/quotes/{quoteId}/reject": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Transition quote from sent to rejected */
+        post: operations["rejectCustomerQuote"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/customers/{customerId}/quotes/{quoteId}/archive": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Archive (soft-delete) a quote */
+        post: operations["archiveCustomerQuote"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/customers/{customerId}/quotes/{quoteId}/line-items": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List all line items for a quote */
+        get: operations["listQuoteLineItems"];
+        put?: never;
+        /** Add a line item to a quote (draft only) */
+        post: operations["addQuoteLineItem"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/customers/{customerId}/quotes/{quoteId}/line-items/{lineItemId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Remove a quote line item (draft only) */
+        delete: operations["removeQuoteLineItem"];
+        options?: never;
+        head?: never;
+        /** Update a quote line item (draft only) */
+        patch: operations["updateQuoteLineItem"];
+        trace?: never;
+    };
+    "/customers/{customerId}/events": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List scheduled events for a customer */
+        get: operations["listCustomerEvents"];
+        put?: never;
+        /** Create a scheduled event for a customer */
+        post: operations["createCustomerEvent"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/customers/{customerId}/events/{eventId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get scheduled event detail */
+        get: operations["getCustomerEvent"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Update event fields (scheduled or confirmed only) */
+        patch: operations["updateCustomerEvent"];
+        trace?: never;
+    };
+    "/customers/{customerId}/events/{eventId}/confirm": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Transition event from scheduled to confirmed */
+        post: operations["confirmCustomerEvent"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/customers/{customerId}/events/{eventId}/start": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Transition event from confirmed to in_progress */
+        post: operations["startCustomerEvent"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/customers/{customerId}/events/{eventId}/complete": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Transition event from in_progress to completed */
+        post: operations["completeCustomerEvent"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/customers/{customerId}/events/{eventId}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Transition event to cancelled (any status except completed) */
+        post: operations["cancelCustomerEvent"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/customers/{customerId}/events/{eventId}/archive": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Soft-delete a scheduled event (completed or cancelled only) */
+        post: operations["archiveCustomerEvent"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -629,12 +890,249 @@ export interface components {
             nextCursor?: string | null;
             hasMore: boolean;
         };
+        /** @enum {string} */
+        QuoteStatus: "draft" | "sent" | "accepted" | "rejected";
+        QuoteLineItem: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            quoteId: string;
+            /** @default 0 */
+            sortOrder: number;
+            /** @example Marble Calacatta */
+            stoneType: string;
+            lengthMm?: number | null;
+            widthMm?: number | null;
+            /** @example 20 */
+            thicknessMm?: number | null;
+            /** @example bullnose */
+            edgeProfile?: string | null;
+            /** Format: decimal */
+            qty: number;
+            /** @example sqm */
+            qtyUnit: string;
+            unitPriceCents: number;
+            /** @default 0 */
+            laborPriceCents: number;
+            /** @description Computed by application — floor(qty * (unitPriceCents + laborPriceCents)). Not stored in DB. */
+            lineTotalCents: number;
+            notes?: string | null;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+        };
+        Quote: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            customerId: string;
+            /** Format: uuid */
+            projectId?: string | null;
+            /** @example Q-2026-001 */
+            quoteNumber: string;
+            title: string;
+            status: components["schemas"]["QuoteStatus"];
+            /** Format: date */
+            validUntil?: string | null;
+            /** @description Computed by application — sum of all lineTotalCents. Not stored in DB. */
+            subtotalCents: number;
+            /** @default 0 */
+            discountCents: number;
+            /**
+             * @description Tax rate in basis points (e.g. 1500 = 15%)
+             * @default 0
+             */
+            taxRateBps: number;
+            /** @description Computed by application — floor((subtotalCents - discountCents) * (1 + taxRateBps / 10000)). Not stored in DB. */
+            totalCents: number;
+            notes?: string | null;
+            termsAndConditions?: string | null;
+            /** Format: date-time */
+            sentAt?: string | null;
+            /** Format: date-time */
+            acceptedAt?: string | null;
+            /** Format: date-time */
+            rejectedAt?: string | null;
+            /** Format: date-time */
+            archivedAt?: string | null;
+            /** Format: uuid */
+            archivedByUserId?: string | null;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+        };
+        QuoteWithLineItems: components["schemas"]["Quote"] & {
+            lineItems: components["schemas"]["QuoteLineItem"][];
+        };
+        CreateQuoteLineItemRequest: {
+            /** Format: uuid */
+            actorUserId: string;
+            /** @default 0 */
+            sortOrder: number;
+            stoneType: string;
+            lengthMm?: number;
+            widthMm?: number;
+            thicknessMm?: number;
+            edgeProfile?: string;
+            /** Format: decimal */
+            qty: number;
+            qtyUnit: string;
+            unitPriceCents: number;
+            /** @default 0 */
+            laborPriceCents: number;
+            notes?: string;
+        };
+        /** @description At least one updatable field is required in addition to actorUserId. */
+        UpdateQuoteLineItemRequest: {
+            /** Format: uuid */
+            actorUserId: string;
+            sortOrder?: number;
+            stoneType?: string;
+            lengthMm?: number | null;
+            widthMm?: number | null;
+            thicknessMm?: number | null;
+            edgeProfile?: string | null;
+            /** Format: decimal */
+            qty?: number;
+            qtyUnit?: string;
+            unitPriceCents?: number;
+            laborPriceCents?: number;
+            notes?: string | null;
+        };
+        CreateQuoteRequest: {
+            /** Format: uuid */
+            actorUserId: string;
+            title: string;
+            /** Format: uuid */
+            projectId?: string;
+            /** Format: date */
+            validUntil?: string;
+            /** @default 0 */
+            discountCents: number;
+            /** @default 0 */
+            taxRateBps: number;
+            notes?: string;
+            termsAndConditions?: string;
+            /** @description Optional initial line items to create with the quote. */
+            lineItems?: components["schemas"]["CreateQuoteLineItemRequest"][];
+        };
+        /** @description At least one updatable field is required in addition to actorUserId. Only allowed when quote is in draft status. */
+        UpdateQuoteRequest: {
+            /** Format: uuid */
+            actorUserId: string;
+            title?: string;
+            /** Format: uuid */
+            projectId?: string | null;
+            /** Format: date */
+            validUntil?: string | null;
+            discountCents?: number;
+            taxRateBps?: number;
+            notes?: string | null;
+            termsAndConditions?: string | null;
+        };
+        PaginatedQuotesResponse: {
+            data: components["schemas"]["Quote"][];
+            nextCursor?: string | null;
+            hasMore: boolean;
+        };
+        /** @enum {string} */
+        ScheduledEventType: "appointment" | "shop_job";
+        /** @enum {string} */
+        AppointmentType: "measure" | "template" | "install" | "follow_up" | "other";
+        /** @enum {string} */
+        ScheduledEventStatus: "scheduled" | "confirmed" | "in_progress" | "completed" | "cancelled";
+        ScheduledEvent: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            customerId: string;
+            /** Format: uuid */
+            projectId?: string | null;
+            eventType: components["schemas"]["ScheduledEventType"];
+            /** @description Required when eventType is appointment; must be null when eventType is shop_job. */
+            appointmentType?: components["schemas"]["AppointmentType"];
+            title: string;
+            /**
+             * Format: date-time
+             * @description Event start time in UTC.
+             */
+            scheduledAt: string;
+            /** @default 60 */
+            durationMinutes: number;
+            /** @description At least one assignee UUID required; no duplicates. */
+            assigneeUserIds: string[];
+            /** @description Site address; most relevant for appointment events. */
+            address?: string | null;
+            notes?: string | null;
+            status: components["schemas"]["ScheduledEventStatus"];
+            /** Format: date-time */
+            archivedAt?: string | null;
+            /** Format: uuid */
+            archivedByUserId?: string | null;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+        };
+        CreateScheduledEventRequest: {
+            /** Format: uuid */
+            actorUserId: string;
+            /**
+             * Format: uuid
+             * @description Taken from the URL path; may be omitted in body.
+             */
+            customerId?: string;
+            /** Format: uuid */
+            projectId?: string;
+            eventType: components["schemas"]["ScheduledEventType"];
+            /** @description Required when eventType is appointment; must be omitted or null when eventType is shop_job. */
+            appointmentType?: components["schemas"]["AppointmentType"];
+            title: string;
+            /** Format: date-time */
+            scheduledAt: string;
+            /** @default 60 */
+            durationMinutes: number;
+            assigneeUserIds: string[];
+            address?: string;
+            notes?: string;
+        };
+        /** @description At least one updatable field is required in addition to actorUserId. Only allowed when status is scheduled or confirmed. */
+        UpdateScheduledEventRequest: {
+            /** Format: uuid */
+            actorUserId: string;
+            /** Format: uuid */
+            projectId?: string | null;
+            appointmentType?: components["schemas"]["AppointmentType"];
+            title?: string;
+            /**
+             * Format: date-time
+             * @description Updating this field also emits scheduled_event.rescheduled in addition to scheduled_event.updated.
+             */
+            scheduledAt?: string;
+            durationMinutes?: number;
+            assigneeUserIds?: string[];
+            address?: string | null;
+            notes?: string | null;
+        };
+        PaginatedScheduledEventsResponse: {
+            data: components["schemas"]["ScheduledEvent"][];
+            nextCursor?: string | null;
+            hasMore: boolean;
+        };
     };
     responses: never;
     parameters: {
         CustomerId: string;
         ProjectId: string;
         Cursor: string;
+        /** @description UUID of the quote */
+        QuoteId: string;
+        /** @description UUID of the quote line item */
+        LineItemId: string;
+        /** @description UUID of the scheduled event */
+        EventId: string;
         Limit: number;
     };
     requestBodies: never;
@@ -1815,6 +2313,1038 @@ export interface operations {
             };
             /** @description Customer note not found. */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    listCustomerQuotes: {
+        parameters: {
+            query?: {
+                cursor?: components["parameters"]["Cursor"];
+                limit?: components["parameters"]["Limit"];
+                status?: components["schemas"]["QuoteStatus"];
+                projectId?: string;
+                includeArchived?: boolean;
+            };
+            header?: never;
+            path: {
+                customerId: components["parameters"]["CustomerId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Quotes returned. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginatedQuotesResponse"];
+                };
+            };
+            /** @description Customer not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    createCustomerQuote: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                customerId: components["parameters"]["CustomerId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateQuoteRequest"];
+            };
+        };
+        responses: {
+            /** @description Quote created. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["QuoteWithLineItems"];
+                };
+            };
+            /** @description Invalid request. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Customer not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getCustomerQuote: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                customerId: components["parameters"]["CustomerId"];
+                /** @description UUID of the quote */
+                quoteId: components["parameters"]["QuoteId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Quote returned. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["QuoteWithLineItems"];
+                };
+            };
+            /** @description Quote or customer not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    updateCustomerQuote: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                customerId: components["parameters"]["CustomerId"];
+                /** @description UUID of the quote */
+                quoteId: components["parameters"]["QuoteId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateQuoteRequest"];
+            };
+        };
+        responses: {
+            /** @description Quote updated. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Quote"];
+                };
+            };
+            /** @description Invalid request. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Quote or customer not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Quote is not in draft status. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    sendCustomerQuote: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                customerId: components["parameters"]["CustomerId"];
+                /** @description UUID of the quote */
+                quoteId: components["parameters"]["QuoteId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ActorRequest"];
+            };
+        };
+        responses: {
+            /** @description Quote transitioned to sent. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Quote"];
+                };
+            };
+            /** @description Invalid request. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Quote or customer not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Quote is not in draft status — transition not allowed. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    acceptCustomerQuote: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                customerId: components["parameters"]["CustomerId"];
+                /** @description UUID of the quote */
+                quoteId: components["parameters"]["QuoteId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ActorRequest"];
+            };
+        };
+        responses: {
+            /** @description Quote transitioned to accepted. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Quote"];
+                };
+            };
+            /** @description Invalid request. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Quote or customer not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Quote is not in sent status — transition not allowed. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    rejectCustomerQuote: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                customerId: components["parameters"]["CustomerId"];
+                /** @description UUID of the quote */
+                quoteId: components["parameters"]["QuoteId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ActorRequest"];
+            };
+        };
+        responses: {
+            /** @description Quote transitioned to rejected. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Quote"];
+                };
+            };
+            /** @description Invalid request. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Quote or customer not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Quote is not in sent status — transition not allowed. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    archiveCustomerQuote: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                customerId: components["parameters"]["CustomerId"];
+                /** @description UUID of the quote */
+                quoteId: components["parameters"]["QuoteId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ActorRequest"];
+            };
+        };
+        responses: {
+            /** @description Quote archived. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Quote"];
+                };
+            };
+            /** @description Invalid request. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Quote or customer not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    listQuoteLineItems: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                customerId: components["parameters"]["CustomerId"];
+                /** @description UUID of the quote */
+                quoteId: components["parameters"]["QuoteId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Line items returned. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["QuoteLineItem"][];
+                    };
+                };
+            };
+            /** @description Quote or customer not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    addQuoteLineItem: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                customerId: components["parameters"]["CustomerId"];
+                /** @description UUID of the quote */
+                quoteId: components["parameters"]["QuoteId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateQuoteLineItemRequest"];
+            };
+        };
+        responses: {
+            /** @description Line item added. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["QuoteLineItem"];
+                };
+            };
+            /** @description Invalid request. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Quote or customer not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Quote is not in draft status. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    removeQuoteLineItem: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                customerId: components["parameters"]["CustomerId"];
+                /** @description UUID of the quote */
+                quoteId: components["parameters"]["QuoteId"];
+                /** @description UUID of the quote line item */
+                lineItemId: components["parameters"]["LineItemId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ActorRequest"];
+            };
+        };
+        responses: {
+            /** @description Line item removed. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["QuoteLineItem"];
+                };
+            };
+            /** @description Invalid request. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Line item, quote, or customer not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Quote is not in draft status. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    updateQuoteLineItem: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                customerId: components["parameters"]["CustomerId"];
+                /** @description UUID of the quote */
+                quoteId: components["parameters"]["QuoteId"];
+                /** @description UUID of the quote line item */
+                lineItemId: components["parameters"]["LineItemId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateQuoteLineItemRequest"];
+            };
+        };
+        responses: {
+            /** @description Line item updated. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["QuoteLineItem"];
+                };
+            };
+            /** @description Invalid request. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Line item, quote, or customer not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Quote is not in draft status. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    listCustomerEvents: {
+        parameters: {
+            query?: {
+                cursor?: components["parameters"]["Cursor"];
+                limit?: components["parameters"]["Limit"];
+                eventType?: components["schemas"]["ScheduledEventType"];
+                status?: components["schemas"]["ScheduledEventStatus"];
+                projectId?: string;
+                /** @description Filter events with scheduledAt on or after this date (ISO date). */
+                from?: string;
+                /** @description Filter events with scheduledAt on or before this date (ISO date). */
+                to?: string;
+            };
+            header?: never;
+            path: {
+                customerId: components["parameters"]["CustomerId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Events returned. Default sort is scheduledAt ASC. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginatedScheduledEventsResponse"];
+                };
+            };
+            /** @description Customer not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    createCustomerEvent: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                customerId: components["parameters"]["CustomerId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateScheduledEventRequest"];
+            };
+        };
+        responses: {
+            /** @description Event created. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ScheduledEvent"];
+                };
+            };
+            /** @description Invalid request. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Customer not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getCustomerEvent: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                customerId: components["parameters"]["CustomerId"];
+                /** @description UUID of the scheduled event */
+                eventId: components["parameters"]["EventId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Event returned. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ScheduledEvent"];
+                };
+            };
+            /** @description Event or customer not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    updateCustomerEvent: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                customerId: components["parameters"]["CustomerId"];
+                /** @description UUID of the scheduled event */
+                eventId: components["parameters"]["EventId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateScheduledEventRequest"];
+            };
+        };
+        responses: {
+            /** @description Event updated. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ScheduledEvent"];
+                };
+            };
+            /** @description Invalid request. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Event or customer not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Event status does not allow updates (must be scheduled or confirmed). */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    confirmCustomerEvent: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                customerId: components["parameters"]["CustomerId"];
+                /** @description UUID of the scheduled event */
+                eventId: components["parameters"]["EventId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ActorRequest"];
+            };
+        };
+        responses: {
+            /** @description Event transitioned to confirmed. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ScheduledEvent"];
+                };
+            };
+            /** @description Invalid request. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Event or customer not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Event is not in scheduled status — transition not allowed. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    startCustomerEvent: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                customerId: components["parameters"]["CustomerId"];
+                /** @description UUID of the scheduled event */
+                eventId: components["parameters"]["EventId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ActorRequest"];
+            };
+        };
+        responses: {
+            /** @description Event transitioned to in_progress. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ScheduledEvent"];
+                };
+            };
+            /** @description Invalid request. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Event or customer not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Event is not in confirmed status — transition not allowed. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    completeCustomerEvent: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                customerId: components["parameters"]["CustomerId"];
+                /** @description UUID of the scheduled event */
+                eventId: components["parameters"]["EventId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ActorRequest"];
+            };
+        };
+        responses: {
+            /** @description Event transitioned to completed. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ScheduledEvent"];
+                };
+            };
+            /** @description Invalid request. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Event or customer not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Event is not in in_progress status — transition not allowed. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    cancelCustomerEvent: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                customerId: components["parameters"]["CustomerId"];
+                /** @description UUID of the scheduled event */
+                eventId: components["parameters"]["EventId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ActorRequest"];
+            };
+        };
+        responses: {
+            /** @description Event transitioned to cancelled. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ScheduledEvent"];
+                };
+            };
+            /** @description Invalid request. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Event or customer not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Event is already completed — cancellation not allowed. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    archiveCustomerEvent: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                customerId: components["parameters"]["CustomerId"];
+                /** @description UUID of the scheduled event */
+                eventId: components["parameters"]["EventId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ActorRequest"];
+            };
+        };
+        responses: {
+            /** @description Event archived. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ScheduledEvent"];
+                };
+            };
+            /** @description Invalid request. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Event or customer not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Event status is not completed or cancelled — archive not allowed. */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };

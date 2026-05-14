@@ -16,6 +16,7 @@ Use this as the working project checklist.
 - [x] Build Projects vertical slice: API, DB, events, tests, web CRUD
 - [x] Add Better Auth email/password flow in web app
 - [x] Generate typed API client from OpenAPI
+- [x] Build Quotes vertical slice: API, DB, events, tests, generated client
 
 ## Right Now
 
@@ -128,9 +129,9 @@ Use this as the working project checklist.
 
 ## Phase 9: Next Modules After Customers
 
-- [ ] Create jobs/projects module spec
+- [x] Create jobs/projects module spec
+- [x] Create quotes/estimates module spec
 - [x] Build first projects module vertical slice
-- [ ] Create quotes/estimates module spec
 - [ ] Create scheduling/calendar module spec
 - [ ] Create inventory/slabs module spec
 - [ ] Create invoices/payments module spec if client needs it

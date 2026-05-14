@@ -261,3 +261,111 @@ events:
         actorUserId: { type: string }
         fromStatus: { type: string }
         toStatus: { type: string }
+
+  quote.created:
+    description: Fired when a quote record is created.
+    version: 1
+    owner: quotes-module
+    data:
+      required: [quoteId, customerId, actorUserId]
+      properties:
+        quoteId: { type: string, format: uuid }
+        customerId: { type: string, format: uuid }
+        actorUserId: { type: string, format: uuid }
+
+  quote.updated:
+    description: Fired when quote header fields change.
+    version: 1
+    owner: quotes-module
+    data:
+      required: [quoteId, customerId, actorUserId, changedFields]
+      properties:
+        quoteId: { type: string, format: uuid }
+        customerId: { type: string, format: uuid }
+        actorUserId: { type: string, format: uuid }
+        changedFields:
+          type: array
+          items: { type: string }
+
+  quote.sent:
+    description: Fired when a quote is sent.
+    version: 1
+    owner: quotes-module
+    data:
+      required: [quoteId, customerId, actorUserId]
+      properties:
+        quoteId: { type: string, format: uuid }
+        customerId: { type: string, format: uuid }
+        actorUserId: { type: string, format: uuid }
+
+  quote.accepted:
+    description: Fired when a quote is accepted.
+    version: 1
+    owner: quotes-module
+    data:
+      required: [quoteId, customerId, actorUserId]
+      properties:
+        quoteId: { type: string, format: uuid }
+        customerId: { type: string, format: uuid }
+        actorUserId: { type: string, format: uuid }
+
+  quote.rejected:
+    description: Fired when a quote is rejected.
+    version: 1
+    owner: quotes-module
+    data:
+      required: [quoteId, customerId, actorUserId]
+      properties:
+        quoteId: { type: string, format: uuid }
+        customerId: { type: string, format: uuid }
+        actorUserId: { type: string, format: uuid }
+
+  quote.archived:
+    description: Fired when a quote is archived.
+    version: 1
+    owner: quotes-module
+    data:
+      required: [quoteId, customerId, actorUserId]
+      properties:
+        quoteId: { type: string, format: uuid }
+        customerId: { type: string, format: uuid }
+        actorUserId: { type: string, format: uuid }
+
+  quote.line_item_added:
+    description: Fired when a line item is added to a quote.
+    version: 1
+    owner: quotes-module
+    data:
+      required: [quoteId, lineItemId, customerId, actorUserId]
+      properties:
+        quoteId: { type: string, format: uuid }
+        lineItemId: { type: string, format: uuid }
+        customerId: { type: string, format: uuid }
+        actorUserId: { type: string, format: uuid }
+
+  quote.line_item_updated:
+    description: Fired when a quote line item changes.
+    version: 1
+    owner: quotes-module
+    data:
+      required: [quoteId, lineItemId, customerId, actorUserId, changedFields]
+      properties:
+        quoteId: { type: string, format: uuid }
+        lineItemId: { type: string, format: uuid }
+        customerId: { type: string, format: uuid }
+        actorUserId: { type: string, format: uuid }
+        changedFields:
+          type: array
+          items: { type: string }
+
+  quote.line_item_removed:
+    description: Fired when a quote line item is removed.
+    version: 1
+    owner: quotes-module
+    data:
+      required: [quoteId, lineItemId, customerId, actorUserId]
+      properties:
+        quoteId: { type: string, format: uuid }
+        lineItemId: { type: string, format: uuid }
+        customerId: { type: string, format: uuid }
+        actorUserId: { type: string, format: uuid }

@@ -11,25 +11,28 @@ import { CustomerNotesService } from './customers/customer-notes.service.js';
 import { CustomersController } from './customers/customers.controller.js';
 import { CustomersRepository } from './customers/customers.repository.js';
 import { CustomersService } from './customers/customers.service.js';
-import { databaseProvider } from './database.provider.js';
 import { EventsModule } from './events/events.module.js';
 import { HealthController } from './health.controller.js';
 import { ProjectsController } from './projects/projects.controller.js';
 import { ProjectsRepository } from './projects/projects.repository.js';
 import { ProjectsService } from './projects/projects.service.js';
+import { QuotesController } from './quotes/quotes.controller.js';
+import { QuotesRepository } from './quotes/quotes.repository.js';
+import { QuotesService } from './quotes/quotes.service.js';
+import { ScheduledEventsModule } from './scheduling/scheduled-events.module.js';
 
 @Module({
-  imports: [EventsModule],
+  imports: [EventsModule, ScheduledEventsModule],
   controllers: [
     HealthController,
     CustomersController,
     CustomerContactsController,
     CustomerAddressesController,
     CustomerNotesController,
-    ProjectsController
+    ProjectsController,
+    QuotesController
   ],
   providers: [
-    databaseProvider,
     CustomersRepository,
     CustomersService,
     CustomerContactsRepository,
@@ -39,7 +42,9 @@ import { ProjectsService } from './projects/projects.service.js';
     CustomerNotesRepository,
     CustomerNotesService,
     ProjectsRepository,
-    ProjectsService
+    ProjectsService,
+    QuotesRepository,
+    QuotesService
   ]
 })
 export class AppModule {}

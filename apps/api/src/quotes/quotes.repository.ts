@@ -13,7 +13,13 @@ import { DATABASE_POOL } from '../database.provider.js';
 import { mapQuoteLineItemRow, mapQuoteRow, type QuoteLineItemRow, type QuoteRow } from './quote.mapper.js';
 
 type Queryable = Pick<Pool, 'query'> | PoolClient;
-type QuoteListInput = Required<Pick<ListQuotesInput, 'limit' | 'includeArchived'>> & Omit<ListQuotesInput, 'limit' | 'includeArchived'>;
+interface QuoteListInput {
+  cursor?: string | undefined;
+  limit: number;
+  status?: ListQuotesInput['status'] | undefined;
+  projectId?: string | undefined;
+  includeArchived: boolean;
+}
 
 interface QuoteCursor {
   id: string;
@@ -442,12 +448,14 @@ export class QuotesRepository {
   private async nextQuoteNumber(client: PoolClient): Promise<string> {
     const year = new Date().getFullYear();
     const prefix = `Q-${year}-`;
+
+    await client.query('SELECT pg_advisory_xact_lock(hashtext($1))', [prefix]);
+
     const result = await client.query<{ next_number: number }>(
       `
         SELECT COALESCE(MAX(SUBSTRING(quote_number FROM 8)::integer), 0) + 1 AS next_number
         FROM quotes
         WHERE quote_number LIKE $1
-        FOR UPDATE
       `,
       [`${prefix}%`]
     );
