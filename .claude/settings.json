@@ -1,0 +1,15 @@
+{
+  "hooks": {
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "shell": "powershell",
+            "command": "Write-Output '[model-gate] BEFORE work print: Model: <Sonnet|Opus> -- effort: <low|medium|high|xhigh>; Mode: <Plan|Execution|Review>; Why: <one short reason>. Stay Plan until user approves implementation.'"
+          }
+        ]
+      }
+    ]
+  }
+}
