@@ -5,6 +5,7 @@ import {
   updateCustomerNoteSchema
 } from '@stoneboyz/domain';
 import { z } from 'zod';
+import { CurrentUser } from '../auth/current-user.decorator.js';
 import { CustomerNotesService } from './customer-notes.service.js';
 
 const customerIdSchema = z.string().uuid();
@@ -34,7 +35,7 @@ export class CustomerNotesController {
   }
 
   @Post()
-  async create(@Param('customerId') customerId: string, @Body() body: unknown) {
+  async create(@Param('customerId') customerId: string, @Body() body: unknown, @CurrentUser() actorUserId: string) {
     const parsedCustomerId = customerIdSchema.safeParse(customerId);
 
     if (!parsedCustomerId.success) {
@@ -55,14 +56,15 @@ export class CustomerNotesController {
       });
     }
 
-    return this.customerNotesService.create(parsedCustomerId.data, parsedBody.data);
+    return this.customerNotesService.create(parsedCustomerId.data, { ...parsedBody.data, actorUserId });
   }
 
   @Patch(':noteId')
   async update(
     @Param('customerId') customerId: string,
     @Param('noteId') noteId: string,
-    @Body() body: unknown
+    @Body() body: unknown,
+    @CurrentUser() actorUserId: string
   ) {
     const parsedCustomerId = customerIdSchema.safeParse(customerId);
     const parsedNoteId = noteIdSchema.safeParse(noteId);
@@ -88,7 +90,7 @@ export class CustomerNotesController {
       });
     }
 
-    return this.customerNotesService.update(parsedCustomerId.data, parsedNoteId.data, parsedBody.data);
+    return this.customerNotesService.update(parsedCustomerId.data, parsedNoteId.data, { ...parsedBody.data, actorUserId });
   }
 
   @Delete(':noteId')
@@ -96,7 +98,8 @@ export class CustomerNotesController {
   async archive(
     @Param('customerId') customerId: string,
     @Param('noteId') noteId: string,
-    @Body() body: unknown
+    @Body() body: unknown,
+    @CurrentUser() actorUserId: string
   ) {
     const parsedCustomerId = customerIdSchema.safeParse(customerId);
     const parsedNoteId = noteIdSchema.safeParse(noteId);
@@ -122,6 +125,6 @@ export class CustomerNotesController {
       });
     }
 
-    return this.customerNotesService.archive(parsedCustomerId.data, parsedNoteId.data, parsedBody.data);
+    return this.customerNotesService.archive(parsedCustomerId.data, parsedNoteId.data, { ...parsedBody.data, actorUserId });
   }
 }

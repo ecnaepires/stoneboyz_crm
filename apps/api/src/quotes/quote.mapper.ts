@@ -4,6 +4,7 @@ export interface QuoteRow {
   id: string;
   customer_id: string;
   project_id: string | null;
+  price_list_id: string | null;
   quote_number: string;
   title: string;
   status: Quote['status'];
@@ -11,6 +12,7 @@ export interface QuoteRow {
   subtotal_cents: number | string | null;
   discount_cents: number;
   tax_rate_bps: number;
+  share_token: string;
   notes: string | null;
   terms_and_conditions: string | null;
   sent_at: Date | null;
@@ -25,11 +27,13 @@ export interface QuoteRow {
 export interface QuoteLineItemRow {
   id: string;
   quote_id: string;
+  quote_area_id: string | null;
+  slab_id: string | null;
   sort_order: number;
   stone_type: string;
-  length_mm: number | null;
-  width_mm: number | null;
-  thickness_mm: number | null;
+  length_in: number | null;
+  width_in: number | null;
+  thickness_cm: number | null;
   edge_profile: string | null;
   qty: string;
   qty_unit: string;
@@ -66,11 +70,14 @@ export const mapQuoteLineItemRow = (row: QuoteLineItemRow): QuoteLineItem => {
   const lineItem = {
     id: row.id,
     quoteId: row.quote_id,
+    quoteAreaId: row.quote_area_id,
+    slabId: row.slab_id,
     sortOrder: row.sort_order,
     stoneType: row.stone_type,
-    lengthMm: row.length_mm,
-    widthMm: row.width_mm,
-    thicknessMm: row.thickness_mm,
+    lengthIn: row.length_in,
+    widthIn: row.width_in,
+    thicknessCm: row.thickness_cm,
+    sqFt: row.length_in && row.width_in ? Number(((row.length_in * row.width_in) / 144).toFixed(3)) : null,
     edgeProfile: row.edge_profile,
     qty: Number(row.qty),
     qtyUnit: row.qty_unit,
@@ -95,6 +102,7 @@ export const mapQuoteRow = (row: QuoteRow): Quote => {
     id: row.id,
     customerId: row.customer_id,
     projectId: row.project_id,
+    priceListId: row.price_list_id,
     quoteNumber: row.quote_number,
     title: row.title,
     status: row.status,
@@ -103,6 +111,7 @@ export const mapQuoteRow = (row: QuoteRow): Quote => {
     discountCents: row.discount_cents,
     taxRateBps: row.tax_rate_bps,
     totalCents: computeTotalCents(subtotalCents, row.discount_cents, row.tax_rate_bps),
+    shareToken: row.share_token,
     notes: row.notes,
     termsAndConditions: row.terms_and_conditions,
     sentAt: row.sent_at === null ? null : toIso(row.sent_at),

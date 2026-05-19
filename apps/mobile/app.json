@@ -1,0 +1,14 @@
+﻿{
+  "expo": {
+    "name": "Stoneboyz CRM Mobile",
+    "slug": "stoneboyz-crm-mobile",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "automatic",
+    "splash": {
+      "resizeMode": "contain",
+      "backgroundColor": "#f5f5f4"
+    },
+    "assetBundlePatterns": ["**/*"]
+  }
+}

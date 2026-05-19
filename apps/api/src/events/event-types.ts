@@ -129,6 +129,33 @@ export interface QuoteLineItemUpdatedData {
   changedFields: string[];
 }
 
+export interface QuoteAreaEventData {
+  quoteId: string;
+  areaId: string;
+  customerId: string;
+  actorUserId: string;
+}
+
+export interface QuoteAreaUpdatedData {
+  quoteId: string;
+  areaId: string;
+  customerId: string;
+  actorUserId: string;
+  changedFields: string[];
+}
+
+export interface QuoteMeasurementEventData {
+  quoteId: string;
+  areaId: string;
+  measurementId: string;
+  customerId: string;
+  actorUserId: string;
+}
+
+export interface QuoteMeasurementUpdatedData extends QuoteMeasurementEventData {
+  changedFields: string[];
+}
+
 export interface ScheduledEventEventData {
   scheduledEventId: string;
   customerId: string;
@@ -148,6 +175,30 @@ export interface ScheduledEventRescheduledData {
   actorUserId: string;
   previousScheduledAt: string;
   newScheduledAt: string;
+}
+
+export interface SlabEventData {
+  slabId: string;
+  actorUserId: string;
+}
+
+export interface SlabUpdatedData {
+  slabId: string;
+  actorUserId: string;
+  changedFields: string[];
+}
+
+export interface SlabReservedData {
+  slabId: string;
+  actorUserId: string;
+  quoteId?: string;
+  projectId?: string;
+}
+
+export interface SlabCutData {
+  slabId: string;
+  actorUserId: string;
+  remnantSlabIds: string[];
 }
 
 export type CustomerEventName =
@@ -184,7 +235,19 @@ export type QuoteEventName =
   | 'quote.archived'
   | 'quote.line_item_added'
   | 'quote.line_item_updated'
-  | 'quote.line_item_removed';
+  | 'quote.line_item_removed'
+  | 'quote.area_added'
+  | 'quote.area_updated'
+  | 'quote.area_removed'
+  | 'quote.counter_piece_added'
+  | 'quote.counter_piece_updated'
+  | 'quote.counter_piece_removed'
+  | 'quote.edge_segment_added'
+  | 'quote.edge_segment_updated'
+  | 'quote.edge_segment_removed'
+  | 'quote.sink_cutout_added'
+  | 'quote.sink_cutout_updated'
+  | 'quote.sink_cutout_removed';
 
 export type ScheduledEventEventName =
   | 'scheduled_event.created'
@@ -196,4 +259,71 @@ export type ScheduledEventEventName =
   | 'scheduled_event.rescheduled'
   | 'scheduled_event.archived';
 
-export type AppEventName = CustomerEventName | ProjectEventName | QuoteEventName | ScheduledEventEventName;
+export type SlabEventName =
+  | 'slab.created'
+  | 'slab.updated'
+  | 'slab.reserved'
+  | 'slab.released'
+  | 'slab.cut'
+  | 'slab.archived';
+
+export interface PriceListEventData {
+  priceListId: string;
+  actorUserId: string;
+}
+
+export interface PriceListUpdatedData {
+  priceListId: string;
+  actorUserId: string;
+  changedFields: string[];
+}
+
+export interface PriceListItemEventData {
+  priceListId: string;
+  itemId: string;
+  actorUserId: string;
+}
+
+export interface PriceListItemUpdatedData {
+  priceListId: string;
+  itemId: string;
+  actorUserId: string;
+  changedFields: string[];
+}
+
+export type PriceListEventName =
+  | 'price_list.created'
+  | 'price_list.updated'
+  | 'price_list.activated'
+  | 'price_list.archived'
+  | 'price_list.item_created'
+  | 'price_list.item_updated'
+  | 'price_list.item_deleted';
+
+export interface OrderEventData {
+  orderId: string;
+  customerId: string;
+  actorUserId: string;
+}
+
+export interface OrderPaymentEventData {
+  orderId: string;
+  paymentId: string;
+  customerId: string;
+  actorUserId: string;
+}
+
+export type OrderEventName =
+  | 'order.created'
+  | 'order.archived'
+  | 'order.payment_added'
+  | 'order.payment_removed';
+
+export type AppEventName =
+  | CustomerEventName
+  | ProjectEventName
+  | QuoteEventName
+  | ScheduledEventEventName
+  | SlabEventName
+  | PriceListEventName
+  | OrderEventName;

@@ -2,15 +2,14 @@
 
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
-import { getApiClient } from '@/lib/api';
+import { getApiClientWithAuth } from '@/lib/api';
 import { getActorUserId } from '@/lib/actor';
 
 type ProjectStatus = 'draft' | 'active' | 'completed';
 
 export async function createProjectAction(formData: FormData) {
-  const client = getApiClient();
-  const actorUserId = await getActorUserId();
-  const ownerUserId = actorUserId;
+  const client = await getApiClientWithAuth();
+  const ownerUserId = await getActorUserId();
 
   const customerId = formData.get('customerId') as string;
   const title = formData.get('title') as string;
@@ -19,7 +18,6 @@ export async function createProjectAction(formData: FormData) {
 
   const { data, error } = await client.POST('/projects', {
     body: {
-      actorUserId,
       customerId,
       title,
       status,
@@ -36,8 +34,7 @@ export async function createProjectAction(formData: FormData) {
 }
 
 export async function updateProjectAction(projectId: string, formData: FormData) {
-  const client = getApiClient();
-  const actorUserId = await getActorUserId();
+  const client = await getApiClientWithAuth();
 
   const customerId = formData.get('customerId') as string;
   const title = formData.get('title') as string;
@@ -47,7 +44,6 @@ export async function updateProjectAction(projectId: string, formData: FormData)
   const { error } = await client.PATCH('/projects/{projectId}', {
     params: { path: { projectId } },
     body: {
-      actorUserId,
       customerId,
       title,
       status,
@@ -64,12 +60,11 @@ export async function updateProjectAction(projectId: string, formData: FormData)
 }
 
 export async function archiveProjectAction(projectId: string) {
-  const client = getApiClient();
-  const actorUserId = await getActorUserId();
+  const client = await getApiClientWithAuth();
 
   const { error } = await client.POST('/projects/{projectId}/archive', {
     params: { path: { projectId } },
-    body: { actorUserId },
+    body: {},
   });
 
   if (error) {

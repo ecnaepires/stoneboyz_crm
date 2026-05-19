@@ -5,13 +5,12 @@ import {
   updateCustomerAddressSchema
 } from '@stoneboyz/domain';
 import { z } from 'zod';
+import { CurrentUser } from '../auth/current-user.decorator.js';
 import { CustomerAddressesService } from './customer-addresses.service.js';
 
 const customerIdSchema = z.string().uuid();
 const addressIdSchema = z.string().uuid();
-const makeBillingBodySchema = z.object({
-  actorUserId: z.string().uuid()
-});
+const makeBillingBodySchema = z.object({});
 
 const formatZodError = (error: z.ZodError): Record<string, string[]> => {
   return z.flattenError(error).fieldErrors;
@@ -37,7 +36,7 @@ export class CustomerAddressesController {
   }
 
   @Post()
-  async create(@Param('customerId') customerId: string, @Body() body: unknown) {
+  async create(@Param('customerId') customerId: string, @Body() body: unknown, @CurrentUser() actorUserId: string) {
     const parsedCustomerId = customerIdSchema.safeParse(customerId);
 
     if (!parsedCustomerId.success) {
@@ -58,14 +57,15 @@ export class CustomerAddressesController {
       });
     }
 
-    return this.customerAddressesService.create(parsedCustomerId.data, parsedBody.data);
+    return this.customerAddressesService.create(parsedCustomerId.data, { ...parsedBody.data, actorUserId });
   }
 
   @Patch(':addressId')
   async update(
     @Param('customerId') customerId: string,
     @Param('addressId') addressId: string,
-    @Body() body: unknown
+    @Body() body: unknown,
+    @CurrentUser() actorUserId: string
   ) {
     const parsedCustomerId = customerIdSchema.safeParse(customerId);
     const parsedAddressId = addressIdSchema.safeParse(addressId);
@@ -91,7 +91,7 @@ export class CustomerAddressesController {
       });
     }
 
-    return this.customerAddressesService.update(parsedCustomerId.data, parsedAddressId.data, parsedBody.data);
+    return this.customerAddressesService.update(parsedCustomerId.data, parsedAddressId.data, { ...parsedBody.data, actorUserId });
   }
 
   @Delete(':addressId')
@@ -99,7 +99,8 @@ export class CustomerAddressesController {
   async archive(
     @Param('customerId') customerId: string,
     @Param('addressId') addressId: string,
-    @Body() body: unknown
+    @Body() body: unknown,
+    @CurrentUser() actorUserId: string
   ) {
     const parsedCustomerId = customerIdSchema.safeParse(customerId);
     const parsedAddressId = addressIdSchema.safeParse(addressId);
@@ -125,7 +126,7 @@ export class CustomerAddressesController {
       });
     }
 
-    return this.customerAddressesService.archive(parsedCustomerId.data, parsedAddressId.data, parsedBody.data);
+    return this.customerAddressesService.archive(parsedCustomerId.data, parsedAddressId.data, { ...parsedBody.data, actorUserId });
   }
 
   @Post(':addressId/make-billing')
@@ -133,7 +134,8 @@ export class CustomerAddressesController {
   async makeBilling(
     @Param('customerId') customerId: string,
     @Param('addressId') addressId: string,
-    @Body() body: unknown
+    @Body() body: unknown,
+    @CurrentUser() actorUserId: string
   ) {
     const parsedCustomerId = customerIdSchema.safeParse(customerId);
     const parsedAddressId = addressIdSchema.safeParse(addressId);
@@ -162,7 +164,7 @@ export class CustomerAddressesController {
     return this.customerAddressesService.makeBilling(
       parsedCustomerId.data,
       parsedAddressId.data,
-      parsedBody.data.actorUserId
+      actorUserId
     );
   }
 }

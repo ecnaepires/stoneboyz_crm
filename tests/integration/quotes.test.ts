@@ -7,6 +7,8 @@ import type { Pool } from 'pg';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { AppModule } from '../../apps/api/src/app.module.js';
 import { DATABASE_POOL } from '../../apps/api/src/database.provider.js';
+import { seedTestSession } from './helpers/auth.js';
+import { setTestAuthToken } from './helpers/test-auth.js';
 
 const SEEDED_CUSTOMER_ID = '11111111-1111-4111-8111-111111111111';
 const ACTOR_USER_ID = '22222222-2222-4222-8222-222222222222';
@@ -16,6 +18,7 @@ const resetDatabase = async (app: INestApplication): Promise<void> => {
   const pool = app.get<Pool>(DATABASE_POOL);
 
   await pool.query('DROP TABLE IF EXISTS quote_line_items CASCADE;');
+  await pool.query('DROP TABLE IF EXISTS quote_areas CASCADE;');
   await pool.query('DROP TABLE IF EXISTS quotes CASCADE;');
   await pool.query('DROP TABLE IF EXISTS projects CASCADE;');
   await pool.query('DROP TABLE IF EXISTS customer_notes CASCADE;');
@@ -102,6 +105,8 @@ describe('quotes', () => {
 
     baseUrl = await app.getUrl();
     await resetDatabase(app);
+    const _token = await seedTestSession(app.get(DATABASE_POOL));
+    setTestAuthToken(_token);
   });
 
   beforeEach(async () => {
@@ -295,5 +300,86 @@ describe('quotes', () => {
     expect(response.status).toBe(404);
     expect(body.code).toBe('NOT_FOUND');
     expect(body.message).toBe('Quote not found');
+  });
+
+  it('creates a quote with a priceListId', async () => {
+    const pool = app.get<Pool>(DATABASE_POOL);
+    const PRICE_LIST_ID = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
+    await pool.query(
+      `INSERT INTO price_lists (id, name, created_by_user_id)
+       VALUES ($1, $2, $3)
+       ON CONFLICT (id) DO NOTHING`,
+      [PRICE_LIST_ID, 'Test Price List', ACTOR_USER_ID]
+    );
+
+    const { response, body } = await createQuote({ priceListId: PRICE_LIST_ID });
+
+    expect(response.status).toBe(201);
+    expect(body.priceListId).toBe(PRICE_LIST_ID);
+  });
+
+  it('creates a quote without priceListId and defaults to null', async () => {
+    const { response, body } = await createQuote();
+
+    expect(response.status).toBe(201);
+    expect(body.priceListId).toBeNull();
+  });
+
+  it('updates quote to set priceListId', async () => {
+    const pool = app.get<Pool>(DATABASE_POOL);
+    const PRICE_LIST_ID = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
+    await pool.query(
+      `INSERT INTO price_lists (id, name, created_by_user_id)
+       VALUES ($1, $2, $3)
+       ON CONFLICT (id) DO NOTHING`,
+      [PRICE_LIST_ID, 'Test Price List', ACTOR_USER_ID]
+    );
+
+    const created = await createQuote();
+
+    const response = await fetch(`${quotesUrl()}/${created.body.id}`, {
+      method: 'PATCH',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        actorUserId: ACTOR_USER_ID,
+        priceListId: PRICE_LIST_ID
+      })
+    });
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(body.priceListId).toBe(PRICE_LIST_ID);
+  });
+
+  it('updates quote to clear priceListId', async () => {
+    const pool = app.get<Pool>(DATABASE_POOL);
+    const PRICE_LIST_ID = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
+    await pool.query(
+      `INSERT INTO price_lists (id, name, created_by_user_id)
+       VALUES ($1, $2, $3)
+       ON CONFLICT (id) DO NOTHING`,
+      [PRICE_LIST_ID, 'Test Price List', ACTOR_USER_ID]
+    );
+
+    const created = await createQuote({ priceListId: PRICE_LIST_ID });
+
+    const response = await fetch(`${quotesUrl()}/${created.body.id}`, {
+      method: 'PATCH',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        actorUserId: ACTOR_USER_ID,
+        priceListId: null
+      })
+    });
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(body.priceListId).toBeNull();
+  });
+
+  it('returns 404 when creating a quote with a nonexistent priceListId', async () => {
+    const { response } = await createQuote({ priceListId: MISSING_ID });
+
+    expect(response.status).toBe(404);
   });
 });

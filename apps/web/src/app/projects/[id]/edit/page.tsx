@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { updateProjectAction } from '../../_actions';
-import { getApiClient } from '@/lib/api';
+import { getApiClientWithAuth } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -14,7 +14,7 @@ interface EditProjectPageProps {
 
 export default async function EditProjectPage({ params }: EditProjectPageProps) {
   const { id } = await params;
-  const client = getApiClient();
+  const client = await getApiClientWithAuth();
   const [{ data: project, error }, { data: customersRes }] = await Promise.all([
     client.GET('/projects/{projectId}', { params: { path: { projectId: id } } }),
     client.GET('/customers', { params: { query: { limit: 100 } } }),

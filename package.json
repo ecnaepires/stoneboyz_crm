@@ -16,7 +16,9 @@
     "db:up": "docker compose up -d postgres",
     "db:test:up": "docker compose up -d postgres_test",
     "db:test:reset": "node scripts/db/reset-test-db.mjs",
-    "db:down": "docker compose down"
+    "db:migrate": "node scripts/db/migrate.mjs",
+    "db:down": "docker compose down",
+    "test:coverage": "vitest run tests/integration --configLoader runner --coverage"
   },
   "engines": {
     "node": ">=20"
@@ -36,6 +38,7 @@
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.2",
     "typescript": "^6.0.3",
+    "@vitest/coverage-v8": "^2.0.0",
     "vitest": "^4.1.5",
     "wait-on": "^8.0.3"
   }

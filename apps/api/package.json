@@ -6,19 +6,30 @@
   "scripts": {
     "prebuild": "pnpm --filter @stoneboyz/domain build",
     "build": "tsc -p tsconfig.json",
-    "start": "node dist/main.js",
+    "start": "node --env-file=.env dist/main.js",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
-    "@stoneboyz/domain": "workspace:*",
+    "@aws-sdk/client-s3": "^3.1048.0",
     "@nestjs/common": "^11.1.19",
     "@nestjs/core": "^11.1.19",
+    "@nestjs/event-emitter": "^3.1.0",
     "@nestjs/platform-express": "^11.1.19",
+    "@react-pdf/renderer": "^4.5.1",
+    "@stoneboyz/domain": "workspace:*",
+    "express": "^5.0.0",
+    "multer": "^2.0.0",
     "pg": "^8.20.0",
+    "react": "^19.0.0",
     "reflect-metadata": "^0.2.2",
-    "rxjs": "^7.8.2"
+    "resend": "^6.12.3",
+    "rxjs": "^7.8.2",
+    "zod": "^4.4.3"
   },
   "devDependencies": {
-    "@types/pg": "^8.20.0"
+    "@types/express": "^5.0.6",
+    "@types/multer": "^2.1.0",
+    "@types/pg": "^8.20.0",
+    "@types/react": "^19.0.0"
   }
 }

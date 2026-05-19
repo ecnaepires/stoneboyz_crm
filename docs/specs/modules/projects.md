@@ -70,6 +70,24 @@ Minimum event payload fields:
 - `data.projectId`: UUID
 - `data.actorUserId`: string
 
+## Planned Moraware Production Split
+
+This section is planning guidance, not current v1 API contract.
+
+Current `Project` is a lightweight customer work scope. Moraware parity may require a dedicated `Job` module instead of overloading projects.
+
+Decision needed before production work:
+- Keep `Project` as broad sales/work scope and create `Job` for production execution.
+- Or rename/expand `Project` into the production job record.
+
+Signals that a separate `Job` module is better:
+- Job number differs from project id/title.
+- Job has activity templates, fabrication/install lifecycle, job forms, packets, issues, external access, and linked quote/order data.
+- Production scheduling needs job-specific list/calendar columns such as Template Date, Material Date, Fabrication Date, Install Date, Invoice Date, Repair Date, Job Checklist, and Job Issues.
+
+Harness requirement:
+- Accepted quote -> project/job creation must be tested as one integration flow before quote conversion is considered complete.
+
 ## Open Questions
 
 1. Should project ownership use Better Auth user UUIDs instead of free-form strings?

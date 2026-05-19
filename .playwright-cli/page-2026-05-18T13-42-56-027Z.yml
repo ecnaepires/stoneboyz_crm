@@ -1,0 +1,53 @@
+- generic [active] [ref=e1]:
+  - button "Open Next.js Dev Tools" [ref=e22] [cursor=pointer]:
+    - img [ref=e23]
+  - alert [ref=e26]
+  - generic [ref=e45]:
+    - generic [ref=e46]:
+      - heading "Customers" [level=2] [ref=e47]
+      - link "+ New Customer" [ref=e48] [cursor=pointer]:
+        - /url: /customers/new
+    - generic [ref=e49]:
+      - textbox "Search customers..." [ref=e50]
+      - button "Search" [ref=e51] [cursor=pointer]
+    - table [ref=e53]:
+      - rowgroup [ref=e54]:
+        - row "Name Status Type Industry Created" [ref=e55]:
+          - columnheader "Name" [ref=e56]
+          - columnheader "Status" [ref=e57]
+          - columnheader "Type" [ref=e58]
+          - columnheader "Industry" [ref=e59]
+          - columnheader "Created" [ref=e60]
+      - rowgroup [ref=e61]:
+        - row "Tester Job lead customer Builder 5/17/2026" [ref=e62]:
+          - cell "Tester Job" [ref=e63]:
+            - link "Tester Job" [ref=e64] [cursor=pointer]:
+              - /url: /customers/363cb212-d857-4b88-abce-e08d1a095363
+          - cell "lead" [ref=e65]
+          - cell "customer" [ref=e66]
+          - cell "Builder" [ref=e67]
+          - cell "5/17/2026" [ref=e68]
+        - row "Pipeline Demo - Lakeside Residence active customer Residential Remodel 5/17/2026" [ref=e69]:
+          - cell "Pipeline Demo - Lakeside Residence" [ref=e70]:
+            - link "Pipeline Demo - Lakeside Residence" [ref=e71] [cursor=pointer]:
+              - /url: /customers/2590fc36-d510-4d4a-985f-c41ff36fce88
+          - cell "active" [ref=e72]
+          - cell "customer" [ref=e73]
+          - cell "Residential Remodel" [ref=e74]
+          - cell "5/17/2026" [ref=e75]
+        - row "Stoneboyz Demo Customer active customer Residential fabrication 5/16/2026" [ref=e76]:
+          - cell "Stoneboyz Demo Customer" [ref=e77]:
+            - link "Stoneboyz Demo Customer" [ref=e78] [cursor=pointer]:
+              - /url: /customers/5610096b-f5a3-4a4f-a7dc-531b353a7b37
+          - cell "active" [ref=e79]
+          - cell "customer" [ref=e80]
+          - cell "Residential fabrication" [ref=e81]
+          - cell "5/16/2026" [ref=e82]
+        - row "Acme Stone Works lead prospect - 5/16/2026" [ref=e83]:
+          - cell "Acme Stone Works" [ref=e84]:
+            - link "Acme Stone Works" [ref=e85] [cursor=pointer]:
+              - /url: /customers/11111111-1111-4111-8111-111111111111
+          - cell "lead" [ref=e86]
+          - cell "prospect" [ref=e87]
+          - cell "-" [ref=e88]
+          - cell "5/16/2026" [ref=e89]

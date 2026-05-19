@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { getApiClient } from '@/lib/api';
+import { getApiClientWithAuth } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import {
   Table,
@@ -16,7 +16,7 @@ export default async function CustomersPage({
   searchParams: Promise<{ search?: string }>;
 }) {
   const { search } = await searchParams;
-  const client = getApiClient();
+  const client = await getApiClientWithAuth();
   const { data, error } = await client.GET('/customers', {
     params: { query: { limit: 50, ...(search ? { search } : {}) } },
   });

@@ -60,6 +60,7 @@ Add per-module invariants here as modules are built.
 ### quote_line_items
 
 - `quote_id`: `UUID NOT NULL` FK → `quotes(id)` ON DELETE CASCADE — line items are hard-deleted when quote is deleted
+- `slab_id`: `UUID NULL` FK → `slabs(id)` ON DELETE SET NULL — optional global inventory reservation link
 - `sort_order`: `INTEGER NOT NULL DEFAULT 0`
 - `stone_type`: `VARCHAR NOT NULL`
 - `qty`: `NUMERIC(10,4) NOT NULL`, CHECK `> 0`
@@ -68,6 +69,26 @@ Add per-module invariants here as modules are built.
 - `labor_price_cents`: `INTEGER NOT NULL DEFAULT 0`, CHECK `>= 0`
 - `line_total_cents`: NOT stored in DB — computed in application layer as `floor(qty * (unit_price_cents + labor_price_cents))`
 - No soft-delete on line items: hard-deleted via cascade when quote is deleted, or via explicit API call (draft quotes only)
+
+### slabs
+
+- No `customer_id`: slabs are global shop inventory, not customer-owned records
+- `parent_slab_id`: `UUID NULL` self-reference to `slabs(id)` ON DELETE SET NULL; used only for remnants
+- `status`: `TEXT NOT NULL DEFAULT 'available'`, CHECK `IN ('available', 'reserved', 'cut', 'remnant')`
+- `finish`: `TEXT NOT NULL`, CHECK `IN ('polished', 'honed', 'brushed', 'leathered', 'sandblasted')`
+- `quality_grade`: `TEXT NOT NULL`, CHECK `IN ('A', 'B', 'C')`
+- `length_in`, `width_in`: `NUMERIC(8,3) NOT NULL`, CHECK `> 0`; `thickness_cm`: `NUMERIC(4,1) NOT NULL`, CHECK `> 0`
+- `cost_cents`: `INTEGER NOT NULL DEFAULT 0`, CHECK `>= 0`
+- `image_urls`: `TEXT[] NOT NULL DEFAULT '{}'`; application validates max 20 and URL format
+- `deleted_at` / `deleted_by_user_id`: follow universal soft-delete pattern; API exposes as `archivedAt` / `archivedByUserId`
+- Slabs can be updated or archived only when `status IN ('available', 'remnant')`
+
+### project_slabs
+
+- `project_id`: `UUID NOT NULL` FK → `projects(id)` ON DELETE CASCADE
+- `slab_id`: `UUID NOT NULL` FK → `slabs(id)` ON DELETE RESTRICT
+- `(project_id, slab_id)`: UNIQUE; a slab can be attached to a project only once
+- `consumed_by_user_id` / `consumed_at`: set when a project slab is cut
 
 ### scheduled_events
 
@@ -84,3 +105,44 @@ Add per-module invariants here as modules are built.
 - `status`: `TEXT NOT NULL DEFAULT 'scheduled'` CHECK `IN ('scheduled', 'confirmed', 'in_progress', 'completed', 'cancelled')`
 - `deleted_at` / `deleted_by_user_id`: follow universal soft-delete pattern; API exposes as `archivedAt` / `archivedByUserId`
 - No cascade archive when parent customer is archived — events remain untouched
+
+### Quote Measurements MVP
+
+#### counter_pieces
+
+- `quote_area_id`: `UUID NOT NULL` FK -> `quote_areas(id)` ON DELETE CASCADE
+- `sort_order`: `INTEGER NOT NULL DEFAULT 0`
+- `length_in`: `NUMERIC NOT NULL`, CHECK `> 0`
+- `width_in`: `NUMERIC NOT NULL`, CHECK `> 0`
+- `quantity`: `INTEGER NOT NULL DEFAULT 1`, CHECK `> 0`
+
+#### edge_segments
+
+- `quote_area_id`: `UUID NOT NULL` FK -> `quote_areas(id)` ON DELETE CASCADE
+- `sort_order`: `INTEGER NOT NULL DEFAULT 0`
+- `length_in`: `NUMERIC NOT NULL`, CHECK `> 0`
+- `treatment`: `TEXT NOT NULL`, CHECK `IN ('unfinished', 'finished', 'appliance', 'mitered', 'waterfall')`
+- `splash_height_in`: `NUMERIC NULL`, CHECK `IS NULL OR > 0`
+
+#### sink_cutouts
+
+- `quote_area_id`: `UUID NOT NULL` FK -> `quote_areas(id)` ON DELETE CASCADE
+- `sort_order`: `INTEGER NOT NULL DEFAULT 0`
+- `quantity`: `INTEGER NOT NULL DEFAULT 1`, CHECK `> 0`
+- `sink_type`: `TEXT NOT NULL`, CHECK `IN ('undermount', 'drop_in', 'farm')`
+- `shape`: `TEXT NOT NULL`, CHECK `IN ('rectangle', 'oval', 'double', '60_40', '40_60', '70_30', '30_70')`
+- `cutout_length_in`: `NUMERIC NOT NULL`, CHECK `> 0`
+- `cutout_width_in`: `NUMERIC NOT NULL`, CHECK `> 0`
+- `faucet_hole_count`: `INTEGER NOT NULL DEFAULT 0`, CHECK `BETWEEN 0 AND 5`
+- `centerline`: `TEXT NOT NULL DEFAULT 'none'`, CHECK `IN ('none', 'left', 'right', 'center')`
+
+### generated_price_lines
+
+-  must be one of the canonical  (DB CHECK constraint).
+-  (DB CHECK constraint).
+-  (DB CHECK constraint).
+-  is a generated column: .
+- At most one row per  pair (UNIQUE index). On regeneration, upsert by (quote_area_id, category).
+- Override consistency:  iff  (DB CHECK constraint).
+- Rows cascade-delete when  is deleted.
+-  nullable FK — can be NULL if price list item was deleted.

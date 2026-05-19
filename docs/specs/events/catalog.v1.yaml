@@ -369,3 +369,331 @@ events:
         lineItemId: { type: string, format: uuid }
         customerId: { type: string, format: uuid }
         actorUserId: { type: string, format: uuid }
+
+  quote.area_added:
+    description: Fired when a quote area is added to a quote.
+    version: 1
+    owner: quotes-module
+    data:
+      required: [quoteId, areaId, customerId, actorUserId]
+      properties:
+        quoteId: { type: string, format: uuid }
+        areaId: { type: string, format: uuid }
+        customerId: { type: string, format: uuid }
+        actorUserId: { type: string, format: uuid }
+
+  quote.area_updated:
+    description: Fired when a quote area changes.
+    version: 1
+    owner: quotes-module
+    data:
+      required: [quoteId, areaId, customerId, actorUserId, changedFields]
+      properties:
+        quoteId: { type: string, format: uuid }
+        areaId: { type: string, format: uuid }
+        customerId: { type: string, format: uuid }
+        actorUserId: { type: string, format: uuid }
+        changedFields:
+          type: array
+          items: { type: string }
+
+  quote.area_removed:
+    description: Fired when a quote area is removed.
+    version: 1
+    owner: quotes-module
+    data:
+      required: [quoteId, areaId, customerId, actorUserId]
+      properties:
+        quoteId: { type: string, format: uuid }
+        areaId: { type: string, format: uuid }
+        customerId: { type: string, format: uuid }
+        actorUserId: { type: string, format: uuid }
+
+  quote.counter_piece_added:
+    description: Fired when a counter piece is added to a quote area.
+    version: 1
+    owner: quotes-module
+    data:
+      required: [quoteId, areaId, measurementId, customerId, actorUserId]
+      properties:
+        quoteId: { type: string, format: uuid }
+        areaId: { type: string, format: uuid }
+        measurementId: { type: string, format: uuid }
+        customerId: { type: string, format: uuid }
+        actorUserId: { type: string, format: uuid }
+
+  quote.counter_piece_updated:
+    description: Fired when a counter piece changes.
+    version: 1
+    owner: quotes-module
+    data:
+      required: [quoteId, areaId, measurementId, customerId, actorUserId, changedFields]
+      properties:
+        quoteId: { type: string, format: uuid }
+        areaId: { type: string, format: uuid }
+        measurementId: { type: string, format: uuid }
+        customerId: { type: string, format: uuid }
+        actorUserId: { type: string, format: uuid }
+        changedFields:
+          type: array
+          items: { type: string }
+
+  quote.counter_piece_removed:
+    description: Fired when a counter piece is removed.
+    version: 1
+    owner: quotes-module
+    data:
+      required: [quoteId, areaId, measurementId, customerId, actorUserId]
+      properties:
+        quoteId: { type: string, format: uuid }
+        areaId: { type: string, format: uuid }
+        measurementId: { type: string, format: uuid }
+        customerId: { type: string, format: uuid }
+        actorUserId: { type: string, format: uuid }
+
+  quote.edge_segment_added:
+    description: Fired when an edge segment is added to a quote area.
+    version: 1
+    owner: quotes-module
+    data:
+      required: [quoteId, areaId, measurementId, customerId, actorUserId]
+      properties:
+        quoteId: { type: string, format: uuid }
+        areaId: { type: string, format: uuid }
+        measurementId: { type: string, format: uuid }
+        customerId: { type: string, format: uuid }
+        actorUserId: { type: string, format: uuid }
+
+  quote.edge_segment_updated:
+    description: Fired when an edge segment changes.
+    version: 1
+    owner: quotes-module
+    data:
+      required: [quoteId, areaId, measurementId, customerId, actorUserId, changedFields]
+      properties:
+        quoteId: { type: string, format: uuid }
+        areaId: { type: string, format: uuid }
+        measurementId: { type: string, format: uuid }
+        customerId: { type: string, format: uuid }
+        actorUserId: { type: string, format: uuid }
+        changedFields:
+          type: array
+          items: { type: string }
+
+  quote.edge_segment_removed:
+    description: Fired when an edge segment is removed.
+    version: 1
+    owner: quotes-module
+    data:
+      required: [quoteId, areaId, measurementId, customerId, actorUserId]
+      properties:
+        quoteId: { type: string, format: uuid }
+        areaId: { type: string, format: uuid }
+        measurementId: { type: string, format: uuid }
+        customerId: { type: string, format: uuid }
+        actorUserId: { type: string, format: uuid }
+
+  quote.sink_cutout_added:
+    description: Fired when a sink cutout is added to a quote area.
+    version: 1
+    owner: quotes-module
+    data:
+      required: [quoteId, areaId, measurementId, customerId, actorUserId]
+      properties:
+        quoteId: { type: string, format: uuid }
+        areaId: { type: string, format: uuid }
+        measurementId: { type: string, format: uuid }
+        customerId: { type: string, format: uuid }
+        actorUserId: { type: string, format: uuid }
+
+  quote.sink_cutout_updated:
+    description: Fired when a sink cutout changes.
+    version: 1
+    owner: quotes-module
+    data:
+      required: [quoteId, areaId, measurementId, customerId, actorUserId, changedFields]
+      properties:
+        quoteId: { type: string, format: uuid }
+        areaId: { type: string, format: uuid }
+        measurementId: { type: string, format: uuid }
+        customerId: { type: string, format: uuid }
+        actorUserId: { type: string, format: uuid }
+        changedFields:
+          type: array
+          items: { type: string }
+
+  quote.sink_cutout_removed:
+    description: Fired when a sink cutout is removed.
+    version: 1
+    owner: quotes-module
+    data:
+      required: [quoteId, areaId, measurementId, customerId, actorUserId]
+      properties:
+        quoteId: { type: string, format: uuid }
+        areaId: { type: string, format: uuid }
+        measurementId: { type: string, format: uuid }
+        customerId: { type: string, format: uuid }
+        actorUserId: { type: string, format: uuid }
+
+  scheduled_event.created:
+    description: Fired when a scheduled event is created.
+    version: 1
+    owner: scheduling-module
+    data:
+      required: [scheduledEventId, customerId, actorUserId]
+      properties:
+        scheduledEventId: { type: string, format: uuid }
+        customerId: { type: string, format: uuid }
+        actorUserId: { type: string, format: uuid }
+
+  scheduled_event.updated:
+    description: Fired when scheduled event fields change.
+    version: 1
+    owner: scheduling-module
+    data:
+      required: [scheduledEventId, customerId, actorUserId, changedFields]
+      properties:
+        scheduledEventId: { type: string, format: uuid }
+        customerId: { type: string, format: uuid }
+        actorUserId: { type: string, format: uuid }
+        changedFields:
+          type: array
+          items: { type: string }
+
+  scheduled_event.confirmed:
+    description: Fired when a scheduled event transitions to confirmed.
+    version: 1
+    owner: scheduling-module
+    data:
+      required: [scheduledEventId, customerId, actorUserId]
+      properties:
+        scheduledEventId: { type: string, format: uuid }
+        customerId: { type: string, format: uuid }
+        actorUserId: { type: string, format: uuid }
+
+  scheduled_event.started:
+    description: Fired when a scheduled event transitions to in_progress.
+    version: 1
+    owner: scheduling-module
+    data:
+      required: [scheduledEventId, customerId, actorUserId]
+      properties:
+        scheduledEventId: { type: string, format: uuid }
+        customerId: { type: string, format: uuid }
+        actorUserId: { type: string, format: uuid }
+
+  scheduled_event.completed:
+    description: Fired when a scheduled event transitions to completed.
+    version: 1
+    owner: scheduling-module
+    data:
+      required: [scheduledEventId, customerId, actorUserId]
+      properties:
+        scheduledEventId: { type: string, format: uuid }
+        customerId: { type: string, format: uuid }
+        actorUserId: { type: string, format: uuid }
+
+  scheduled_event.cancelled:
+    description: Fired when a scheduled event transitions to cancelled.
+    version: 1
+    owner: scheduling-module
+    data:
+      required: [scheduledEventId, customerId, actorUserId]
+      properties:
+        scheduledEventId: { type: string, format: uuid }
+        customerId: { type: string, format: uuid }
+        actorUserId: { type: string, format: uuid }
+
+  scheduled_event.rescheduled:
+    description: Fired when a scheduled event scheduledAt value changes.
+    version: 1
+    owner: scheduling-module
+    data:
+      required: [scheduledEventId, customerId, actorUserId, previousScheduledAt, newScheduledAt]
+      properties:
+        scheduledEventId: { type: string, format: uuid }
+        customerId: { type: string, format: uuid }
+        actorUserId: { type: string, format: uuid }
+        previousScheduledAt: { type: string, format: date-time }
+        newScheduledAt: { type: string, format: date-time }
+
+  scheduled_event.archived:
+    description: Fired when a scheduled event is archived.
+    version: 1
+    owner: scheduling-module
+    data:
+      required: [scheduledEventId, customerId, actorUserId]
+      properties:
+        scheduledEventId: { type: string, format: uuid }
+        customerId: { type: string, format: uuid }
+        actorUserId: { type: string, format: uuid }
+
+  slab.created:
+    description: Fired when a slab record is created.
+    version: 1
+    owner: inventory-module
+    data:
+      required: [slabId, actorUserId]
+      properties:
+        slabId: { type: string, format: uuid }
+        actorUserId: { type: string, format: uuid }
+
+  slab.updated:
+    description: Fired when slab fields change.
+    version: 1
+    owner: inventory-module
+    data:
+      required: [slabId, actorUserId, changedFields]
+      properties:
+        slabId: { type: string, format: uuid }
+        actorUserId: { type: string, format: uuid }
+        changedFields:
+          type: array
+          items: { type: string }
+
+  slab.reserved:
+    description: Fired when a slab is reserved by a quote or project.
+    version: 1
+    owner: inventory-module
+    data:
+      required: [slabId, actorUserId]
+      properties:
+        slabId: { type: string, format: uuid }
+        actorUserId: { type: string, format: uuid }
+        quoteId: { type: string, format: uuid }
+        projectId: { type: string, format: uuid }
+
+  slab.released:
+    description: Fired when a reserved slab is released.
+    version: 1
+    owner: inventory-module
+    data:
+      required: [slabId, actorUserId]
+      properties:
+        slabId: { type: string, format: uuid }
+        actorUserId: { type: string, format: uuid }
+        quoteId: { type: string, format: uuid }
+        projectId: { type: string, format: uuid }
+
+  slab.cut:
+    description: Fired when a slab is cut and optional remnants are produced.
+    version: 1
+    owner: inventory-module
+    data:
+      required: [slabId, actorUserId, remnantSlabIds]
+      properties:
+        slabId: { type: string, format: uuid }
+        actorUserId: { type: string, format: uuid }
+        remnantSlabIds:
+          type: array
+          items: { type: string, format: uuid }
+
+  slab.archived:
+    description: Fired when a slab is archived.
+    version: 1
+    owner: inventory-module
+    data:
+      required: [slabId, actorUserId]
+      properties:
+        slabId: { type: string, format: uuid }
+        actorUserId: { type: string, format: uuid }

@@ -16,9 +16,10 @@ const contactChannelSchema = z.enum(CONTACT_CHANNEL_VALUES);
 export const customerAddressTypeSchema = z.enum(CUSTOMER_ADDRESS_TYPE_VALUES);
 const customerSortBySchema = z.enum(CUSTOMER_SORT_BY_VALUES);
 const sortDirectionSchema = z.enum(SORT_DIRECTION_VALUES);
+const actorUserIdSchema = z.string().uuid().optional();
 
 export const createCustomerSchema = z.object({
-  actorUserId: z.string().uuid(),
+  actorUserId: actorUserIdSchema,
   customerKind: customerKindSchema,
   name: z.string().min(1),
   companyName: z.string().min(1).optional(),
@@ -57,7 +58,7 @@ export const createCustomerSchema = z.object({
 });
 
 export const updateCustomerSchema = z.object({
-  actorUserId: z.string().uuid(),
+  actorUserId: actorUserIdSchema,
   customerKind: customerKindSchema.optional(),
   name: z.string().min(1).optional(),
   companyName: z.string().min(1).nullable().optional(),
@@ -83,16 +84,16 @@ export const updateCustomerSchema = z.object({
 });
 
 export const archiveCustomerSchema = z.object({
-  actorUserId: z.string().uuid(),
+  actorUserId: actorUserIdSchema,
   archiveReason: z.string().min(1).optional()
 });
 
 export const restoreCustomerSchema = z.object({
-  actorUserId: z.string().uuid()
+  actorUserId: actorUserIdSchema
 });
 
 export const createCustomerContactSchema = z.object({
-  actorUserId: z.string().uuid(),
+  actorUserId: actorUserIdSchema,
   firstName: z.string().min(1),
   lastName: z.string().min(1).optional(),
   jobTitle: z.string().min(1).optional(),
@@ -105,7 +106,7 @@ export const createCustomerContactSchema = z.object({
 });
 
 export const updateCustomerContactSchema = z.object({
-  actorUserId: z.string().uuid(),
+  actorUserId: actorUserIdSchema,
   firstName: z.string().min(1).optional(),
   lastName: z.string().min(1).nullable().optional(),
   jobTitle: z.string().min(1).nullable().optional(),
@@ -120,12 +121,9 @@ export const updateCustomerContactSchema = z.object({
   path: []
 });
 
-export const archiveCustomerContactSchema = z.object({
-  actorUserId: z.string().uuid()
-});
+export const archiveCustomerContactSchema = z.object({});
 
 export const createCustomerAddressSchema = z.object({
-  actorUserId: z.string().uuid(),
   type: customerAddressTypeSchema,
   line1: z.string().min(1),
   line2: z.string().min(1).optional(),
@@ -138,7 +136,6 @@ export const createCustomerAddressSchema = z.object({
 });
 
 export const updateCustomerAddressSchema = z.object({
-  actorUserId: z.string().uuid(),
   type: customerAddressTypeSchema.optional(),
   line1: z.string().min(1).optional(),
   line2: z.string().min(1).nullable().optional(),
@@ -148,28 +145,22 @@ export const updateCustomerAddressSchema = z.object({
   country: z.string().min(1).optional(),
   isPrimary: z.boolean().optional(),
   isBilling: z.boolean().optional()
-}).refine((input) => Object.keys(input).some((key) => key !== 'actorUserId'), {
+}).refine((input) => Object.keys(input).length > 0, {
   message: 'At least one field is required',
   path: []
 });
 
-export const archiveCustomerAddressSchema = z.object({
-  actorUserId: z.string().uuid()
-});
+export const archiveCustomerAddressSchema = z.object({});
 
 export const createCustomerNoteSchema = z.object({
-  actorUserId: z.string().uuid(),
   body: z.string().min(1)
 });
 
 export const updateCustomerNoteSchema = z.object({
-  actorUserId: z.string().uuid(),
   body: z.string().min(1)
 });
 
-export const archiveCustomerNoteSchema = z.object({
-  actorUserId: z.string().uuid()
-});
+export const archiveCustomerNoteSchema = z.object({});
 
 export const listCustomersSchema = z.object({
   cursor: z.string().min(1).optional(),

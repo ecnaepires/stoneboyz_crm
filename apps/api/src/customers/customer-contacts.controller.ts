@@ -5,12 +5,13 @@ import {
   updateCustomerContactSchema
 } from '@stoneboyz/domain';
 import { z } from 'zod';
+import { CurrentUser } from '../auth/current-user.decorator.js';
 import { CustomerContactsService } from './customer-contacts.service.js';
 
 const customerIdSchema = z.string().uuid();
 const contactIdSchema = z.string().uuid();
-const makePrimaryBodySchema = z.object({ actorUserId: z.string().uuid() });
-const makeBillingBodySchema = z.object({ actorUserId: z.string().uuid() });
+const makePrimaryBodySchema = z.object({});
+const makeBillingBodySchema = z.object({});
 
 const formatZodError = (error: z.ZodError): Record<string, string[]> => {
   return z.flattenError(error).fieldErrors;
@@ -36,7 +37,7 @@ export class CustomerContactsController {
   }
 
   @Post()
-  async create(@Param('customerId') customerId: string, @Body() body: unknown) {
+  async create(@Param('customerId') customerId: string, @Body() body: unknown, @CurrentUser() actorUserId: string) {
     const parsedCustomerId = customerIdSchema.safeParse(customerId);
 
     if (!parsedCustomerId.success) {
@@ -57,14 +58,15 @@ export class CustomerContactsController {
       });
     }
 
-    return this.customerContactsService.create(parsedCustomerId.data, parsedBody.data);
+    return this.customerContactsService.create(parsedCustomerId.data, { ...parsedBody.data, actorUserId });
   }
 
   @Patch(':contactId')
   async update(
     @Param('customerId') customerId: string,
     @Param('contactId') contactId: string,
-    @Body() body: unknown
+    @Body() body: unknown,
+    @CurrentUser() actorUserId: string
   ) {
     const parsedCustomerId = customerIdSchema.safeParse(customerId);
     const parsedContactId = contactIdSchema.safeParse(contactId);
@@ -90,7 +92,7 @@ export class CustomerContactsController {
       });
     }
 
-    return this.customerContactsService.update(parsedCustomerId.data, parsedContactId.data, parsedBody.data);
+    return this.customerContactsService.update(parsedCustomerId.data, parsedContactId.data, { ...parsedBody.data, actorUserId });
   }
 
   @Post(':contactId/make-primary')
@@ -98,7 +100,8 @@ export class CustomerContactsController {
   async makePrimary(
     @Param('customerId') customerId: string,
     @Param('contactId') contactId: string,
-    @Body() body: unknown
+    @Body() body: unknown,
+    @CurrentUser() actorUserId: string
   ) {
     const parsedCustomerId = customerIdSchema.safeParse(customerId);
     const parsedContactId = contactIdSchema.safeParse(contactId);
@@ -127,7 +130,7 @@ export class CustomerContactsController {
     return this.customerContactsService.makePrimary(
       parsedCustomerId.data,
       parsedContactId.data,
-      parsedBody.data.actorUserId
+      actorUserId
     );
   }
 
@@ -136,7 +139,8 @@ export class CustomerContactsController {
   async makeBilling(
     @Param('customerId') customerId: string,
     @Param('contactId') contactId: string,
-    @Body() body: unknown
+    @Body() body: unknown,
+    @CurrentUser() actorUserId: string
   ) {
     const parsedCustomerId = customerIdSchema.safeParse(customerId);
     const parsedContactId = contactIdSchema.safeParse(contactId);
@@ -165,7 +169,7 @@ export class CustomerContactsController {
     return this.customerContactsService.makeBilling(
       parsedCustomerId.data,
       parsedContactId.data,
-      parsedBody.data.actorUserId
+      actorUserId
     );
   }
 
@@ -174,7 +178,8 @@ export class CustomerContactsController {
   async archive(
     @Param('customerId') customerId: string,
     @Param('contactId') contactId: string,
-    @Body() body: unknown
+    @Body() body: unknown,
+    @CurrentUser() actorUserId: string
   ) {
     const parsedCustomerId = customerIdSchema.safeParse(customerId);
     const parsedContactId = contactIdSchema.safeParse(contactId);
@@ -200,6 +205,6 @@ export class CustomerContactsController {
       });
     }
 
-    return this.customerContactsService.archive(parsedCustomerId.data, parsedContactId.data, parsedBody.data);
+    return this.customerContactsService.archive(parsedCustomerId.data, parsedContactId.data, { ...parsedBody.data, actorUserId });
   }
 }

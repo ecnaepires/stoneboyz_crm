@@ -34,6 +34,7 @@ const QUOTE_SELECT = `
 const UPDATE_COLUMNS = {
   title: 'title',
   projectId: 'project_id',
+  priceListId: 'price_list_id',
   validUntil: 'valid_until',
   discountCents: 'discount_cents',
   taxRateBps: 'tax_rate_bps',
@@ -42,11 +43,13 @@ const UPDATE_COLUMNS = {
 } satisfies Record<Exclude<keyof UpdateQuoteInput, 'actorUserId'>, string>;
 
 const LINE_ITEM_UPDATE_COLUMNS = {
+  quoteAreaId: 'quote_area_id',
+  slabId: 'slab_id',
   sortOrder: 'sort_order',
   stoneType: 'stone_type',
-  lengthMm: 'length_mm',
-  widthMm: 'width_mm',
-  thicknessMm: 'thickness_mm',
+  lengthIn: 'length_in',
+  widthIn: 'width_in',
+  thicknessCm: 'thickness_cm',
   edgeProfile: 'edge_profile',
   qty: 'qty',
   qtyUnit: 'qty_unit',
@@ -162,37 +165,8 @@ export class QuotesRepository {
 
     try {
       await client.query('BEGIN');
-      const quoteNumber = await this.nextQuoteNumber(client);
-      const result = await client.query<QuoteRow>(
-        `
-          INSERT INTO quotes (
-            customer_id,
-            project_id,
-            quote_number,
-            title,
-            valid_until,
-            discount_cents,
-            tax_rate_bps,
-            notes,
-            terms_and_conditions
-          )
-          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-          RETURNING *, 0::integer AS subtotal_cents
-        `,
-        [
-          customerId,
-          input.projectId ?? null,
-          quoteNumber,
-          input.title,
-          input.validUntil ?? null,
-          input.discountCents ?? 0,
-          input.taxRateBps ?? 0,
-          input.notes ?? null,
-          input.termsAndConditions ?? null
-        ]
-      );
-
-      const quoteId = (result.rows[0] as QuoteRow).id;
+      const created = await this.createHeaderWithClient(client, customerId, input);
+      const quoteId = created.id;
 
       for (const lineItem of input.lineItems ?? []) {
         await this.addLineItemWithClient(client, quoteId, lineItem);
@@ -208,6 +182,42 @@ export class QuotesRepository {
     } finally {
       client.release();
     }
+  }
+
+  async createHeaderWithClient(client: PoolClient, customerId: string, input: CreateQuoteInput): Promise<Quote> {
+    const quoteNumber = await this.nextQuoteNumber(client);
+    const result = await client.query<QuoteRow>(
+      `
+        INSERT INTO quotes (
+          customer_id,
+          project_id,
+          price_list_id,
+          quote_number,
+          title,
+          valid_until,
+          discount_cents,
+          tax_rate_bps,
+          notes,
+          terms_and_conditions
+        )
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+        RETURNING *, 0::integer AS subtotal_cents
+      `,
+      [
+        customerId,
+        input.projectId ?? null,
+        input.priceListId ?? null,
+        quoteNumber,
+        input.title,
+        input.validUntil ?? null,
+        input.discountCents ?? 0,
+        input.taxRateBps ?? 0,
+        input.notes ?? null,
+        input.termsAndConditions ?? null
+      ]
+    );
+
+    return mapQuoteRow(result.rows[0] as QuoteRow);
   }
 
   async findById(customerId: string, quoteId: string): Promise<Quote | null> {
@@ -246,8 +256,8 @@ export class QuotesRepository {
         SELECT uq.*, COALESCE(SUM(FLOOR(qli.qty * (qli.unit_price_cents + qli.labor_price_cents))), 0)::integer AS subtotal_cents
         FROM updated_quote uq
         LEFT JOIN quote_line_items qli ON qli.quote_id = uq.id
-        GROUP BY uq.id, uq.customer_id, uq.project_id, uq.quote_number, uq.title, uq.status, uq.valid_until, uq.discount_cents,
-          uq.tax_rate_bps, uq.notes, uq.terms_and_conditions, uq.sent_at, uq.accepted_at, uq.rejected_at,
+        GROUP BY uq.id, uq.customer_id, uq.project_id, uq.price_list_id, uq.quote_number, uq.title, uq.status, uq.valid_until, uq.discount_cents,
+          uq.tax_rate_bps, uq.share_token, uq.notes, uq.terms_and_conditions, uq.sent_at, uq.accepted_at, uq.rejected_at,
           uq.deleted_at, uq.deleted_by_user_id, uq.created_at, uq.updated_at
       `,
       values
@@ -268,6 +278,10 @@ export class QuotesRepository {
 
   async reject(customerId: string, quoteId: string): Promise<Quote | null> {
     return this.transition(customerId, quoteId, 'rejected', 'rejected_at');
+  }
+
+  async rejectWithClient(client: PoolClient, customerId: string, quoteId: string): Promise<Quote | null> {
+    return this.transitionWithClient(client, customerId, quoteId, 'rejected', 'rejected_at');
   }
 
   async archive(customerId: string, quoteId: string, actorUserId: string): Promise<Quote | null> {
@@ -297,6 +311,22 @@ export class QuotesRepository {
     }
   }
 
+  async archiveWithClient(client: PoolClient, customerId: string, quoteId: string, actorUserId: string): Promise<Quote | null> {
+    const result = await client.query<QuoteRow>(
+      `
+        UPDATE quotes
+        SET deleted_at = now(), deleted_by_user_id = $3, updated_at = now()
+        WHERE customer_id = $1 AND id = $2 AND deleted_at IS NULL
+        RETURNING *, 0::integer AS subtotal_cents
+      `,
+      [customerId, quoteId, actorUserId]
+    );
+    await client.query('DELETE FROM quote_line_items WHERE quote_id = $1', [quoteId]);
+
+    const row = result.rows[0];
+    return row === undefined ? null : mapQuoteRow(row);
+  }
+
   async listLineItems(quoteId: string): Promise<QuoteLineItem[]> {
     const result = await this.pool.query<QuoteLineItemRow>(
       `
@@ -315,7 +345,59 @@ export class QuotesRepository {
     return this.addLineItemWithClient(this.pool, quoteId, input);
   }
 
+  async addLineItemWithClient(client: Queryable, quoteId: string, input: CreateQuoteLineItemInput): Promise<QuoteLineItem> {
+    const result = await client.query<QuoteLineItemRow>(
+      `
+        INSERT INTO quote_line_items (
+          quote_id,
+          quote_area_id,
+          slab_id,
+          sort_order,
+          stone_type,
+          length_in,
+          width_in,
+          thickness_cm,
+          edge_profile,
+          qty,
+          qty_unit,
+          unit_price_cents,
+          labor_price_cents,
+          notes
+        )
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+        RETURNING *
+      `,
+      [
+        quoteId,
+        input.quoteAreaId ?? null,
+        input.slabId ?? null,
+        input.sortOrder ?? 0,
+        input.stoneType,
+        input.lengthIn ?? null,
+        input.widthIn ?? null,
+        input.thicknessCm ?? null,
+        input.edgeProfile ?? null,
+        input.qty,
+        input.qtyUnit,
+        input.unitPriceCents,
+        input.laborPriceCents ?? 0,
+        input.notes ?? null
+      ]
+    );
+
+    return mapQuoteLineItemRow(result.rows[0] as QuoteLineItemRow);
+  }
+
   async updateLineItem(quoteId: string, lineItemId: string, input: UpdateQuoteLineItemInput): Promise<QuoteLineItem | null> {
+    return this.updateLineItemWithClient(this.pool, quoteId, lineItemId, input);
+  }
+
+  async updateLineItemWithClient(
+    client: Queryable,
+    quoteId: string,
+    lineItemId: string,
+    input: UpdateQuoteLineItemInput
+  ): Promise<QuoteLineItem | null> {
     const values: unknown[] = [];
     const assignments: string[] = [];
     const addValue = (value: unknown): string => {
@@ -335,7 +417,7 @@ export class QuotesRepository {
     const quotePlaceholder = addValue(quoteId);
     const lineItemPlaceholder = addValue(lineItemId);
 
-    const result = await this.pool.query<QuoteLineItemRow>(
+    const result = await client.query<QuoteLineItemRow>(
       `
         UPDATE quote_line_items
         SET ${assignments.join(', ')}
@@ -351,7 +433,11 @@ export class QuotesRepository {
   }
 
   async removeLineItem(quoteId: string, lineItemId: string): Promise<QuoteLineItem | null> {
-    const result = await this.pool.query<QuoteLineItemRow>(
+    return this.removeLineItemWithClient(this.pool, quoteId, lineItemId);
+  }
+
+  async removeLineItemWithClient(client: Queryable, quoteId: string, lineItemId: string): Promise<QuoteLineItem | null> {
+    const result = await client.query<QuoteLineItemRow>(
       `
         DELETE FROM quote_line_items
         WHERE quote_id = $1 AND id = $2
@@ -365,7 +451,7 @@ export class QuotesRepository {
     return row === undefined ? null : mapQuoteLineItemRow(row);
   }
 
-  private async findByIdWithClient(client: Queryable, customerId: string, quoteId: string): Promise<Quote | null> {
+  async findByIdWithClient(client: Queryable, customerId: string, quoteId: string): Promise<Quote | null> {
     const result = await client.query<QuoteRow>(
       `
         SELECT ${QUOTE_SELECT}
@@ -382,47 +468,18 @@ export class QuotesRepository {
     return row === undefined ? null : mapQuoteRow(row);
   }
 
-  private async addLineItemWithClient(client: Queryable, quoteId: string, input: CreateQuoteLineItemInput): Promise<QuoteLineItem> {
-    const result = await client.query<QuoteLineItemRow>(
-      `
-        INSERT INTO quote_line_items (
-          quote_id,
-          sort_order,
-          stone_type,
-          length_mm,
-          width_mm,
-          thickness_mm,
-          edge_profile,
-          qty,
-          qty_unit,
-          unit_price_cents,
-          labor_price_cents,
-          notes
-        )
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
-        RETURNING *
-      `,
-      [
-        quoteId,
-        input.sortOrder ?? 0,
-        input.stoneType,
-        input.lengthMm ?? null,
-        input.widthMm ?? null,
-        input.thicknessMm ?? null,
-        input.edgeProfile ?? null,
-        input.qty,
-        input.qtyUnit,
-        input.unitPriceCents,
-        input.laborPriceCents ?? 0,
-        input.notes ?? null
-      ]
-    );
-
-    return mapQuoteLineItemRow(result.rows[0] as QuoteLineItemRow);
+  private async transition(customerId: string, quoteId: string, status: Quote['status'], timestampColumn: string): Promise<Quote | null> {
+    return this.transitionWithClient(this.pool, customerId, quoteId, status, timestampColumn);
   }
 
-  private async transition(customerId: string, quoteId: string, status: Quote['status'], timestampColumn: string): Promise<Quote | null> {
-    const result = await this.pool.query<QuoteRow>(
+  private async transitionWithClient(
+    client: Queryable,
+    customerId: string,
+    quoteId: string,
+    status: Quote['status'],
+    timestampColumn: string
+  ): Promise<Quote | null> {
+    const result = await client.query<QuoteRow>(
       `
         WITH updated_quote AS (
           UPDATE quotes
@@ -433,8 +490,8 @@ export class QuotesRepository {
         SELECT uq.*, COALESCE(SUM(FLOOR(qli.qty * (qli.unit_price_cents + qli.labor_price_cents))), 0)::integer AS subtotal_cents
         FROM updated_quote uq
         LEFT JOIN quote_line_items qli ON qli.quote_id = uq.id
-        GROUP BY uq.id, uq.customer_id, uq.project_id, uq.quote_number, uq.title, uq.status, uq.valid_until, uq.discount_cents,
-          uq.tax_rate_bps, uq.notes, uq.terms_and_conditions, uq.sent_at, uq.accepted_at, uq.rejected_at,
+        GROUP BY uq.id, uq.customer_id, uq.project_id, uq.price_list_id, uq.quote_number, uq.title, uq.status, uq.valid_until, uq.discount_cents,
+          uq.tax_rate_bps, uq.share_token, uq.notes, uq.terms_and_conditions, uq.sent_at, uq.accepted_at, uq.rejected_at,
           uq.deleted_at, uq.deleted_by_user_id, uq.created_at, uq.updated_at
       `,
       [customerId, quoteId, status]

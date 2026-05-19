@@ -1,0 +1,24 @@
+- generic [active] [ref=e1]:
+  - button "Open Next.js Dev Tools" [ref=e22] [cursor=pointer]:
+    - img [ref=e23]
+  - alert [ref=e26]
+  - main [ref=e27]:
+    - generic [ref=e28]:
+      - generic [ref=e29]:
+        - heading "Sign up" [level=1] [ref=e30]
+        - paragraph [ref=e31]: Create your Stoneboyz CRM workspace access.
+      - generic [ref=e32]:
+        - generic [ref=e33]:
+          - generic [ref=e34]: Name
+          - textbox "Name" [ref=e35]
+        - generic [ref=e36]:
+          - generic [ref=e37]: Email
+          - textbox "Email" [ref=e38]
+        - generic [ref=e39]:
+          - generic [ref=e40]: Password
+          - textbox "Password" [ref=e41]
+        - button "Sign up" [ref=e42] [cursor=pointer]
+      - paragraph [ref=e43]:
+        - text: Already have an account?
+        - link "Sign in" [ref=e44] [cursor=pointer]:
+          - /url: /sign-in

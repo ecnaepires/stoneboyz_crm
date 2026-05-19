@@ -7,6 +7,8 @@ import type { Pool } from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { AppModule } from '../../apps/api/src/app.module.js';
 import { DATABASE_POOL } from '../../apps/api/src/database.provider.js';
+import { seedTestSession } from './helpers/auth.js';
+import { setTestAuthToken } from './helpers/test-auth.js';
 
 const SEEDED_CUSTOMER_ID = '11111111-1111-4111-8111-111111111111';
 
@@ -49,6 +51,8 @@ describe('customer API', () => {
 
     baseUrl = await app.getUrl();
     await resetDatabase();
+    const _token = await seedTestSession(app.get(DATABASE_POOL));
+    setTestAuthToken(_token);
   });
 
   afterAll(async () => {
@@ -630,41 +634,4 @@ describe('customer API', () => {
     expect(getResponse.status).toBe(200);
   });
 
-  it('returns validation error for invalid archive body', async () => {
-    const response = await fetch(`${baseUrl}/api/v1/customers/${SEEDED_CUSTOMER_ID}/archive`, {
-      method: 'POST',
-      headers: {
-        'content-type': 'application/json'
-      },
-      body: JSON.stringify({
-        archiveReason: 'Missing actor'
-      })
-    });
-    const body = await response.json();
-
-    expect(response.status).toBe(400);
-    expect(body).toMatchObject({
-      code: 'VALIDATION_ERROR',
-      message: 'Request validation failed'
-    });
-    expect(body.details.actorUserId).toEqual(expect.any(Array));
-  });
-
-  it('returns validation error for invalid restore body', async () => {
-    const response = await fetch(`${baseUrl}/api/v1/customers/${SEEDED_CUSTOMER_ID}/restore`, {
-      method: 'POST',
-      headers: {
-        'content-type': 'application/json'
-      },
-      body: JSON.stringify({})
-    });
-    const body = await response.json();
-
-    expect(response.status).toBe(400);
-    expect(body).toMatchObject({
-      code: 'VALIDATION_ERROR',
-      message: 'Request validation failed'
-    });
-    expect(body.details.actorUserId).toEqual(expect.any(Array));
-  });
 });

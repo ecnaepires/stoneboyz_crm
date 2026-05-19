@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { createProjectAction } from '../_actions';
-import { getApiClient } from '@/lib/api';
+import { getApiClientWithAuth } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -8,7 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Select } from '@/components/ui/select';
 
 export default async function NewProjectPage() {
-  const client = getApiClient();
+  const client = await getApiClientWithAuth();
   const { data, error } = await client.GET('/customers', {
     params: { query: { limit: 100 } },
   });

@@ -4,6 +4,371 @@
  */
 
 export interface paths {
+    "/dashboard": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get dashboard summary statistics and recent quotes */
+        get: operations["getDashboard"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/inventory/slabs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List global inventory slabs */
+        get: operations["listSlabs"];
+        put?: never;
+        /** Create a global inventory slab */
+        post: operations["createSlab"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/price-lists": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List price lists */
+        get: operations["listPriceLists"];
+        put?: never;
+        /** Create a price list */
+        post: operations["createPriceList"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/price-lists/{priceListId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get a price list */
+        get: operations["getPriceList"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Update a draft price list */
+        patch: operations["updatePriceList"];
+        trace?: never;
+    };
+    "/price-lists/{priceListId}/activate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Activate a draft price list */
+        post: operations["activatePriceList"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/price-lists/{priceListId}/archive": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Archive a draft price list */
+        post: operations["archivePriceList"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/price-lists/{priceListId}/items": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List price list items */
+        get: operations["listPriceListItems"];
+        put?: never;
+        /** Create a price list item */
+        post: operations["createPriceListItem"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/price-lists/{priceListId}/items/{itemId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Hard-delete a price list item */
+        delete: operations["deletePriceListItem"];
+        options?: never;
+        head?: never;
+        /** Update a price list item */
+        patch: operations["updatePriceListItem"];
+        trace?: never;
+    };
+    "/customers/{customerId}/orders": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List customer orders */
+        get: operations["listCustomerOrders"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/users/me": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get the current user profile */
+        get: operations["getMe"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/users": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List users */
+        get: operations["listUsers"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/users/{userId}/role": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Update a user's role */
+        patch: operations["updateUserRole"];
+        trace?: never;
+    };
+    "/customers/{customerId}/orders/{orderId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get a customer order */
+        get: operations["getCustomerOrder"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/customers/{customerId}/orders/{orderId}/payments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Add a payment to an order */
+        post: operations["addOrderPayment"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/customers/{customerId}/orders/{orderId}/payments/{paymentId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Remove a payment from an order */
+        delete: operations["removeOrderPayment"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/customers/{customerId}/orders/{orderId}/archive": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Archive an order */
+        post: operations["archiveOrder"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/inventory/slabs/{slabId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get slab detail */
+        get: operations["getSlab"];
+        put?: never;
+        post?: never;
+        /** Archive slab */
+        delete: operations["archiveSlab"];
+        options?: never;
+        head?: never;
+        /** Update slab fields */
+        patch: operations["updateSlab"];
+        trace?: never;
+    };
+    "/inventory/slabs/{slabId}/cut": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Mark slab cut and optionally create remnants */
+        post: operations["cutSlab"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/customers/{customerId}/projects/{projectId}/slabs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List slabs attached to a project */
+        get: operations["listProjectSlabs"];
+        put?: never;
+        /** Attach a slab to a project */
+        post: operations["attachProjectSlab"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/customers/{customerId}/projects/{projectId}/slabs/{slabId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Detach a slab from a project */
+        delete: operations["detachProjectSlab"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/customers/{customerId}/projects/{projectId}/slabs/{slabId}/cut": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Cut a slab from project context */
+        post: operations["cutProjectSlab"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/health": {
         parameters: {
             query?: never;
@@ -373,6 +738,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/customers/{customerId}/quotes/{quoteId}/send-email": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Email a quote PDF to the customer's primary contact */
+        post: operations["sendCustomerQuoteEmail"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/customers/{customerId}/quotes/{quoteId}/accept": {
         parameters: {
             query?: never;
@@ -422,6 +804,218 @@ export interface paths {
         options?: never;
         head?: never;
         patch?: never;
+        trace?: never;
+    };
+    "/customers/{customerId}/quotes/{quoteId}/convert": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Convert an accepted quote to an order */
+        post: operations["convertQuoteToOrder"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/customers/{customerId}/quotes/{quoteId}/areas": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List all areas for a quote */
+        get: operations["listQuoteAreas"];
+        put?: never;
+        /** Create a quote area (draft only) */
+        post: operations["createQuoteArea"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/customers/{customerId}/quotes/{quoteId}/areas/{areaId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Remove a quote area (draft only) */
+        delete: operations["removeQuoteArea"];
+        options?: never;
+        head?: never;
+        /** Update a quote area (draft only) */
+        patch: operations["updateQuoteArea"];
+        trace?: never;
+    };
+    "/customers/{customerId}/quotes/{quoteId}/areas/{areaId}/pieces": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List counter pieces for a quote area */
+        get: operations["listQuoteAreaPieces"];
+        put?: never;
+        /** Add a counter piece to a quote area (draft only) */
+        post: operations["createQuoteAreaPiece"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/customers/{customerId}/quotes/{quoteId}/areas/{areaId}/pieces/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Remove a counter piece (draft only) */
+        delete: operations["removeQuoteAreaPiece"];
+        options?: never;
+        head?: never;
+        /** Update a counter piece (draft only) */
+        patch: operations["updateQuoteAreaPiece"];
+        trace?: never;
+    };
+    "/customers/{customerId}/quotes/{quoteId}/areas/{areaId}/edges": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List edge segments for a quote area */
+        get: operations["listQuoteAreaEdges"];
+        put?: never;
+        /** Add an edge segment to a quote area (draft only) */
+        post: operations["createQuoteAreaEdge"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/customers/{customerId}/quotes/{quoteId}/areas/{areaId}/edges/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Remove an edge segment (draft only) */
+        delete: operations["removeQuoteAreaEdge"];
+        options?: never;
+        head?: never;
+        /** Update an edge segment (draft only) */
+        patch: operations["updateQuoteAreaEdge"];
+        trace?: never;
+    };
+    "/customers/{customerId}/quotes/{quoteId}/areas/{areaId}/sinks": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List sink cutouts for a quote area */
+        get: operations["listQuoteAreaSinks"];
+        put?: never;
+        /** Add a sink cutout to a quote area (draft only) */
+        post: operations["createQuoteAreaSink"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/customers/{customerId}/quotes/{quoteId}/areas/{areaId}/sinks/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Remove a sink cutout (draft only) */
+        delete: operations["removeQuoteAreaSink"];
+        options?: never;
+        head?: never;
+        /** Update a sink cutout (draft only) */
+        patch: operations["updateQuoteAreaSink"];
+        trace?: never;
+    };
+    "/customers/{customerId}/quotes/{quoteId}/areas/{areaId}/pricing": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List generated pricing lines for a quote area */
+        get: operations["listQuoteAreaPricingLines"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/customers/{customerId}/quotes/{quoteId}/areas/{areaId}/pricing/generate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Generate pricing lines for a quote area (draft only) */
+        post: operations["generateQuoteAreaPricingLines"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/customers/{customerId}/quotes/{quoteId}/areas/{areaId}/pricing/{lineId}/override": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Override a generated pricing line */
+        patch: operations["overrideQuoteAreaPricingLine"];
         trace?: never;
     };
     "/customers/{customerId}/quotes/{quoteId}/line-items": {
@@ -581,6 +1175,75 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/customers/{customerId}/quotes/{quoteId}/areas/{areaId}/drawing": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get latest drawing revision for a quote area */
+        get: operations["getAreaDrawingRevision"];
+        put?: never;
+        /** Save a new drawing revision for a quote area */
+        post: operations["saveAreaDrawingRevision"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/portal/quotes/{token}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get quote by share token (public) */
+        get: operations["getPortalQuote"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/portal/quotes/{token}/accept": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Accept quote via share link (public) */
+        post: operations["acceptPortalQuote"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/portal/quotes/{token}/reject": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Reject quote via share link (public) */
+        post: operations["rejectPortalQuote"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -591,6 +1254,184 @@ export interface components {
             /** @example Request validation failed */
             message: string;
             details?: Record<string, never>;
+        };
+        RecentQuote: {
+            /** Format: uuid */
+            id: string;
+            quoteNumber: string;
+            title: string;
+            status: string;
+            /** Format: uuid */
+            customerId: string;
+            customerName: string;
+            /** Format: date-time */
+            createdAt: string;
+        };
+        DashboardStats: {
+            activeCustomers: number;
+            openQuotes: {
+                count: number;
+                totalCents: number;
+            };
+            ordersThisMonth: {
+                count: number;
+                totalCents: number;
+            };
+            eventsThisWeek: number;
+            recentQuotes: components["schemas"]["RecentQuote"][];
+        };
+        UserProfile: {
+            /** Format: uuid */
+            id: string;
+            /** Format: email */
+            email: string;
+            name: string;
+            /** @enum {string} */
+            role: "admin" | "estimator" | "installer";
+            /** Format: date-time */
+            createdAt: string;
+        };
+        PortalQuote: {
+            /** Format: uuid */
+            id: string;
+            quoteNumber: string;
+            title: string;
+            status: string;
+            /** Format: uuid */
+            customerId: string;
+            customerName: string;
+            validUntil?: string | null;
+            notes?: string | null;
+            termsAndConditions?: string | null;
+            discountCents: number;
+            taxCents: number;
+            subtotalCents: number;
+            taxRateBps: number;
+            /** Format: uuid */
+            shareToken: string;
+            areas: {
+                /** Format: uuid */
+                id: string;
+                name: string;
+                sortOrder: number;
+            }[];
+            lineItems: {
+                /** Format: uuid */
+                id: string;
+                stoneType: string;
+                qty: number;
+                qtyUnit: string;
+                unitPriceCents: number;
+                laborPriceCents: number;
+                lengthIn?: number | null;
+                widthIn?: number | null;
+                thicknessCm?: number | null;
+                edgeProfile?: string | null;
+                notes?: string | null;
+                sortOrder: number;
+                /** Format: uuid */
+                quoteAreaId?: string | null;
+            }[];
+        };
+        /** @enum {string} */
+        PriceListStatus: "draft" | "active" | "archived";
+        PriceList: {
+            /** Format: uuid */
+            id: string;
+            name: string;
+            description?: string | null;
+            status: components["schemas"]["PriceListStatus"];
+            revision: number;
+            currencyCode: string;
+            defaultTaxRateBps: number;
+            defaultPaymentTerms?: string | null;
+            expirationDays?: number | null;
+            /** Format: uuid */
+            createdByUserId: string;
+            /** Format: date-time */
+            archivedAt: string | null;
+            /** Format: uuid */
+            archivedByUserId: string | null;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+        };
+        PriceListItem: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            priceListId: string;
+            category: string;
+            itemType: string;
+            name: string;
+            description?: string | null;
+            unit: string;
+            priceCents: number;
+            sortOrder: number;
+            taxable: boolean;
+            allowDiscount: boolean;
+            editableOnQuote: boolean;
+            hideOnQuote: boolean;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+        };
+        PriceListWithItems: components["schemas"]["PriceList"] & {
+            items: components["schemas"]["PriceListItem"][];
+        };
+        PriceListListResponse: {
+            data: components["schemas"]["PriceList"][];
+            hasMore: boolean;
+            nextCursor: string | null;
+        };
+        PriceListItemsResponse: {
+            data: components["schemas"]["PriceListItem"][];
+        };
+        CreatePriceListRequest: {
+            name: string;
+            description?: string;
+            revision?: number;
+            currencyCode?: string;
+            defaultTaxRateBps?: number;
+            defaultPaymentTerms?: string;
+            expirationDays?: number;
+        };
+        UpdatePriceListRequest: {
+            name?: string;
+            description?: string | null;
+            revision?: number;
+            currencyCode?: string;
+            defaultTaxRateBps?: number;
+            defaultPaymentTerms?: string | null;
+            expirationDays?: number | null;
+        };
+        CreatePriceListItemRequest: {
+            category: string;
+            itemType: string;
+            name: string;
+            description?: string;
+            unit: string;
+            priceCents: number;
+            sortOrder?: number;
+            taxable?: boolean;
+            allowDiscount?: boolean;
+            editableOnQuote?: boolean;
+            hideOnQuote?: boolean;
+        };
+        UpdatePriceListItemRequest: {
+            category?: string;
+            itemType?: string;
+            name?: string;
+            description?: string | null;
+            unit?: string;
+            priceCents?: number;
+            sortOrder?: number;
+            taxable?: boolean;
+            allowDiscount?: boolean;
+            editableOnQuote?: boolean;
+            hideOnQuote?: boolean;
         };
         /** @enum {string} */
         CustomerKind: "company" | "person";
@@ -646,8 +1487,6 @@ export interface components {
             updatedAt: string;
         };
         CreateCustomerRequest: {
-            /** Format: uuid */
-            actorUserId: string;
             customerKind: components["schemas"]["CustomerKind"];
             name: string;
             companyName?: string;
@@ -672,8 +1511,6 @@ export interface components {
             billingEmail?: string;
         };
         UpdateCustomerRequest: {
-            /** Format: uuid */
-            actorUserId: string;
             customerKind?: components["schemas"]["CustomerKind"];
             name?: string;
             companyName?: string | null;
@@ -698,14 +1535,9 @@ export interface components {
             billingEmail?: string | null;
         };
         ArchiveCustomerRequest: {
-            /** Format: uuid */
-            actorUserId: string;
             archiveReason?: string;
         };
-        RestoreCustomerRequest: {
-            /** Format: uuid */
-            actorUserId: string;
-        };
+        RestoreCustomerRequest: Record<string, never>;
         /** @enum {string} */
         ProjectStatus: "draft" | "active" | "completed";
         /** @enum {string} */
@@ -727,7 +1559,6 @@ export interface components {
             updatedAt: string;
         };
         CreateProjectRequest: {
-            actorUserId: string;
             /** Format: uuid */
             customerId: string;
             title: string;
@@ -736,7 +1567,6 @@ export interface components {
             ownerUserId: string;
         };
         UpdateProjectRequest: {
-            actorUserId: string;
             /** Format: uuid */
             customerId?: string;
             title?: string;
@@ -744,9 +1574,7 @@ export interface components {
             status?: components["schemas"]["ProjectStatus"];
             ownerUserId?: string;
         };
-        ArchiveProjectRequest: {
-            actorUserId: string;
-        };
+        ArchiveProjectRequest: Record<string, never>;
         CustomerContact: {
             /** Format: uuid */
             id: string;
@@ -770,8 +1598,6 @@ export interface components {
             archivedAt?: string | null;
         };
         CreateCustomerContactRequest: {
-            /** Format: uuid */
-            actorUserId: string;
             firstName: string;
             lastName?: string;
             jobTitle?: string;
@@ -786,8 +1612,6 @@ export interface components {
             preferredChannel?: components["schemas"]["ContactChannel"];
         };
         UpdateCustomerContactRequest: {
-            /** Format: uuid */
-            actorUserId: string;
             firstName?: string;
             lastName?: string | null;
             jobTitle?: string | null;
@@ -823,8 +1647,6 @@ export interface components {
             archivedAt: string | null;
         };
         CreateCustomerAddressRequest: {
-            /** Format: uuid */
-            actorUserId: string;
             type: components["schemas"]["CustomerAddressType"];
             line1: string;
             line2?: string;
@@ -839,8 +1661,6 @@ export interface components {
         };
         /** @description At least one updatable address field is required. */
         UpdateCustomerAddressRequest: {
-            /** Format: uuid */
-            actorUserId: string;
             type?: components["schemas"]["CustomerAddressType"];
             line1?: string;
             line2?: string | null;
@@ -867,19 +1687,12 @@ export interface components {
             archivedAt: string | null;
         };
         CreateCustomerNoteRequest: {
-            /** Format: uuid */
-            actorUserId: string;
             body: string;
         };
         UpdateCustomerNoteRequest: {
-            /** Format: uuid */
-            actorUserId: string;
             body: string;
         };
-        ActorRequest: {
-            /** Format: uuid */
-            actorUserId: string;
-        };
+        ActorRequest: Record<string, never>;
         PaginatedCustomersResponse: {
             data: components["schemas"]["Customer"][];
             nextCursor?: string | null;
@@ -897,14 +1710,18 @@ export interface components {
             id: string;
             /** Format: uuid */
             quoteId: string;
+            /** Format: uuid */
+            quoteAreaId: string | null;
+            /** Format: uuid */
+            slabId?: string | null;
             /** @default 0 */
             sortOrder: number;
             /** @example Marble Calacatta */
             stoneType: string;
-            lengthMm?: number | null;
-            widthMm?: number | null;
-            /** @example 20 */
-            thicknessMm?: number | null;
+            lengthIn?: number | null;
+            widthIn?: number | null;
+            /** @example 2 */
+            thicknessCm?: number | null;
             /** @example bullnose */
             edgeProfile?: string | null;
             /** Format: decimal */
@@ -922,6 +1739,213 @@ export interface components {
             /** Format: date-time */
             updatedAt: string;
         };
+        QuoteArea: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            quoteId: string;
+            /** @default 0 */
+            sortOrder: number;
+            name: string;
+            material?: string | null;
+            color?: string | null;
+            edgeProfile?: string | null;
+            notes?: string | null;
+            subtotalCents: number;
+            measurementTotals: components["schemas"]["QuoteMeasurementAreaTotals"];
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+        };
+        QuoteMeasurementAreaTotals: {
+            pieceCount: number;
+            countertopSqFt: number;
+            finishedEdgeLinFt: number;
+            splashSqFt: number;
+            sinkCutoutCount: number;
+            faucetHoleCount: number;
+        };
+        GeneratedPriceLine: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            quoteAreaId: string;
+            /** @enum {string} */
+            category: "material" | "fabrication" | "finished_edge" | "splash" | "sink_cutout" | "sink_item" | "faucet_hole";
+            label: string;
+            quantity: number;
+            unit: string;
+            unitPriceCents: number;
+            lineTotalCents: number;
+            /** Format: uuid */
+            priceListItemId: string | null;
+            sortOrder: number;
+            overridePriceCents: number | null;
+            overrideReason: string | null;
+            overrideByUserId: string | null;
+            /** Format: date-time */
+            overrideAt: string | null;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+        };
+        OverrideGeneratedPriceLineBody: {
+            overridePriceCents?: number | null;
+            overrideReason?: string | null;
+        };
+        CanvasPieceLayout: {
+            /** Format: uuid */
+            pieceId: string;
+            x: number;
+            y: number;
+            rotation: number;
+        };
+        CanvasSinkLayout: {
+            /** Format: uuid */
+            sinkId: string;
+            x: number;
+            y: number;
+            rotation: number;
+        };
+        CanvasLayout: {
+            pieces: components["schemas"]["CanvasPieceLayout"][];
+            sinks: components["schemas"]["CanvasSinkLayout"][];
+        };
+        DrawingRevision: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            quoteAreaId: string;
+            revisionNumber: number;
+            layout: components["schemas"]["CanvasLayout"];
+            /** Format: date-time */
+            createdAt: string;
+            createdByUserId: string | null;
+        };
+        SaveDrawingRevisionBody: {
+            layout: components["schemas"]["CanvasLayout"];
+        };
+        CounterPiece: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            quoteAreaId: string;
+            /** @default 0 */
+            sortOrder: number;
+            name: string | null;
+            lengthIn: number;
+            widthIn: number;
+            /** @default 1 */
+            quantity: number;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+        };
+        CreateCounterPieceRequest: {
+            /** @default 0 */
+            sortOrder: number;
+            name?: string;
+            lengthIn: number;
+            widthIn: number;
+            /** @default 1 */
+            quantity: number;
+        };
+        /** @description At least one updatable field is required. */
+        UpdateCounterPieceRequest: {
+            sortOrder?: number;
+            name?: string | null;
+            lengthIn?: number;
+            widthIn?: number;
+            quantity?: number;
+        };
+        /** @enum {string} */
+        EdgeTreatment: "unfinished" | "finished" | "appliance" | "mitered" | "waterfall";
+        EdgeSegment: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            quoteAreaId: string;
+            /** @default 0 */
+            sortOrder: number;
+            lengthIn: number;
+            treatment: components["schemas"]["EdgeTreatment"];
+            splashHeightIn: number | null;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+        };
+        CreateEdgeSegmentRequest: {
+            /** @default 0 */
+            sortOrder: number;
+            lengthIn: number;
+            treatment: components["schemas"]["EdgeTreatment"];
+            splashHeightIn?: number;
+        };
+        /** @description At least one updatable field is required. */
+        UpdateEdgeSegmentRequest: {
+            sortOrder?: number;
+            lengthIn?: number;
+            treatment?: components["schemas"]["EdgeTreatment"];
+            splashHeightIn?: number | null;
+        };
+        /** @enum {string} */
+        SinkType: "undermount" | "drop_in" | "farm";
+        /** @enum {string} */
+        SinkShape: "rectangle" | "oval" | "double" | "60_40" | "40_60" | "70_30" | "30_70";
+        /** @enum {string} */
+        SinkCenterline: "none" | "left" | "right" | "center";
+        SinkCutout: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            quoteAreaId: string;
+            /** @default 0 */
+            sortOrder: number;
+            /** @default 1 */
+            quantity: number;
+            model: string | null;
+            sinkType: components["schemas"]["SinkType"];
+            shape: components["schemas"]["SinkShape"];
+            cutoutLengthIn: number;
+            cutoutWidthIn: number;
+            /** @default 0 */
+            faucetHoleCount: number;
+            centerline: components["schemas"]["SinkCenterline"];
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+        };
+        CreateSinkCutoutRequest: {
+            /** @default 0 */
+            sortOrder: number;
+            /** @default 1 */
+            quantity: number;
+            model?: string;
+            sinkType: components["schemas"]["SinkType"];
+            shape: components["schemas"]["SinkShape"];
+            cutoutLengthIn: number;
+            cutoutWidthIn: number;
+            /** @default 0 */
+            faucetHoleCount: number;
+            centerline?: components["schemas"]["SinkCenterline"];
+        };
+        /** @description At least one updatable field is required. */
+        UpdateSinkCutoutRequest: {
+            sortOrder?: number;
+            quantity?: number;
+            model?: string | null;
+            sinkType?: components["schemas"]["SinkType"];
+            shape?: components["schemas"]["SinkShape"];
+            cutoutLengthIn?: number;
+            cutoutWidthIn?: number;
+            faucetHoleCount?: number;
+            centerline?: components["schemas"]["SinkCenterline"];
+        };
         Quote: {
             /** Format: uuid */
             id: string;
@@ -929,6 +1953,8 @@ export interface components {
             customerId: string;
             /** Format: uuid */
             projectId?: string | null;
+            /** Format: uuid */
+            priceListId?: string | null;
             /** @example Q-2026-001 */
             quoteNumber: string;
             title: string;
@@ -958,6 +1984,8 @@ export interface components {
             archivedAt?: string | null;
             /** Format: uuid */
             archivedByUserId?: string | null;
+            /** Format: uuid */
+            shareToken?: string;
             /** Format: date-time */
             createdAt: string;
             /** Format: date-time */
@@ -965,16 +1993,19 @@ export interface components {
         };
         QuoteWithLineItems: components["schemas"]["Quote"] & {
             lineItems: components["schemas"]["QuoteLineItem"][];
+            areas: components["schemas"]["QuoteArea"][];
         };
         CreateQuoteLineItemRequest: {
             /** Format: uuid */
-            actorUserId: string;
+            quoteAreaId?: string;
+            /** Format: uuid */
+            slabId?: string;
             /** @default 0 */
             sortOrder: number;
             stoneType: string;
-            lengthMm?: number;
-            widthMm?: number;
-            thicknessMm?: number;
+            lengthIn?: number;
+            widthIn?: number;
+            thicknessCm?: number;
             edgeProfile?: string;
             /** Format: decimal */
             qty: number;
@@ -984,15 +2015,17 @@ export interface components {
             laborPriceCents: number;
             notes?: string;
         };
-        /** @description At least one updatable field is required in addition to actorUserId. */
+        /** @description At least one updatable field is required. */
         UpdateQuoteLineItemRequest: {
             /** Format: uuid */
-            actorUserId: string;
+            quoteAreaId?: string | null;
+            /** Format: uuid */
+            slabId?: string | null;
             sortOrder?: number;
             stoneType?: string;
-            lengthMm?: number | null;
-            widthMm?: number | null;
-            thicknessMm?: number | null;
+            lengthIn?: number | null;
+            widthIn?: number | null;
+            thicknessCm?: number | null;
             edgeProfile?: string | null;
             /** Format: decimal */
             qty?: number;
@@ -1001,12 +2034,30 @@ export interface components {
             laborPriceCents?: number;
             notes?: string | null;
         };
+        CreateQuoteAreaRequest: {
+            name: string;
+            /** @default 0 */
+            sortOrder: number;
+            material?: string;
+            color?: string;
+            edgeProfile?: string;
+            notes?: string;
+        };
+        /** @description At least one updatable field is required. */
+        UpdateQuoteAreaRequest: {
+            name?: string;
+            sortOrder?: number;
+            material?: string | null;
+            color?: string | null;
+            edgeProfile?: string | null;
+            notes?: string | null;
+        };
         CreateQuoteRequest: {
-            /** Format: uuid */
-            actorUserId: string;
             title: string;
             /** Format: uuid */
             projectId?: string;
+            /** Format: uuid */
+            priceListId?: string | null;
             /** Format: date */
             validUntil?: string;
             /** @default 0 */
@@ -1018,13 +2069,13 @@ export interface components {
             /** @description Optional initial line items to create with the quote. */
             lineItems?: components["schemas"]["CreateQuoteLineItemRequest"][];
         };
-        /** @description At least one updatable field is required in addition to actorUserId. Only allowed when quote is in draft status. */
+        /** @description At least one updatable field is required. Only allowed when quote is in draft status. */
         UpdateQuoteRequest: {
-            /** Format: uuid */
-            actorUserId: string;
             title?: string;
             /** Format: uuid */
             projectId?: string | null;
+            /** Format: uuid */
+            priceListId?: string | null;
             /** Format: date */
             validUntil?: string | null;
             discountCents?: number;
@@ -1077,8 +2128,6 @@ export interface components {
             updatedAt: string;
         };
         CreateScheduledEventRequest: {
-            /** Format: uuid */
-            actorUserId: string;
             /**
              * Format: uuid
              * @description Taken from the URL path; may be omitted in body.
@@ -1098,10 +2147,8 @@ export interface components {
             address?: string;
             notes?: string;
         };
-        /** @description At least one updatable field is required in addition to actorUserId. Only allowed when status is scheduled or confirmed. */
+        /** @description At least one updatable field is required. Only allowed when status is scheduled or confirmed. */
         UpdateScheduledEventRequest: {
-            /** Format: uuid */
-            actorUserId: string;
             /** Format: uuid */
             projectId?: string | null;
             appointmentType?: components["schemas"]["AppointmentType"];
@@ -1121,6 +2168,171 @@ export interface components {
             nextCursor?: string | null;
             hasMore: boolean;
         };
+        /** @enum {string} */
+        SlabStatus: "available" | "reserved" | "cut" | "remnant";
+        /** @enum {string} */
+        SlabFinish: "polished" | "honed" | "brushed" | "leathered" | "sandblasted";
+        /** @enum {string} */
+        SlabQualityGrade: "A" | "B" | "C";
+        Slab: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            parentSlabId?: string | null;
+            stoneType: string;
+            finish: components["schemas"]["SlabFinish"];
+            qualityGrade: components["schemas"]["SlabQualityGrade"];
+            lengthIn: number;
+            widthIn: number;
+            thicknessCm: number;
+            lotNumber?: string | null;
+            bundleNumber?: string | null;
+            warehouseLocation?: string | null;
+            costCents: number;
+            imageUrls: string[];
+            notes?: string | null;
+            status: components["schemas"]["SlabStatus"];
+            /** Format: date-time */
+            archivedAt?: string | null;
+            /** Format: uuid */
+            archivedByUserId?: string | null;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+        };
+        CreateSlabRequest: {
+            stoneType: string;
+            finish: components["schemas"]["SlabFinish"];
+            qualityGrade: components["schemas"]["SlabQualityGrade"];
+            lengthIn: number;
+            widthIn: number;
+            thicknessCm: number;
+            lotNumber?: string;
+            bundleNumber?: string;
+            warehouseLocation?: string;
+            /** @default 0 */
+            costCents: number;
+            imageUrls?: string[];
+            notes?: string;
+        };
+        UpdateSlabRequest: {
+            stoneType?: string;
+            finish?: components["schemas"]["SlabFinish"];
+            qualityGrade?: components["schemas"]["SlabQualityGrade"];
+            lengthIn?: number;
+            widthIn?: number;
+            thicknessCm?: number;
+            lotNumber?: string | null;
+            bundleNumber?: string | null;
+            warehouseLocation?: string | null;
+            costCents?: number;
+            imageUrls?: string[];
+            notes?: string | null;
+        };
+        CutSlabRequest: {
+            remnants?: components["schemas"]["CreateSlabRequest"][];
+        };
+        CutSlabResponse: {
+            slab: components["schemas"]["Slab"];
+            remnants: components["schemas"]["Slab"][];
+        };
+        ProjectSlab: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            projectId: string;
+            /** Format: uuid */
+            slabId: string;
+            /** Format: uuid */
+            consumedByUserId?: string | null;
+            /** Format: date-time */
+            consumedAt?: string | null;
+            notes?: string | null;
+            /** Format: date-time */
+            createdAt: string;
+        };
+        AttachProjectSlabRequest: {
+            /** Format: uuid */
+            slabId: string;
+            notes?: string;
+        };
+        PaginatedSlabsResponse: {
+            data: components["schemas"]["Slab"][];
+            nextCursor?: string | null;
+            hasMore: boolean;
+        };
+        /** @enum {string} */
+        OrderPaymentMethod: "cash" | "check" | "mastercard" | "visa" | "american_express" | "discover" | "bank_transfer" | "echeck";
+        /** @enum {string} */
+        OrderPaymentStatus: "unpaid" | "partially_paid" | "paid";
+        OrderPayment: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            orderId: string;
+            /** Format: date */
+            paymentDate: string;
+            amountCents: number;
+            paymentMethod: components["schemas"]["OrderPaymentMethod"];
+            referenceNumber: string | null;
+            notes: string | null;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+        };
+        Order: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            quoteId: string;
+            /** Format: uuid */
+            customerId: string;
+            orderNumber: string;
+            title: string;
+            /** Format: date */
+            saleDate: string;
+            subtotalCents: number;
+            discountCents: number;
+            taxRateBps: number;
+            totalCents: number;
+            totalPaidCents: number;
+            balanceDueCents: number;
+            paymentStatus: components["schemas"]["OrderPaymentStatus"];
+            notes: string | null;
+            termsAndConditions: string | null;
+            /** Format: date-time */
+            archivedAt: string | null;
+            /** Format: uuid */
+            archivedByUserId: string | null;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+        };
+        OrderWithPayments: components["schemas"]["Order"] & {
+            payments: components["schemas"]["OrderPayment"][];
+        };
+        PaginatedOrdersResponse: {
+            data: components["schemas"]["Order"][];
+            nextCursor?: string | null;
+            hasMore: boolean;
+        };
+        ConvertQuoteToOrderRequest: {
+            /** Format: date */
+            saleDate: string;
+        };
+        AddOrderPaymentRequest: {
+            /** Format: date */
+            paymentDate: string;
+            amountCents: number;
+            paymentMethod: components["schemas"]["OrderPaymentMethod"];
+            referenceNumber?: string;
+            notes?: string;
+        };
+        RemoveOrderPaymentRequest: Record<string, never>;
+        ArchiveOrderRequest: Record<string, never>;
     };
     responses: never;
     parameters: {
@@ -1131,8 +2343,24 @@ export interface components {
         QuoteId: string;
         /** @description UUID of the quote line item */
         LineItemId: string;
+        /** @description UUID of the quote area */
+        AreaId: string;
+        /** @description UUID of the counter piece */
+        PieceId: string;
+        /** @description UUID of the edge segment */
+        EdgeId: string;
+        /** @description UUID of the sink cutout */
+        SinkId: string;
         /** @description UUID of the scheduled event */
         EventId: string;
+        PriceListId: string;
+        PriceListItemId: string;
+        /** @description UUID of the order */
+        OrderId: string;
+        /** @description UUID of the order payment */
+        PaymentId: string;
+        /** @description UUID of the slab */
+        SlabId: string;
         Limit: number;
     };
     requestBodies: never;
@@ -1141,6 +2369,884 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    getDashboard: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Dashboard stats returned. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DashboardStats"];
+                };
+            };
+        };
+    };
+    listSlabs: {
+        parameters: {
+            query?: {
+                cursor?: components["parameters"]["Cursor"];
+                limit?: components["parameters"]["Limit"];
+                status?: components["schemas"]["SlabStatus"];
+                stoneType?: string;
+                finish?: components["schemas"]["SlabFinish"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Slabs returned. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginatedSlabsResponse"];
+                };
+            };
+        };
+    };
+    createSlab: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateSlabRequest"];
+            };
+        };
+        responses: {
+            /** @description Slab created. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Slab"];
+                };
+            };
+            /** @description Invalid request. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    listPriceLists: {
+        parameters: {
+            query?: {
+                cursor?: components["parameters"]["Cursor"];
+                limit?: number;
+                status?: components["schemas"]["PriceListStatus"];
+                search?: string;
+                includeArchived?: boolean;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Price lists returned. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PriceListListResponse"];
+                };
+            };
+        };
+    };
+    createPriceList: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreatePriceListRequest"];
+            };
+        };
+        responses: {
+            /** @description Price list created. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PriceList"];
+                };
+            };
+        };
+    };
+    getPriceList: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                priceListId: components["parameters"]["PriceListId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Price list returned. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PriceListWithItems"];
+                };
+            };
+        };
+    };
+    updatePriceList: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                priceListId: components["parameters"]["PriceListId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdatePriceListRequest"];
+            };
+        };
+        responses: {
+            /** @description Price list updated. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PriceList"];
+                };
+            };
+        };
+    };
+    activatePriceList: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                priceListId: components["parameters"]["PriceListId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ActorRequest"];
+            };
+        };
+        responses: {
+            /** @description Price list activated. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PriceList"];
+                };
+            };
+        };
+    };
+    archivePriceList: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                priceListId: components["parameters"]["PriceListId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ActorRequest"];
+            };
+        };
+        responses: {
+            /** @description Price list archived. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PriceList"];
+                };
+            };
+        };
+    };
+    listPriceListItems: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                priceListId: components["parameters"]["PriceListId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Items returned. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PriceListItemsResponse"];
+                };
+            };
+        };
+    };
+    createPriceListItem: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                priceListId: components["parameters"]["PriceListId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreatePriceListItemRequest"];
+            };
+        };
+        responses: {
+            /** @description Item created. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PriceListItem"];
+                };
+            };
+        };
+    };
+    deletePriceListItem: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                priceListId: components["parameters"]["PriceListId"];
+                itemId: components["parameters"]["PriceListItemId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ActorRequest"];
+            };
+        };
+        responses: {
+            /** @description Item deleted. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PriceListItem"];
+                };
+            };
+        };
+    };
+    updatePriceListItem: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                priceListId: components["parameters"]["PriceListId"];
+                itemId: components["parameters"]["PriceListItemId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdatePriceListItemRequest"];
+            };
+        };
+        responses: {
+            /** @description Item updated. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PriceListItem"];
+                };
+            };
+        };
+    };
+    listCustomerOrders: {
+        parameters: {
+            query?: {
+                cursor?: components["parameters"]["Cursor"];
+                limit?: components["parameters"]["Limit"];
+                paymentStatus?: components["schemas"]["OrderPaymentStatus"];
+                includeArchived?: boolean;
+            };
+            header?: never;
+            path: {
+                customerId: components["parameters"]["CustomerId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Orders returned. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginatedOrdersResponse"];
+                };
+            };
+            /** @description Invalid request. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getMe: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Current user returned. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UserProfile"];
+                };
+            };
+        };
+    };
+    listUsers: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Users returned. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UserProfile"][];
+                };
+            };
+        };
+    };
+    updateUserRole: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                userId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @enum {string} */
+                    role: "admin" | "estimator" | "installer";
+                };
+            };
+        };
+        responses: {
+            /** @description User role updated. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UserProfile"];
+                };
+            };
+            /** @description Customer not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getCustomerOrder: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                customerId: components["parameters"]["CustomerId"];
+                /** @description UUID of the order */
+                orderId: components["parameters"]["OrderId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Order returned. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OrderWithPayments"];
+                };
+            };
+            /** @description Invalid request. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Order or customer not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    addOrderPayment: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                customerId: components["parameters"]["CustomerId"];
+                /** @description UUID of the order */
+                orderId: components["parameters"]["OrderId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AddOrderPaymentRequest"];
+            };
+        };
+        responses: {
+            /** @description Payment added. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OrderPayment"];
+                };
+            };
+            /** @description Invalid request. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Order or customer not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    removeOrderPayment: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                customerId: components["parameters"]["CustomerId"];
+                /** @description UUID of the order */
+                orderId: components["parameters"]["OrderId"];
+                /** @description UUID of the order payment */
+                paymentId: components["parameters"]["PaymentId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RemoveOrderPaymentRequest"];
+            };
+        };
+        responses: {
+            /** @description Payment removed. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OrderPayment"];
+                };
+            };
+            /** @description Invalid request. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Order, customer, or payment not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    archiveOrder: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                customerId: components["parameters"]["CustomerId"];
+                /** @description UUID of the order */
+                orderId: components["parameters"]["OrderId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ArchiveOrderRequest"];
+            };
+        };
+        responses: {
+            /** @description Order archived. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Order"];
+                };
+            };
+            /** @description Invalid request. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Order or customer not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getSlab: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description UUID of the slab */
+                slabId: components["parameters"]["SlabId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Slab returned. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Slab"];
+                };
+            };
+            /** @description Slab not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    archiveSlab: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description UUID of the slab */
+                slabId: components["parameters"]["SlabId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ActorRequest"];
+            };
+        };
+        responses: {
+            /** @description Slab archived. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Slab"];
+                };
+            };
+        };
+    };
+    updateSlab: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description UUID of the slab */
+                slabId: components["parameters"]["SlabId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateSlabRequest"];
+            };
+        };
+        responses: {
+            /** @description Slab updated. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Slab"];
+                };
+            };
+            /** @description Invalid request. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Slab not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Slab status does not allow update. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    cutSlab: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description UUID of the slab */
+                slabId: components["parameters"]["SlabId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CutSlabRequest"];
+            };
+        };
+        responses: {
+            /** @description Slab cut. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CutSlabResponse"];
+                };
+            };
+        };
+    };
+    listProjectSlabs: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                customerId: components["parameters"]["CustomerId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Project slabs returned. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["Slab"][];
+                        projectSlabs: components["schemas"]["ProjectSlab"][];
+                    };
+                };
+            };
+        };
+    };
+    attachProjectSlab: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                customerId: components["parameters"]["CustomerId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AttachProjectSlabRequest"];
+            };
+        };
+        responses: {
+            /** @description Slab attached to project. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProjectSlab"];
+                };
+            };
+        };
+    };
+    detachProjectSlab: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                customerId: components["parameters"]["CustomerId"];
+                projectId: components["parameters"]["ProjectId"];
+                /** @description UUID of the slab */
+                slabId: components["parameters"]["SlabId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ActorRequest"];
+            };
+        };
+        responses: {
+            /** @description Slab detached from project. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProjectSlab"];
+                };
+            };
+        };
+    };
+    cutProjectSlab: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                customerId: components["parameters"]["CustomerId"];
+                projectId: components["parameters"]["ProjectId"];
+                /** @description UUID of the slab */
+                slabId: components["parameters"]["SlabId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CutSlabRequest"];
+            };
+        };
+        responses: {
+            /** @description Project slab cut. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CutSlabResponse"];
+                };
+            };
+        };
+    };
     healthCheck: {
         parameters: {
             query?: never;
@@ -2546,6 +4652,43 @@ export interface operations {
             };
         };
     };
+    sendCustomerQuoteEmail: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                customerId: components["parameters"]["CustomerId"];
+                /** @description UUID of the quote */
+                quoteId: components["parameters"]["QuoteId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Quote PDF emailed. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        sent: boolean;
+                        /** Format: email */
+                        to: string;
+                    };
+                };
+            };
+            /** @description No primary contact with an email address exists. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
     acceptCustomerQuote: {
         parameters: {
             query?: never;
@@ -2692,6 +4835,1032 @@ export interface operations {
                 };
             };
             /** @description Quote or customer not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    convertQuoteToOrder: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                customerId: components["parameters"]["CustomerId"];
+                /** @description UUID of the quote */
+                quoteId: components["parameters"]["QuoteId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ConvertQuoteToOrderRequest"];
+            };
+        };
+        responses: {
+            /** @description Quote converted to order. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OrderWithPayments"];
+                };
+            };
+            /** @description Invalid request. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Quote or customer not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Quote cannot be converted. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    listQuoteAreas: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                customerId: components["parameters"]["CustomerId"];
+                /** @description UUID of the quote */
+                quoteId: components["parameters"]["QuoteId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Areas returned. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["QuoteArea"][];
+                };
+            };
+            /** @description Quote or customer not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    createQuoteArea: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                customerId: components["parameters"]["CustomerId"];
+                /** @description UUID of the quote */
+                quoteId: components["parameters"]["QuoteId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateQuoteAreaRequest"];
+            };
+        };
+        responses: {
+            /** @description Area created. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["QuoteArea"];
+                };
+            };
+            /** @description Invalid request. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Quote or customer not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Quote is not in draft status. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    removeQuoteArea: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                customerId: components["parameters"]["CustomerId"];
+                /** @description UUID of the quote */
+                quoteId: components["parameters"]["QuoteId"];
+                /** @description UUID of the quote area */
+                areaId: components["parameters"]["AreaId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ActorRequest"];
+            };
+        };
+        responses: {
+            /** @description Area removed. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["QuoteArea"];
+                };
+            };
+            /** @description Invalid request. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Area, quote, or customer not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Area has line items or quote is not in draft status. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    updateQuoteArea: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                customerId: components["parameters"]["CustomerId"];
+                /** @description UUID of the quote */
+                quoteId: components["parameters"]["QuoteId"];
+                /** @description UUID of the quote area */
+                areaId: components["parameters"]["AreaId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateQuoteAreaRequest"];
+            };
+        };
+        responses: {
+            /** @description Area updated. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["QuoteArea"];
+                };
+            };
+            /** @description Invalid request. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Area, quote, or customer not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Quote is not in draft status. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    listQuoteAreaPieces: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                customerId: components["parameters"]["CustomerId"];
+                /** @description UUID of the quote */
+                quoteId: components["parameters"]["QuoteId"];
+                /** @description UUID of the quote area */
+                areaId: components["parameters"]["AreaId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Counter pieces returned. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["CounterPiece"][];
+                    };
+                };
+            };
+            /** @description Area, quote, or customer not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    createQuoteAreaPiece: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                customerId: components["parameters"]["CustomerId"];
+                /** @description UUID of the quote */
+                quoteId: components["parameters"]["QuoteId"];
+                /** @description UUID of the quote area */
+                areaId: components["parameters"]["AreaId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateCounterPieceRequest"];
+            };
+        };
+        responses: {
+            /** @description Counter piece added. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CounterPiece"];
+                };
+            };
+            /** @description Invalid request. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Area, quote, or customer not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Quote is not in draft status. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    removeQuoteAreaPiece: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                customerId: components["parameters"]["CustomerId"];
+                /** @description UUID of the quote */
+                quoteId: components["parameters"]["QuoteId"];
+                /** @description UUID of the quote area */
+                areaId: components["parameters"]["AreaId"];
+                /** @description UUID of the counter piece */
+                id: components["parameters"]["PieceId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ActorRequest"];
+            };
+        };
+        responses: {
+            /** @description Counter piece removed. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CounterPiece"];
+                };
+            };
+            /** @description Invalid request. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Counter piece, area, quote, or customer not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Quote is not in draft status. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    updateQuoteAreaPiece: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                customerId: components["parameters"]["CustomerId"];
+                /** @description UUID of the quote */
+                quoteId: components["parameters"]["QuoteId"];
+                /** @description UUID of the quote area */
+                areaId: components["parameters"]["AreaId"];
+                /** @description UUID of the counter piece */
+                id: components["parameters"]["PieceId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateCounterPieceRequest"];
+            };
+        };
+        responses: {
+            /** @description Counter piece updated. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CounterPiece"];
+                };
+            };
+            /** @description Invalid request. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Counter piece, area, quote, or customer not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Quote is not in draft status. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    listQuoteAreaEdges: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                customerId: components["parameters"]["CustomerId"];
+                /** @description UUID of the quote */
+                quoteId: components["parameters"]["QuoteId"];
+                /** @description UUID of the quote area */
+                areaId: components["parameters"]["AreaId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Edge segments returned. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["EdgeSegment"][];
+                    };
+                };
+            };
+            /** @description Area, quote, or customer not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    createQuoteAreaEdge: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                customerId: components["parameters"]["CustomerId"];
+                /** @description UUID of the quote */
+                quoteId: components["parameters"]["QuoteId"];
+                /** @description UUID of the quote area */
+                areaId: components["parameters"]["AreaId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateEdgeSegmentRequest"];
+            };
+        };
+        responses: {
+            /** @description Edge segment added. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EdgeSegment"];
+                };
+            };
+            /** @description Invalid request. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Area, quote, or customer not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Quote is not in draft status. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    removeQuoteAreaEdge: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                customerId: components["parameters"]["CustomerId"];
+                /** @description UUID of the quote */
+                quoteId: components["parameters"]["QuoteId"];
+                /** @description UUID of the quote area */
+                areaId: components["parameters"]["AreaId"];
+                /** @description UUID of the edge segment */
+                id: components["parameters"]["EdgeId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ActorRequest"];
+            };
+        };
+        responses: {
+            /** @description Edge segment removed. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EdgeSegment"];
+                };
+            };
+            /** @description Invalid request. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Edge segment, area, quote, or customer not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Quote is not in draft status. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    updateQuoteAreaEdge: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                customerId: components["parameters"]["CustomerId"];
+                /** @description UUID of the quote */
+                quoteId: components["parameters"]["QuoteId"];
+                /** @description UUID of the quote area */
+                areaId: components["parameters"]["AreaId"];
+                /** @description UUID of the edge segment */
+                id: components["parameters"]["EdgeId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateEdgeSegmentRequest"];
+            };
+        };
+        responses: {
+            /** @description Edge segment updated. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EdgeSegment"];
+                };
+            };
+            /** @description Invalid request. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Edge segment, area, quote, or customer not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Quote is not in draft status. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    listQuoteAreaSinks: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                customerId: components["parameters"]["CustomerId"];
+                /** @description UUID of the quote */
+                quoteId: components["parameters"]["QuoteId"];
+                /** @description UUID of the quote area */
+                areaId: components["parameters"]["AreaId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Sink cutouts returned. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["SinkCutout"][];
+                    };
+                };
+            };
+            /** @description Area, quote, or customer not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    createQuoteAreaSink: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                customerId: components["parameters"]["CustomerId"];
+                /** @description UUID of the quote */
+                quoteId: components["parameters"]["QuoteId"];
+                /** @description UUID of the quote area */
+                areaId: components["parameters"]["AreaId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateSinkCutoutRequest"];
+            };
+        };
+        responses: {
+            /** @description Sink cutout added. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SinkCutout"];
+                };
+            };
+            /** @description Invalid request. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Area, quote, or customer not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Quote is not in draft status. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    removeQuoteAreaSink: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                customerId: components["parameters"]["CustomerId"];
+                /** @description UUID of the quote */
+                quoteId: components["parameters"]["QuoteId"];
+                /** @description UUID of the quote area */
+                areaId: components["parameters"]["AreaId"];
+                /** @description UUID of the sink cutout */
+                id: components["parameters"]["SinkId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ActorRequest"];
+            };
+        };
+        responses: {
+            /** @description Sink cutout removed. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SinkCutout"];
+                };
+            };
+            /** @description Invalid request. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Sink cutout, area, quote, or customer not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Quote is not in draft status. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    updateQuoteAreaSink: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                customerId: components["parameters"]["CustomerId"];
+                /** @description UUID of the quote */
+                quoteId: components["parameters"]["QuoteId"];
+                /** @description UUID of the quote area */
+                areaId: components["parameters"]["AreaId"];
+                /** @description UUID of the sink cutout */
+                id: components["parameters"]["SinkId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateSinkCutoutRequest"];
+            };
+        };
+        responses: {
+            /** @description Sink cutout updated. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SinkCutout"];
+                };
+            };
+            /** @description Invalid request. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Sink cutout, area, quote, or customer not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Quote is not in draft status. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    listQuoteAreaPricingLines: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                customerId: components["parameters"]["CustomerId"];
+                /** @description UUID of the quote */
+                quoteId: components["parameters"]["QuoteId"];
+                /** @description UUID of the quote area */
+                areaId: components["parameters"]["AreaId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Generated pricing lines returned. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["GeneratedPriceLine"][];
+                    };
+                };
+            };
+            /** @description Area, quote, or customer not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    generateQuoteAreaPricingLines: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                customerId: components["parameters"]["CustomerId"];
+                /** @description UUID of the quote */
+                quoteId: components["parameters"]["QuoteId"];
+                /** @description UUID of the quote area */
+                areaId: components["parameters"]["AreaId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Generated pricing lines replaced. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["GeneratedPriceLine"][];
+                    };
+                };
+            };
+            /** @description Area, quote, or customer not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Quote is not in draft status. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    overrideQuoteAreaPricingLine: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                customerId: components["parameters"]["CustomerId"];
+                /** @description UUID of the quote */
+                quoteId: components["parameters"]["QuoteId"];
+                /** @description UUID of the quote area */
+                areaId: components["parameters"]["AreaId"];
+                /** @description UUID of the generated price line */
+                lineId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["OverrideGeneratedPriceLineBody"];
+            };
+        };
+        responses: {
+            /** @description Generated pricing line override updated. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GeneratedPriceLine"];
+                };
+            };
+            /** @description Invalid request. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Generated price line, area, quote, or customer not found. */
             404: {
                 headers: {
                     [name: string]: unknown;
@@ -3350,6 +6519,170 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getAreaDrawingRevision: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                customerId: components["parameters"]["CustomerId"];
+                /** @description UUID of the quote */
+                quoteId: components["parameters"]["QuoteId"];
+                /** @description UUID of the quote area */
+                areaId: components["parameters"]["AreaId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data?: components["schemas"]["DrawingRevision"] | null;
+                    };
+                };
+            };
+            /** @description Quote or area not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    saveAreaDrawingRevision: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                customerId: components["parameters"]["CustomerId"];
+                /** @description UUID of the quote */
+                quoteId: components["parameters"]["QuoteId"];
+                /** @description UUID of the quote area */
+                areaId: components["parameters"]["AreaId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SaveDrawingRevisionBody"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DrawingRevision"];
+                };
+            };
+            /** @description Quote or area not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Quote is not in draft status */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getPortalQuote: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                token: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Quote for customer portal */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PortalQuote"];
+                };
+            };
+            /** @description Quote not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    acceptPortalQuote: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                token: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Accepted */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        ok?: boolean;
+                    };
+                };
+            };
+        };
+    };
+    rejectPortalQuote: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                token: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Rejected */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        ok?: boolean;
+                    };
                 };
             };
         };

@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { getApiClient } from '@/lib/api';
+import { getApiClientWithAuth } from '@/lib/api';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -23,9 +23,11 @@ interface CustomerDetailPageProps {
   params: Promise<{ id: string }>;
 }
 
+const money = (cents: number) => `$${(cents / 100).toFixed(2)}`;
+
 export default async function CustomerDetailPage({ params }: CustomerDetailPageProps) {
   const { id } = await params;
-  const client = getApiClient();
+  const client = await getApiClientWithAuth();
 
   const [
     { data: customer, error },
@@ -33,12 +35,16 @@ export default async function CustomerDetailPage({ params }: CustomerDetailPageP
     { data: addressesRes },
     { data: notesRes },
     { data: projectsRes },
+    { data: quotesRes },
+    { data: eventsRes },
   ] = await Promise.all([
     client.GET('/customers/{customerId}', { params: { path: { customerId: id } } }),
     client.GET('/customers/{customerId}/contacts', { params: { path: { customerId: id } } }),
     client.GET('/customers/{customerId}/addresses', { params: { path: { customerId: id } } }),
     client.GET('/customers/{customerId}/notes', { params: { path: { customerId: id } } }),
     client.GET('/projects', { params: { query: { customerId: id, limit: 50 } } }),
+    client.GET('/customers/{customerId}/quotes', { params: { path: { customerId: id }, query: { limit: 5 } } }),
+    client.GET('/customers/{customerId}/events', { params: { path: { customerId: id }, query: { limit: 5 } } }),
   ]);
 
   if (error || !customer) {
@@ -49,6 +55,8 @@ export default async function CustomerDetailPage({ params }: CustomerDetailPageP
   const addresses = addressesRes?.data ?? [];
   const notes = notesRes?.data ?? [];
   const projects = projectsRes?.data ?? [];
+  const quotes = quotesRes?.data ?? [];
+  const events = eventsRes?.data ?? [];
   const isArchived = !!customer.archivedAt;
 
   const archiveWithId = archiveCustomerAction.bind(null, id);
@@ -139,6 +147,86 @@ export default async function CustomerDetailPage({ params }: CustomerDetailPageP
                 </div>
               )}
             </dl>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between">
+            <CardTitle>Quotes ({quotes.length})</CardTitle>
+            <div className="flex gap-2">
+              <Button asChild variant="outline" size="sm">
+                <Link href={`/customers/${id}/quotes`}>View Quotes</Link>
+              </Button>
+              <Button asChild variant="outline" size="sm">
+                <Link href={`/customers/${id}/quotes/new`}>New Quote</Link>
+              </Button>
+            </div>
+          </CardHeader>
+          <CardContent>
+            {quotes.length === 0 ? (
+              <p className="text-sm text-muted-foreground">No quotes.</p>
+            ) : (
+              <ul className="space-y-3">
+                {quotes.map((quote) => (
+                  <li key={quote.id} className="rounded-md border p-3 text-sm">
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <Link
+                          href={`/customers/${id}/quotes/${quote.id}`}
+                          className="font-medium text-primary hover:underline"
+                        >
+                          {quote.quoteNumber} - {quote.title}
+                        </Link>
+                        <div className="mt-1 text-muted-foreground capitalize">{quote.status}</div>
+                      </div>
+                      <div className="text-xs font-medium">{money(quote.totalCents)}</div>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between">
+            <CardTitle>Events ({events.length})</CardTitle>
+            <div className="flex gap-2">
+              <Button asChild variant="outline" size="sm">
+                <Link href={`/customers/${id}/events`}>View Events</Link>
+              </Button>
+              <Button asChild variant="outline" size="sm">
+                <Link href={`/customers/${id}/events/new`}>New Event</Link>
+              </Button>
+            </div>
+          </CardHeader>
+          <CardContent>
+            {events.length === 0 ? (
+              <p className="text-sm text-muted-foreground">No events.</p>
+            ) : (
+              <ul className="space-y-3">
+                {events.map((event) => (
+                  <li key={event.id} className="rounded-md border p-3 text-sm">
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <Link
+                          href={`/customers/${id}/events/${event.id}`}
+                          className="font-medium text-primary hover:underline"
+                        >
+                          {event.title}
+                        </Link>
+                        <div className="mt-1 text-muted-foreground capitalize">
+                          {event.status.replace('_', ' ')}
+                        </div>
+                      </div>
+                      <div className="text-xs text-muted-foreground">
+                        {new Date(event.scheduledAt).toLocaleString()}
+                      </div>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            )}
           </CardContent>
         </Card>
 

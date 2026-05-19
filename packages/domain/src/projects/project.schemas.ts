@@ -7,7 +7,6 @@ const projectSortBySchema = z.enum(PROJECT_SORT_BY_VALUES);
 const sortDirectionSchema = z.enum(SORT_DIRECTION_VALUES);
 
 export const createProjectSchema = z.object({
-  actorUserId: z.string().min(1),
   customerId: z.string().uuid(),
   title: z.string().min(1),
   description: z.string().min(1).optional(),
@@ -16,20 +15,17 @@ export const createProjectSchema = z.object({
 });
 
 export const updateProjectSchema = z.object({
-  actorUserId: z.string().min(1),
   customerId: z.string().uuid().optional(),
   title: z.string().min(1).optional(),
   description: z.string().min(1).nullable().optional(),
   status: projectStatusSchema.optional(),
   ownerUserId: z.string().min(1).optional()
-}).refine((input) => Object.keys(input).some((key) => key !== 'actorUserId'), {
+}).refine((input) => Object.keys(input).length > 0, {
   message: 'At least one field is required',
   path: []
 });
 
-export const archiveProjectSchema = z.object({
-  actorUserId: z.string().min(1)
-});
+export const archiveProjectSchema = z.object({});
 
 export const listProjectsSchema = z.object({
   cursor: z.string().min(1).optional(),

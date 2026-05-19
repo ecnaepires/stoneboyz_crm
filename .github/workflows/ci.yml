@@ -1,0 +1,83 @@
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+
+jobs:
+  check:
+    name: Typecheck + Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Typecheck domain
+        run: pnpm typecheck
+
+      - name: Typecheck API
+        run: pnpm -C apps/api typecheck
+
+      - name: Typecheck web
+        run: pnpm typecheck:web
+
+      - name: Check OpenAPI spec sync
+        run: pnpm spec:check
+
+  test:
+    name: Integration tests
+    runs-on: ubuntu-latest
+
+    services:
+      postgres_test:
+        image: postgres:16
+        env:
+          POSTGRES_USER: stoneboyz_test
+          POSTGRES_PASSWORD: stoneboyz_test
+          POSTGRES_DB: stoneboyz_crm_test
+        ports:
+          - 5433:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Reset test database
+        run: pnpm db:test:reset
+        env:
+          DATABASE_URL: postgresql://stoneboyz_test:stoneboyz_test@localhost:5433/stoneboyz_crm_test
+
+      - name: Run integration tests
+        run: pnpm test:integration
+        env:
+          DATABASE_URL: postgresql://stoneboyz_test:stoneboyz_test@localhost:5433/stoneboyz_crm_test
+          BETTER_AUTH_SECRET: ci-secret-not-used-in-production
+          BETTER_AUTH_URL: http://localhost:3001

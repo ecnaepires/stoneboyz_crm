@@ -104,6 +104,53 @@ Additional payload fields per event type:
 - `scheduled_event.updated`: `data.changedFields` — array of field names that changed
 - `scheduled_event.rescheduled`: `data.previousScheduledAt`, `data.newScheduledAt`
 
+## Moraware Production Expansion
+
+This section is planning guidance, not current v1 API contract. Current `ScheduledEvent` is enough for simple appointments and shop jobs; Moraware parity needs a richer production model.
+
+### New entities to specify
+
+- `Job`: first-class production record with job number, job name, customer/account, salesperson, creation date, notes, job address, account contacts, linked quotes/orders, files, issues, forms, and external access.
+- `JobActivity`: scheduled operational step linked to a job; examples include Template, Deposit, Material, Fabrication, Install, Invoice, Repair, Phone call, Email, and Customer Pick-up.
+- `ActivityType`: configurable type with sequence, color, default status, default duration, dependency rules, and active/inactive state.
+- `ActivityStatus`: configurable state with sequence, abbreviation, color, and semantic type such as auto-schedule, active, complete, or canceled.
+- `Assignee`: schedulable worker/vendor/customer entry with sequence, color, description, active/inactive state, and optional map start location.
+- `JobTemplate`: creates default activities and forms for Standard Job, Standard Phase, Standard Lead, and Customer Pick-up flows.
+- `JobForm`: configurable form instance attached to a job or activity.
+- `JobFormField`: checkbox, text, number, date, dropdown, or linked quote/order/area field.
+- `JobIssue`: production blocker or repair/warranty note linked to job and optional activity.
+- `ActivityPacket`: print/preview bundle of job/activity forms for crew execution.
+
+### Fabrication activity requirements
+
+- Fabrication must support status, start date, scheduled time, duration, assignee, and notes.
+- Status options must cover Auto-Schedule, Tentative, Confirmed, In Progress, Complete, and Canceled.
+- Helper actions must be modeled where useful: Today, Current Time, End Now, and Myself.
+- Fabrication schedule views need daily total hours and related order/area square footage.
+- Activity changes must be auditable.
+
+### Form requirements
+
+- Job Checklist fields observed: Deposit received, Tearout, Ready to Template, Approved for Install.
+- Order Area Details fields observed: sink type, sink in stock, faucet info, notes, remake/rework.
+- Dropdown fields must support configured values plus controlled custom-value creation.
+- Form definitions and form responses should be separate records.
+- Linked order/area fields should display from quote/order data instead of being duplicated by hand.
+
+### Calendar requirements
+
+- Calendar views must support Standard, Fabrication, Install, Template, and Customer Pick-up.
+- Filters must include date range, activity type, assignee, project/job, and status.
+- Batch update must be explicit and reversible where possible.
+- Map and print packet flows should preview before mutating or printing.
+
+### Harness requirements
+
+- Integration tests for creating jobs from accepted quotes, adding activities, scheduling Fabrication, changing activity status, and preserving invalid transition conflicts.
+- Integration tests for configurable forms and form responses.
+- Browser/E2E tests for job detail, fabrication schedule edit, checklist edit, order area details edit, and calendar fabrication view.
+- Golden seed must include a job with Template, Deposit, Material, Fabrication, Install, Invoice, and Repair activities.
+
 ## Open Questions
 
 1. Should `assigneeUserIds` be validated against an existing users table, or accepted as free-form UUIDs in v1?

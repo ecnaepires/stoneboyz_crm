@@ -1,0 +1,108 @@
+- generic [ref=e1]:
+  - generic [ref=e2]:
+    - navigation [ref=e3]:
+      - heading "Stoneboyz CRM" [level=1] [ref=e5]
+      - list [ref=e6]:
+        - listitem [ref=e7]:
+          - link "Dashboard" [ref=e8] [cursor=pointer]:
+            - /url: /dashboard
+        - listitem [ref=e9]:
+          - link "Customers" [ref=e10] [cursor=pointer]:
+            - /url: /customers
+        - listitem [ref=e11]:
+          - link "Projects" [ref=e12] [cursor=pointer]:
+            - /url: /projects
+        - listitem [ref=e13]:
+          - link "Quotes" [ref=e14] [cursor=pointer]:
+            - /url: /customers
+        - listitem [ref=e15]:
+          - link "Scheduling" [ref=e16] [cursor=pointer]:
+            - /url: /customers
+        - listitem [ref=e17]:
+          - link "Price Lists" [ref=e18] [cursor=pointer]:
+            - /url: /price-lists
+        - listitem [ref=e19]:
+          - link "Slabs" [ref=e20] [cursor=pointer]:
+            - /url: /slabs
+        - listitem [ref=e21]:
+          - link "Archived" [ref=e22] [cursor=pointer]:
+            - /url: /customers/archived
+    - main [ref=e23]:
+      - generic [ref=e24]:
+        - generic [ref=e25]:
+          - generic [ref=e26]:
+            - generic [ref=e27]:
+              - link "Tester Job" [ref=e28] [cursor=pointer]:
+                - /url: /customers/363cb212-d857-4b88-abce-e08d1a095363
+              - text: /
+              - link "Quotes" [ref=e29] [cursor=pointer]:
+                - /url: /customers/363cb212-d857-4b88-abce-e08d1a095363/quotes
+              - text: /
+              - link "Q-2026-003" [ref=e30] [cursor=pointer]:
+                - /url: /customers/363cb212-d857-4b88-abce-e08d1a095363/quotes/5bffdf65-1a7b-4d8d-ba0c-7d680b4146df
+              - text: / Drawing Workspace
+            - heading "Test quote" [level=2] [ref=e31]
+            - paragraph [ref=e32]: CounterGo-style workspace for drawing, edge treatment, sink placement, area setup, and pricing.
+          - generic [ref=e33]:
+            - generic [ref=e34]: draft
+            - link "Back to Quote" [ref=e35] [cursor=pointer]:
+              - /url: /customers/363cb212-d857-4b88-abce-e08d1a095363/quotes/5bffdf65-1a7b-4d8d-ba0c-7d680b4146df
+        - generic [ref=e38]:
+          - heading "Kitchen" [level=3] [ref=e39]
+          - generic [ref=e40]:
+            - generic [ref=e41]:
+              - generic [ref=e42]:
+                - generic [ref=e43]:
+                  - button "Help" [ref=e44] [cursor=pointer]
+                  - button "Undo" [disabled]
+                  - button "Redo" [disabled]
+                  - button "Revisions" [ref=e45] [cursor=pointer]
+                  - button "Save" [active] [ref=e46] [cursor=pointer]
+                  - button "Exit" [ref=e47] [cursor=pointer]
+                - generic [ref=e48]: Revision 12 saved 5/18/2026, 10:44:16 AM
+              - generic [ref=e49]:
+                - button "1 Counter Dimensions" [ref=e50] [cursor=pointer]:
+                  - generic [ref=e51]: "1"
+                  - generic [ref=e52]: Counter Dimensions
+                - button "2 Curves & Bumpouts" [ref=e53] [cursor=pointer]:
+                  - generic [ref=e54]: "2"
+                  - generic [ref=e55]: Curves & Bumpouts
+                - button "3 Splash & Edge" [ref=e56] [cursor=pointer]:
+                  - generic [ref=e57]: "3"
+                  - generic [ref=e58]: Splash & Edge
+                - button "4 Sink & Cooktop" [ref=e59] [cursor=pointer]:
+                  - generic [ref=e60]: "4"
+                  - generic [ref=e61]: Sink & Cooktop
+                - button "5 Color & Edge" [ref=e62] [cursor=pointer]:
+                  - generic [ref=e63]: "5"
+                  - generic [ref=e64]: Color & Edge
+                - button "6 Price Details" [ref=e65] [cursor=pointer]:
+                  - generic [ref=e66]: "6"
+                  - generic [ref=e67]: Price Details
+              - complementary [ref=e70]:
+                - button "Text" [ref=e71] [cursor=pointer]
+                - button "Page Break" [ref=e72] [cursor=pointer]
+                - button "Other Counter" [ref=e73] [cursor=pointer]
+                - button "Round To Nearest 1/16\"" [ref=e74] [cursor=pointer]
+                - button "Zoom In" [ref=e75] [cursor=pointer]
+                - button "Zoom Out" [ref=e76] [cursor=pointer]
+                - button "Reset Zoom" [ref=e77] [cursor=pointer]
+                - button "Pan" [ref=e78] [cursor=pointer]
+            - generic [ref=e79]:
+              - button "Reset Layout" [ref=e80] [cursor=pointer]
+              - paragraph [ref=e81]: Drag with the pencil to create a 25 1/2" deep counter. Use on-piece controls for rotate, duplicate, and delete.
+            - generic [ref=e96]:
+              - generic [ref=e97]:
+                - heading "Save Quote" [level=3] [ref=e98]
+                - button "Close" [ref=e99] [cursor=pointer]
+              - generic [ref=e101]:
+                - generic [ref=e102]:
+                  - text: "Notes about this revision:"
+                  - textbox "Notes about this revision:" [ref=e103]:
+                    - /placeholder: Describe what changed in this revision.
+                - generic [ref=e104]:
+                  - button "Save & Continue" [ref=e105] [cursor=pointer]
+                  - button "Save" [ref=e106] [cursor=pointer]
+  - button "Open Next.js Dev Tools" [ref=e90] [cursor=pointer]:
+    - img [ref=e91]
+  - alert [ref=e94]

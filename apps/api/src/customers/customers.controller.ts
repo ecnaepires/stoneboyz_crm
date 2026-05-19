@@ -1,6 +1,8 @@
 import { BadRequestException, Body, Controller, Get, HttpCode, Param, Patch, Post, Query } from '@nestjs/common';
 import { archiveCustomerSchema, createCustomerSchema, listCustomersSchema, restoreCustomerSchema, updateCustomerSchema } from '@stoneboyz/domain';
 import { z } from 'zod';
+import { CurrentUser } from '../auth/current-user.decorator.js';
+import { Roles } from '../auth/roles.decorator.js';
 import { CustomersService } from './customers.service.js';
 
 const customerIdSchema = z.string().uuid();
@@ -55,7 +57,7 @@ export class CustomersController {
   }
 
   @Post()
-  async create(@Body() body: unknown) {
+  async create(@Body() body: unknown, @CurrentUser() actorUserId: string) {
     const parsed = createCustomerSchema.safeParse(body);
 
     if (!parsed.success) {
@@ -66,7 +68,7 @@ export class CustomersController {
       });
     }
 
-    return this.customersService.create(parsed.data);
+    return this.customersService.create({ ...parsed.data, actorUserId });
   }
 
   @Get(':customerId')
@@ -85,7 +87,7 @@ export class CustomersController {
   }
 
   @Patch(':customerId')
-  async update(@Param('customerId') customerId: string, @Body() body: unknown) {
+  async update(@Param('customerId') customerId: string, @Body() body: unknown, @CurrentUser() actorUserId: string) {
     const parsedCustomerId = customerIdSchema.safeParse(customerId);
 
     if (!parsedCustomerId.success) {
@@ -106,12 +108,13 @@ export class CustomersController {
       });
     }
 
-    return this.customersService.update(parsedCustomerId.data, parsedBody.data);
+    return this.customersService.update(parsedCustomerId.data, { ...parsedBody.data, actorUserId });
   }
 
   @Post(':customerId/archive')
   @HttpCode(200)
-  async archive(@Param('customerId') customerId: string, @Body() body: unknown) {
+  @Roles('admin')
+  async archive(@Param('customerId') customerId: string, @Body() body: unknown, @CurrentUser() actorUserId: string) {
     const parsedCustomerId = customerIdSchema.safeParse(customerId);
 
     if (!parsedCustomerId.success) {
@@ -132,12 +135,12 @@ export class CustomersController {
       });
     }
 
-    return this.customersService.archive(parsedCustomerId.data, parsedBody.data);
+    return this.customersService.archive(parsedCustomerId.data, { ...parsedBody.data, actorUserId });
   }
 
   @Post(':customerId/restore')
   @HttpCode(200)
-  async restore(@Param('customerId') customerId: string, @Body() body: unknown) {
+  async restore(@Param('customerId') customerId: string, @Body() body: unknown, @CurrentUser() actorUserId: string) {
     const parsedCustomerId = customerIdSchema.safeParse(customerId);
 
     if (!parsedCustomerId.success) {
@@ -158,6 +161,6 @@ export class CustomersController {
       });
     }
 
-    return this.customersService.restore(parsedCustomerId.data, parsedBody.data);
+    return this.customersService.restore(parsedCustomerId.data, { ...parsedBody.data, actorUserId });
   }
 }

@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { updateCustomerAction } from '../../_actions';
-import { getApiClient } from '@/lib/api';
+import { getApiClientWithAuth } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -14,7 +14,7 @@ interface EditCustomerPageProps {
 
 export default async function EditCustomerPage({ params }: EditCustomerPageProps) {
   const { id } = await params;
-  const client = getApiClient();
+  const client = await getApiClientWithAuth();
   const { data: customer, error } = await client.GET('/customers/{customerId}', {
     params: { path: { customerId: id } },
   });

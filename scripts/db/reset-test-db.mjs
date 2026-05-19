@@ -11,8 +11,16 @@ const client = new Client({ connectionString: databaseUrl });
 await client.connect();
 
 try {
+  await client.query("DROP TABLE IF EXISTS quote_line_items CASCADE;");
+  await client.query("DROP TABLE IF EXISTS quote_areas CASCADE;");
+  await client.query("DROP TABLE IF EXISTS quotes CASCADE;");
+  await client.query("DROP TABLE IF EXISTS projects CASCADE;");
+  await client.query("DROP TABLE IF EXISTS customer_notes CASCADE;");
+  await client.query("DROP TABLE IF EXISTS customer_addresses CASCADE;");
   await client.query("DROP TABLE IF EXISTS customers CASCADE;");
   await client.query("DROP TABLE IF EXISTS customer_contacts CASCADE;");
+  await client.query("DROP TABLE IF EXISTS price_list_items CASCADE;");
+  await client.query("DROP TABLE IF EXISTS price_lists CASCADE;");
 
   const migrationsDir = join(process.cwd(), "db/migrations");
   const migrationFiles = (await readdir(migrationsDir))

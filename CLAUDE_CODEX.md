@@ -12,6 +12,16 @@ This file provides guidance to Claude Code/ Codex (claude.ai/code) when working 
 - Before Opus-level work: say exactly **"Switch to Opus now — effort: \<level\>"** and WAIT. Do not proceed until user confirms.
 - Once design done and execution starts: say **"Drop to medium now"** or **"Switch to Sonnet now"**.
 
+### Codex model budget gate
+- Before substantial Codex work, recommend the cheapest safe model and effort.
+- Say exactly: `Recommended Codex: gpt-5.x — effort: <low|medium|high|xhigh> — why: <one short reason>`.
+- If the current model is stronger than needed, explicitly say the user can drop down before continuing.
+- Use `gpt-5.3-codex` or `gpt-5.4-mini` for reads, status, small edits, log updates, simple test fixes, and narrow one-file changes.
+- Use `gpt-5.4` for normal feature work, straightforward refactors, API/web wiring, and test additions with known patterns.
+- Use `gpt-5.5` only for hard architecture, tricky debugging, high-risk multi-module changes, security-sensitive work, or fuzzy tasks needing deep judgment.
+- Default effort: low for status/reads, medium for normal implementation, high/xhigh only when complexity or risk is explicit.
+- If unsure, start cheaper and escalate only after explaining the reason.
+
 ### Claude hard gate
 - Before any tool call, file read, plan, edit, or test, Claude MUST print:
   ```
@@ -34,7 +44,7 @@ This file provides guidance to Claude Code/ Codex (claude.ai/code) when working 
 
 ### Codex delegation (default for ALL file edits)
 - Claude plans + reviews. Codex executes. No exceptions unless 1-2 line fix on a file already read this turn.
-- **Codex model: always gpt-5.5.** Invocation: `codex exec -m gpt-5.5 --skip-git-repo-check --sandbox workspace-write`
+- **Codex model: choose by budget gate.** Invocation: `codex exec -m <recommended-model> --skip-git-repo-check --sandbox workspace-write`
 - **State effort in every brief.** Format: `Effort: <low|medium|high|xhigh>` on its own line after the caveman block.
 - Every Codex brief MUST open with this block (no exceptions):
   ```
@@ -78,6 +88,46 @@ pnpm db:test:reset     # nuke + re-migrate test DB
 
 pnpm db:down           # stop all Docker DB services
 ```
+
+## Quick Dashboard Launch
+
+- For "open the dashboard in the app browser", do the shortest working path instead of debugging Chrome extension flow.
+- Use the in-app browser already attached to the thread. Do not prefer the Chrome extension backend unless the user explicitly asks for Chrome.
+- Background dev servers launched inside the sandbox may die immediately. If the dashboard must stay open, start long-running API/web processes outside the sandbox.
+- Fast path:
+  1. Start API from `apps/api`: `node --env-file=.env dist/main.js`
+  2. Start web from repo root: `pnpm -C apps/web dev`
+  3. Poll `http://localhost:3001/api/v1/health` and `http://localhost:3000/dashboard`
+  4. Navigate the in-app browser directly to `http://localhost:3000/dashboard`
+- Avoid `pnpm dev` for simple browser access unless both combined logs are actually needed. Separate API/web startup is easier to verify and recover.
+
+## Codex In-App Browser Access
+
+- Use the `browser` skill for any request to inspect, click, type, screenshot, or work with the user's in-app browser.
+- The browser control surface is the Node REPL JavaScript tool, not a browser-named tool.
+- Read the skill first if needed: `C:\Users\Lenovo 02\.codex\plugins\cache\openai-bundled\browser\0.1.0-alpha2\skills\browser\SKILL.md`
+- Bootstrap once per fresh Node REPL session:
+
+```js
+if (!globalThis.agent) {
+  const { setupBrowserRuntime } = await import(
+    "C:/Users/Lenovo 02/.codex/plugins/cache/openai-bundled/browser/0.1.0-alpha2/scripts/browser-client.mjs"
+  );
+  await setupBrowserRuntime({ globals: globalThis });
+}
+if (!globalThis.browser) {
+  globalThis.browser = await agent.browsers.get("iab");
+}
+await browser.nameSession("Browser assist");
+if (typeof tab === "undefined") {
+  globalThis.tab = await browser.tabs.selected();
+}
+```
+
+- After bootstrap, inspect current tab with `await tab.url()`, `await tab.title()`, `await tab.playwright.domSnapshot()`, or `await nodeRepl.emitImage(await tab.screenshot({ fullPage: false }))`.
+- Do not reload the user's tab unless needed; it can wipe in-progress drawing state. If the tab is already on the target URL, inspect it in place.
+- Prefer Playwright DOM locators for normal UI. For canvas/drawing work, use screenshots plus `tab.cua.click`, `tab.cua.drag`, and coordinates.
+- To make the browser visible during paired work, call `await (await browser.capabilities.get("visibility")).set(true)`.
 
 ## Monorepo Layout
 
@@ -125,16 +175,21 @@ apps/api       → packages/api-client ✗  (never)
 4. **One migration per PR.** Migrations append-only. Create corrective migrations instead of editing shared ones.
 5. **No magic strings.** Status codes, roles, event names live in `packages/domain` as enums/consts.
 6. **Tests required.** New feature = new test in `tests/integration/`.
+7. **Moraware parity is source-backed.** Read `docs/moraware-countergo-audit.md` and `docs/specs/moraware-parity-roadmap.md` before quote/job/fabrication/calendar/admin work.
+8. **Harness before done.** Measurement/pricing logic needs domain tests; API behavior needs integration tests; user workflows need browser/E2E coverage.
 
 ## Workflow for New Features
 
 1. Update `docs/specs/modules/<module>.md`
 2. Update `docs/specs/api/openapi.yaml` if API changes
 3. Update `docs/specs/events/catalog.v1.yaml` if events change
-4. Write migration if schema changes
-5. Implement in `apps/api` or `apps/web`
-6. Write tests in `tests/integration/`
-7. Regenerate `packages/api-client` if API changed
+4. Update `docs/specs/db/invariants.md` and `scripts/check-spec-sync.mjs` if schema/contracts change
+5. Write migration if schema changes
+6. Add domain/unit tests for pure logic
+7. Implement in `apps/api` or `apps/web`
+8. Write tests in `tests/integration/`
+9. Add browser/E2E coverage for workflow UI
+10. Regenerate `packages/api-client` if API changed
 
 ## Naming Conventions
 

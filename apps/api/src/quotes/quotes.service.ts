@@ -1,4 +1,5 @@
 import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import { Inject } from '@nestjs/common';
 import type {
   ArchiveQuoteInput,
   CreateQuoteInput,
@@ -6,13 +7,16 @@ import type {
   ListQuotesInput,
   Quote,
   QuoteLineItem,
+  QuoteWithAreas,
   QuoteWithLineItems,
   TransitionQuoteInput,
   UpdateQuoteInput,
   UpdateQuoteLineItemInput
 } from '@stoneboyz/domain';
-import type { DatabaseError } from 'pg';
+import type { DatabaseError, Pool } from 'pg';
+import { DATABASE_POOL } from '../database.provider.js';
 import { EventBus } from '../events/event-bus.js';
+import { SlabsService } from '../inventory/slabs.service.js';
 import {
   buildQuoteCreatedPayload,
   buildQuoteLineItemPayload,
@@ -20,6 +24,7 @@ import {
   buildQuoteTransitionPayload,
   buildQuoteUpdatedPayload
 } from './quote-events.js';
+import { QuoteAreasRepository } from './quote-areas.repository.js';
 import { InvalidQuoteCursorError, QuotesRepository } from './quotes.repository.js';
 
 const FOREIGN_KEY_VIOLATION_CODE = '23503';
@@ -35,8 +40,11 @@ const lineTotal = (lineItem: Pick<CreateQuoteLineItemInput, 'qty' | 'unitPriceCe
 @Injectable()
 export class QuotesService {
   constructor(
+    @Inject(DATABASE_POOL) private readonly pool: Pool,
     private readonly quotesRepository: QuotesRepository,
-    private readonly eventBus: EventBus
+    private readonly quoteAreasRepository: QuoteAreasRepository,
+    private readonly eventBus: EventBus,
+    private readonly slabsService: SlabsService
   ) {}
 
   async list(customerId: string, input: ListQuotesInput): Promise<{ data: Quote[]; nextCursor: string | null; hasMore: boolean }> {
@@ -66,7 +74,10 @@ export class QuotesService {
     this.ensureValidDiscount(input.discountCents ?? 0, (input.lineItems ?? []).reduce((sum, item) => sum + lineTotal(item), 0));
 
     try {
-      const quote = await this.quotesRepository.create(customerId, input);
+      const hasSlabReservations = (input.lineItems ?? []).some((lineItem) => lineItem.slabId !== undefined);
+      const quote = hasSlabReservations
+        ? await this.createWithReservedLineItems(customerId, input)
+        : await this.quotesRepository.create(customerId, input);
       const lineItems = await this.quotesRepository.listLineItems(quote.id);
 
       this.eventBus.emit('quote.created', buildQuoteCreatedPayload(customerId, quote.id, input.actorUserId));
@@ -88,12 +99,15 @@ export class QuotesService {
     }
   }
 
-  async getById(customerId: string, quoteId: string): Promise<QuoteWithLineItems> {
+  async getById(customerId: string, quoteId: string): Promise<QuoteWithAreas> {
     await this.ensureCustomerExists(customerId);
     const quote = await this.ensureQuoteExists(customerId, quoteId);
-    const lineItems = await this.quotesRepository.listLineItems(quoteId);
+    const [lineItems, areas] = await Promise.all([
+      this.quotesRepository.listLineItems(quoteId),
+      this.quoteAreasRepository.listByQuoteId(quoteId)
+    ]);
 
-    return { ...quote, lineItems };
+    return { ...quote, lineItems, areas };
   }
 
   async update(customerId: string, quoteId: string, input: UpdateQuoteInput): Promise<Quote> {
@@ -168,7 +182,20 @@ export class QuotesService {
       throw new ConflictException({ code: 'INVALID_QUOTE_STATUS', message: 'Quote is not in sent status' });
     }
 
-    const quote = await this.quotesRepository.reject(customerId, quoteId);
+    const client = await this.pool.connect();
+    let quote: Quote | null;
+
+    try {
+      await client.query('BEGIN');
+      await this.slabsService.releaseManyForQuote(quoteId, input.actorUserId, client);
+      quote = await this.quotesRepository.rejectWithClient(client, customerId, quoteId);
+      await client.query('COMMIT');
+    } catch (error) {
+      await client.query('ROLLBACK');
+      throw error;
+    } finally {
+      client.release();
+    }
 
     if (quote === null) {
       throw new NotFoundException({ code: 'NOT_FOUND', message: 'Quote not found' });
@@ -181,7 +208,20 @@ export class QuotesService {
 
   async archive(customerId: string, quoteId: string, input: ArchiveQuoteInput): Promise<Quote> {
     await this.ensureQuoteExists(customerId, quoteId);
-    const quote = await this.quotesRepository.archive(customerId, quoteId, input.actorUserId);
+    const client = await this.pool.connect();
+    let quote: Quote | null;
+
+    try {
+      await client.query('BEGIN');
+      await this.slabsService.releaseManyForQuote(quoteId, input.actorUserId, client);
+      quote = await this.quotesRepository.archiveWithClient(client, customerId, quoteId, input.actorUserId);
+      await client.query('COMMIT');
+    } catch (error) {
+      await client.query('ROLLBACK');
+      throw error;
+    } finally {
+      client.release();
+    }
 
     if (quote === null) {
       throw new NotFoundException({ code: 'NOT_FOUND', message: 'Quote not found' });
@@ -205,7 +245,26 @@ export class QuotesService {
       throw new ConflictException({ code: 'INVALID_QUOTE_STATUS', message: 'Quote is not in draft status' });
     }
 
-    const lineItem = await this.quotesRepository.addLineItem(quoteId, input);
+    let lineItem: QuoteLineItem;
+
+    if (input.slabId !== undefined) {
+      const client = await this.pool.connect();
+
+      try {
+        await client.query('BEGIN');
+        await this.slabsService.reserveForQuote(input.slabId, quoteId, input.actorUserId, client);
+        lineItem = await this.quotesRepository.addLineItemWithClient(client, quoteId, input);
+        await client.query('COMMIT');
+      } catch (error) {
+        await client.query('ROLLBACK');
+        throw error;
+      } finally {
+        client.release();
+      }
+    } else {
+      lineItem = await this.quotesRepository.addLineItem(quoteId, input);
+    }
+
     this.eventBus.emit('quote.line_item_added', buildQuoteLineItemPayload(customerId, quoteId, lineItem.id, input.actorUserId));
 
     return lineItem;
@@ -218,7 +277,40 @@ export class QuotesService {
       throw new ConflictException({ code: 'INVALID_QUOTE_STATUS', message: 'Quote is not in draft status' });
     }
 
-    const lineItem = await this.quotesRepository.updateLineItem(quoteId, lineItemId, input);
+    const currentLineItem = (await this.quotesRepository.listLineItems(quoteId)).find((item) => item.id === lineItemId);
+
+    if (currentLineItem === undefined) {
+      throw new NotFoundException({ code: 'NOT_FOUND', message: 'Quote line item not found' });
+    }
+
+    let lineItem: QuoteLineItem | null;
+
+    if (Object.hasOwn(input, 'slabId') && input.slabId !== currentLineItem.slabId) {
+      const client = await this.pool.connect();
+
+      try {
+        await client.query('BEGIN');
+
+        if (input.slabId !== null && input.slabId !== undefined) {
+          await this.slabsService.reserveForQuote(input.slabId, quoteId, input.actorUserId, client);
+        }
+
+        lineItem = await this.quotesRepository.updateLineItemWithClient(client, quoteId, lineItemId, input);
+
+        if (currentLineItem.slabId !== null) {
+          await this.slabsService.releaseForQuote(currentLineItem.slabId, quoteId, input.actorUserId, client);
+        }
+
+        await client.query('COMMIT');
+      } catch (error) {
+        await client.query('ROLLBACK');
+        throw error;
+      } finally {
+        client.release();
+      }
+    } else {
+      lineItem = await this.quotesRepository.updateLineItem(quoteId, lineItemId, input);
+    }
 
     if (lineItem === null) {
       throw new NotFoundException({ code: 'NOT_FOUND', message: 'Quote line item not found' });
@@ -240,7 +332,24 @@ export class QuotesService {
       throw new ConflictException({ code: 'INVALID_QUOTE_STATUS', message: 'Quote is not in draft status' });
     }
 
-    const lineItem = await this.quotesRepository.removeLineItem(quoteId, lineItemId);
+    const client = await this.pool.connect();
+    let lineItem: QuoteLineItem | null;
+
+    try {
+      await client.query('BEGIN');
+      lineItem = await this.quotesRepository.removeLineItemWithClient(client, quoteId, lineItemId);
+
+      if (lineItem !== null && lineItem.slabId !== null) {
+        await this.slabsService.releaseForQuote(lineItem.slabId, quoteId, input.actorUserId, client);
+      }
+
+      await client.query('COMMIT');
+    } catch (error) {
+      await client.query('ROLLBACK');
+      throw error;
+    } finally {
+      client.release();
+    }
 
     if (lineItem === null) {
       throw new NotFoundException({ code: 'NOT_FOUND', message: 'Quote line item not found' });
@@ -256,6 +365,33 @@ export class QuotesService {
 
     if (!exists) {
       throw new NotFoundException({ code: 'NOT_FOUND', message: 'Customer not found' });
+    }
+  }
+
+  private async createWithReservedLineItems(customerId: string, input: CreateQuoteInput): Promise<Quote> {
+    const client = await this.pool.connect();
+
+    try {
+      await client.query('BEGIN');
+      const created = await this.quotesRepository.createHeaderWithClient(client, customerId, input);
+
+      for (const lineItem of input.lineItems ?? []) {
+        if (lineItem.slabId !== undefined) {
+          await this.slabsService.reserveForQuote(lineItem.slabId, created.id, lineItem.actorUserId, client);
+        }
+
+        await this.quotesRepository.addLineItemWithClient(client, created.id, lineItem);
+      }
+
+      const quote = await this.quotesRepository.findByIdWithClient(client, customerId, created.id);
+      await client.query('COMMIT');
+
+      return quote as Quote;
+    } catch (error) {
+      await client.query('ROLLBACK');
+      throw error;
+    } finally {
+      client.release();
     }
   }
 

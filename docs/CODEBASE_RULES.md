@@ -58,6 +58,24 @@ Rules enforced always. No exceptions without DECISIONS.md entry.
 - Events are immutable once published - add new event type instead of changing existing
 - Event payload always includes `{ eventId, occurredAt, version, data }`
 
+## Spec-Driven Rules
+
+- `docs/moraware-countergo-audit.md` is the source audit for legacy parity.
+- `docs/specs/moraware-parity-roadmap.md` is the source roadmap for replacing Moraware with a better Stoneboyz workflow.
+- No Moraware-parity feature starts from code. Flow is audit note -> module spec -> OpenAPI/events/DB invariants -> domain schemas -> migration -> implementation -> harness.
+- New modules or new event families must be added to `scripts/check-spec-sync.mjs` in the same change as the spec.
+- Every spec addition must include business rules, invalid states, open questions, and at least one acceptance scenario.
+- Planned-but-not-implemented behavior must be labeled clearly in specs so API clients do not treat it as shipped.
+
+## Harness-Driven Rules
+
+- Every feature needs at least one automated harness before it is considered done.
+- API and DB behavior uses real PostgreSQL integration tests under `tests/integration/`.
+- Pure business math uses domain/unit tests before API code: measurement rounding, square footage, linear footage, splash quantities, price generation, and quote totals.
+- Web workflow changes need browser/E2E coverage once the flow is beyond static display.
+- Generated clients, OpenAPI, event catalog, DB invariants, domain constants, and module specs must stay in sync through `pnpm spec:check`.
+- Moraware-parity flows must use sample quote/job fixtures that cover areas, measurements, edges, sinks, faucet holes, generated pricing, overrides, fabrication scheduling, and job forms.
+
 ## Testing Rules
 
 - Unit tests: `*.spec.ts` co-located with source

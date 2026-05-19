@@ -19,6 +19,10 @@ components:
       type: http
       scheme: bearer
       bearerFormat: JWT
+    cookieAuth:
+      type: apiKey
+      in: cookie
+      name: better-auth.session_token
 
   parameters:
     CustomerId:
@@ -62,11 +66,90 @@ components:
         type: string
         format: uuid
 
+    AreaId:
+      name: areaId
+      in: path
+      required: true
+      description: UUID of the quote area
+      schema:
+        type: string
+        format: uuid
+
+    PieceId:
+      name: id
+      in: path
+      required: true
+      description: UUID of the counter piece
+      schema:
+        type: string
+        format: uuid
+
+    EdgeId:
+      name: id
+      in: path
+      required: true
+      description: UUID of the edge segment
+      schema:
+        type: string
+        format: uuid
+
+    SinkId:
+      name: id
+      in: path
+      required: true
+      description: UUID of the sink cutout
+      schema:
+        type: string
+        format: uuid
+
     EventId:
       name: eventId
       in: path
       required: true
       description: UUID of the scheduled event
+      schema:
+        type: string
+        format: uuid
+
+    PriceListId:
+      name: priceListId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+
+    PriceListItemId:
+      name: itemId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+
+    OrderId:
+      name: orderId
+      in: path
+      required: true
+      description: UUID of the order
+      schema:
+        type: string
+        format: uuid
+
+    PaymentId:
+      name: paymentId
+      in: path
+      required: true
+      description: UUID of the order payment
+      schema:
+        type: string
+        format: uuid
+
+    SlabId:
+      name: slabId
+      in: path
+      required: true
+      description: UUID of the slab
       schema:
         type: string
         format: uuid
@@ -94,6 +177,409 @@ components:
           example: Request validation failed
         details:
           type: object
+
+    RecentQuote:
+      type: object
+      required: [id, quoteNumber, title, status, customerId, customerName, createdAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        quoteNumber:
+          type: string
+        title:
+          type: string
+        status:
+          type: string
+        customerId:
+          type: string
+          format: uuid
+        customerName:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+
+    DashboardStats:
+      type: object
+      required: [activeCustomers, openQuotes, ordersThisMonth, eventsThisWeek, recentQuotes]
+      properties:
+        activeCustomers:
+          type: integer
+        openQuotes:
+          type: object
+          required: [count, totalCents]
+          properties:
+            count:
+              type: integer
+            totalCents:
+              type: integer
+        ordersThisMonth:
+          type: object
+          required: [count, totalCents]
+          properties:
+            count:
+              type: integer
+            totalCents:
+              type: integer
+        eventsThisWeek:
+          type: integer
+        recentQuotes:
+          type: array
+          items:
+            $ref: '#/components/schemas/RecentQuote'
+
+    UserProfile:
+      type: object
+      required: [id, email, name, role, createdAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        email:
+          type: string
+          format: email
+        name:
+          type: string
+        role:
+          type: string
+          enum: [admin, estimator, installer]
+        createdAt:
+          type: string
+          format: date-time
+
+    PortalQuote:
+      type: object
+      required: [id, quoteNumber, title, status, customerId, customerName, discountCents, taxCents, subtotalCents, taxRateBps, shareToken, areas, lineItems]
+      properties:
+        id:
+          type: string
+          format: uuid
+        quoteNumber:
+          type: string
+        title:
+          type: string
+        status:
+          type: string
+        customerId:
+          type: string
+          format: uuid
+        customerName:
+          type: string
+        validUntil:
+          type: string
+          nullable: true
+        notes:
+          type: string
+          nullable: true
+        termsAndConditions:
+          type: string
+          nullable: true
+        discountCents:
+          type: integer
+        taxCents:
+          type: integer
+        subtotalCents:
+          type: integer
+        taxRateBps:
+          type: integer
+        shareToken:
+          type: string
+          format: uuid
+        areas:
+          type: array
+          items:
+            type: object
+            required: [id, name, sortOrder]
+            properties:
+              id:
+                type: string
+                format: uuid
+              name:
+                type: string
+              sortOrder:
+                type: integer
+        lineItems:
+          type: array
+          items:
+            type: object
+            required: [id, stoneType, qty, qtyUnit, unitPriceCents, laborPriceCents, sortOrder]
+            properties:
+              id:
+                type: string
+                format: uuid
+              stoneType:
+                type: string
+              qty:
+                type: number
+              qtyUnit:
+                type: string
+              unitPriceCents:
+                type: integer
+              laborPriceCents:
+                type: integer
+              lengthIn:
+                type: number
+                nullable: true
+              widthIn:
+                type: number
+                nullable: true
+              thicknessCm:
+                type: number
+                nullable: true
+              edgeProfile:
+                type: string
+                nullable: true
+              notes:
+                type: string
+                nullable: true
+              sortOrder:
+                type: integer
+              quoteAreaId:
+                type: string
+                format: uuid
+                nullable: true
+
+    PriceListStatus:
+      type: string
+      enum: [draft, active, archived]
+
+    PriceList:
+      type: object
+      required:
+        - id
+        - name
+        - status
+        - revision
+        - currencyCode
+        - defaultTaxRateBps
+        - createdByUserId
+        - archivedAt
+        - archivedByUserId
+        - createdAt
+        - updatedAt
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        description:
+          type: string
+          nullable: true
+        status:
+          $ref: '#/components/schemas/PriceListStatus'
+        revision:
+          type: integer
+        currencyCode:
+          type: string
+        defaultTaxRateBps:
+          type: integer
+        defaultPaymentTerms:
+          type: string
+          nullable: true
+        expirationDays:
+          type: integer
+          nullable: true
+        createdByUserId:
+          type: string
+          format: uuid
+        archivedAt:
+          type: string
+          format: date-time
+          nullable: true
+        archivedByUserId:
+          type: string
+          format: uuid
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    PriceListItem:
+      type: object
+      required:
+        - id
+        - priceListId
+        - category
+        - itemType
+        - name
+        - unit
+        - priceCents
+        - sortOrder
+        - taxable
+        - allowDiscount
+        - editableOnQuote
+        - hideOnQuote
+        - createdAt
+        - updatedAt
+      properties:
+        id:
+          type: string
+          format: uuid
+        priceListId:
+          type: string
+          format: uuid
+        category:
+          type: string
+        itemType:
+          type: string
+        name:
+          type: string
+        description:
+          type: string
+          nullable: true
+        unit:
+          type: string
+        priceCents:
+          type: integer
+        sortOrder:
+          type: integer
+        taxable:
+          type: boolean
+        allowDiscount:
+          type: boolean
+        editableOnQuote:
+          type: boolean
+        hideOnQuote:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    PriceListWithItems:
+      allOf:
+        - $ref: '#/components/schemas/PriceList'
+        - type: object
+          required: [items]
+          properties:
+            items:
+              type: array
+              items:
+                $ref: '#/components/schemas/PriceListItem'
+
+    PriceListListResponse:
+      type: object
+      required: [data, hasMore, nextCursor]
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/PriceList'
+        hasMore:
+          type: boolean
+        nextCursor:
+          type: string
+          nullable: true
+
+    PriceListItemsResponse:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/PriceListItem'
+
+    CreatePriceListRequest:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+        description:
+          type: string
+        revision:
+          type: integer
+        currencyCode:
+          type: string
+        defaultTaxRateBps:
+          type: integer
+        defaultPaymentTerms:
+          type: string
+        expirationDays:
+          type: integer
+
+    UpdatePriceListRequest:
+      type: object
+      properties:
+        name:
+          type: string
+        description:
+          type: string
+          nullable: true
+        revision:
+          type: integer
+        currencyCode:
+          type: string
+        defaultTaxRateBps:
+          type: integer
+        defaultPaymentTerms:
+          type: string
+          nullable: true
+        expirationDays:
+          type: integer
+          nullable: true
+
+    CreatePriceListItemRequest:
+      type: object
+      required: [category, itemType, name, unit, priceCents]
+      properties:
+        category:
+          type: string
+        itemType:
+          type: string
+        name:
+          type: string
+        description:
+          type: string
+        unit:
+          type: string
+        priceCents:
+          type: integer
+        sortOrder:
+          type: integer
+        taxable:
+          type: boolean
+        allowDiscount:
+          type: boolean
+        editableOnQuote:
+          type: boolean
+        hideOnQuote:
+          type: boolean
+
+    UpdatePriceListItemRequest:
+      type: object
+      properties:
+        category:
+          type: string
+        itemType:
+          type: string
+        name:
+          type: string
+        description:
+          type: string
+          nullable: true
+        unit:
+          type: string
+        priceCents:
+          type: integer
+        sortOrder:
+          type: integer
+        taxable:
+          type: boolean
+        allowDiscount:
+          type: boolean
+        editableOnQuote:
+          type: boolean
+        hideOnQuote:
+          type: boolean
 
     CustomerKind:
       type: string
@@ -222,11 +708,8 @@ components:
 
     CreateCustomerRequest:
       type: object
-      required: [customerKind, name, status, type, ownerUserId, actorUserId]
+      required: [customerKind, name, status, type, ownerUserId]
       properties:
-        actorUserId:
-          type: string
-          format: uuid
         customerKind:
           $ref: '#/components/schemas/CustomerKind'
         name:
@@ -275,11 +758,7 @@ components:
     UpdateCustomerRequest:
       type: object
       minProperties: 1
-      required: [actorUserId]
       properties:
-        actorUserId:
-          type: string
-          format: uuid
         customerKind:
           $ref: '#/components/schemas/CustomerKind'
         name:
@@ -340,21 +819,13 @@ components:
 
     ArchiveCustomerRequest:
       type: object
-      required: [actorUserId]
       properties:
-        actorUserId:
-          type: string
-          format: uuid
         archiveReason:
           type: string
 
     RestoreCustomerRequest:
       type: object
-      required: [actorUserId]
       properties:
-        actorUserId:
-          type: string
-          format: uuid
 
     ProjectStatus:
       type: string
@@ -403,10 +874,8 @@ components:
 
     CreateProjectRequest:
       type: object
-      required: [actorUserId, customerId, title, ownerUserId]
+      required: [customerId, title, ownerUserId]
       properties:
-        actorUserId:
-          type: string
         customerId:
           type: string
           format: uuid
@@ -423,10 +892,7 @@ components:
     UpdateProjectRequest:
       type: object
       minProperties: 1
-      required: [actorUserId]
       properties:
-        actorUserId:
-          type: string
         customerId:
           type: string
           format: uuid
@@ -443,10 +909,7 @@ components:
 
     ArchiveProjectRequest:
       type: object
-      required: [actorUserId]
       properties:
-        actorUserId:
-          type: string
 
     CustomerContact:
       type: object
@@ -503,11 +966,8 @@ components:
 
     CreateCustomerContactRequest:
       type: object
-      required: [firstName, actorUserId]
+      required: [firstName]
       properties:
-        actorUserId:
-          type: string
-          format: uuid
         firstName:
           type: string
           minLength: 1
@@ -534,11 +994,7 @@ components:
     UpdateCustomerContactRequest:
       type: object
       minProperties: 1
-      required: [actorUserId]
       properties:
-        actorUserId:
-          type: string
-          format: uuid
         firstName:
           type: string
           minLength: 1
@@ -624,11 +1080,8 @@ components:
 
     CreateCustomerAddressRequest:
       type: object
-      required: [actorUserId, type, line1, city, country]
+      required: [type, line1, city, country]
       properties:
-        actorUserId:
-          type: string
-          format: uuid
         type:
           $ref: '#/components/schemas/CustomerAddressType'
         line1:
@@ -654,11 +1107,7 @@ components:
       type: object
       description: At least one updatable address field is required.
       minProperties: 2
-      required: [actorUserId]
       properties:
-        actorUserId:
-          type: string
-          format: uuid
         type:
           $ref: '#/components/schemas/CustomerAddressType'
         line1:
@@ -709,33 +1158,23 @@ components:
 
     CreateCustomerNoteRequest:
       type: object
-      required: [actorUserId, body]
+      required: [body]
       properties:
-        actorUserId:
-          type: string
-          format: uuid
         body:
           type: string
           minLength: 1
 
     UpdateCustomerNoteRequest:
       type: object
-      required: [actorUserId, body]
+      required: [body]
       properties:
-        actorUserId:
-          type: string
-          format: uuid
         body:
           type: string
           minLength: 1
 
     ActorRequest:
       type: object
-      required: [actorUserId]
       properties:
-        actorUserId:
-          type: string
-          format: uuid
 
     PaginatedCustomersResponse:
       type: object
@@ -774,6 +1213,7 @@ components:
       required:
         - id
         - quoteId
+        - quoteAreaId
         - sortOrder
         - stoneType
         - qty
@@ -790,22 +1230,30 @@ components:
         quoteId:
           type: string
           format: uuid
+        quoteAreaId:
+          type: string
+          format: uuid
+          nullable: true
+        slabId:
+          type: string
+          format: uuid
+          nullable: true
         sortOrder:
           type: integer
           default: 0
         stoneType:
           type: string
           example: Marble Calacatta
-        lengthMm:
-          type: integer
+        lengthIn:
+          type: number
           nullable: true
-        widthMm:
-          type: integer
+        widthIn:
+          type: number
           nullable: true
-        thicknessMm:
-          type: integer
+        thicknessCm:
+          type: number
           nullable: true
-          example: 20
+          example: 2
         edgeProfile:
           type: string
           nullable: true
@@ -836,6 +1284,479 @@ components:
           type: string
           format: date-time
 
+    QuoteArea:
+      type: object
+      required:
+        - id
+        - quoteId
+        - sortOrder
+        - name
+        - subtotalCents
+        - measurementTotals
+        - createdAt
+        - updatedAt
+      properties:
+        id:
+          type: string
+          format: uuid
+        quoteId:
+          type: string
+          format: uuid
+        sortOrder:
+          type: integer
+          default: 0
+        name:
+          type: string
+        material:
+          type: string
+          nullable: true
+        color:
+          type: string
+          nullable: true
+        edgeProfile:
+          type: string
+          nullable: true
+        notes:
+          type: string
+          nullable: true
+        subtotalCents:
+          type: integer
+        measurementTotals:
+          $ref: '#/components/schemas/QuoteMeasurementAreaTotals'
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    QuoteMeasurementAreaTotals:
+      type: object
+      required: [pieceCount, countertopSqFt, finishedEdgeLinFt, splashSqFt, sinkCutoutCount, faucetHoleCount]
+      properties:
+        pieceCount:
+          type: integer
+        countertopSqFt:
+          type: number
+        finishedEdgeLinFt:
+          type: number
+        splashSqFt:
+          type: number
+        sinkCutoutCount:
+          type: integer
+        faucetHoleCount:
+          type: integer
+
+    GeneratedPriceLine:
+      type: object
+      required:
+        - id
+        - quoteAreaId
+        - category
+        - label
+        - quantity
+        - unit
+        - unitPriceCents
+        - lineTotalCents
+        - priceListItemId
+        - sortOrder
+        - overridePriceCents
+        - overrideReason
+        - overrideByUserId
+        - overrideAt
+        - createdAt
+        - updatedAt
+      properties:
+        id:
+          type: string
+          format: uuid
+        quoteAreaId:
+          type: string
+          format: uuid
+        category:
+          type: string
+          enum: [material, fabrication, finished_edge, splash, sink_cutout, sink_item, faucet_hole]
+        label:
+          type: string
+          minLength: 1
+        quantity:
+          type: number
+          minimum: 0
+        unit:
+          type: string
+          minLength: 1
+        unitPriceCents:
+          type: integer
+          minimum: 0
+        lineTotalCents:
+          type: integer
+          minimum: 0
+        priceListItemId:
+          type: string
+          format: uuid
+          nullable: true
+        sortOrder:
+          type: integer
+        overridePriceCents:
+          type: integer
+          minimum: 0
+          nullable: true
+        overrideReason:
+          type: string
+          nullable: true
+        overrideByUserId:
+          type: string
+          nullable: true
+        overrideAt:
+          type: string
+          format: date-time
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    OverrideGeneratedPriceLineBody:
+      type: object
+      properties:
+        overridePriceCents:
+          type: integer
+          minimum: 0
+          nullable: true
+        overrideReason:
+          type: string
+          minLength: 1
+          nullable: true
+
+    CanvasPieceLayout:
+      type: object
+      required: [pieceId, x, y, rotation]
+      properties:
+        pieceId:
+          type: string
+          format: uuid
+        x:
+          type: number
+        y:
+          type: number
+        rotation:
+          type: number
+
+    CanvasSinkLayout:
+      type: object
+      required: [sinkId, x, y, rotation]
+      properties:
+        sinkId:
+          type: string
+          format: uuid
+        x:
+          type: number
+        y:
+          type: number
+        rotation:
+          type: number
+
+    CanvasLayout:
+      type: object
+      required: [pieces, sinks]
+      properties:
+        pieces:
+          type: array
+          items:
+            $ref: '#/components/schemas/CanvasPieceLayout'
+        sinks:
+          type: array
+          items:
+            $ref: '#/components/schemas/CanvasSinkLayout'
+
+    DrawingRevision:
+      type: object
+      required: [id, quoteAreaId, revisionNumber, layout, createdAt, createdByUserId]
+      properties:
+        id:
+          type: string
+          format: uuid
+        quoteAreaId:
+          type: string
+          format: uuid
+        revisionNumber:
+          type: integer
+        layout:
+          $ref: '#/components/schemas/CanvasLayout'
+        createdAt:
+          type: string
+          format: date-time
+        createdByUserId:
+          type: string
+          nullable: true
+
+    SaveDrawingRevisionBody:
+      type: object
+      required: [layout]
+      properties:
+        layout:
+          $ref: '#/components/schemas/CanvasLayout'
+
+    CounterPiece:
+      type: object
+      required: [id, quoteAreaId, sortOrder, name, lengthIn, widthIn, quantity, createdAt, updatedAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        quoteAreaId:
+          type: string
+          format: uuid
+        sortOrder:
+          type: integer
+          default: 0
+        name:
+          type: string
+          nullable: true
+        lengthIn:
+          type: number
+          exclusiveMinimum: 0
+        widthIn:
+          type: number
+          exclusiveMinimum: 0
+        quantity:
+          type: integer
+          minimum: 1
+          default: 1
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    CreateCounterPieceRequest:
+      type: object
+      required: [lengthIn, widthIn]
+      properties:
+        sortOrder:
+          type: integer
+          default: 0
+        name:
+          type: string
+          minLength: 1
+        lengthIn:
+          type: number
+          exclusiveMinimum: 0
+        widthIn:
+          type: number
+          exclusiveMinimum: 0
+        quantity:
+          type: integer
+          minimum: 1
+          default: 1
+
+    UpdateCounterPieceRequest:
+      type: object
+      description: At least one updatable field is required.
+      minProperties: 1
+      properties:
+        sortOrder:
+          type: integer
+        name:
+          type: string
+          nullable: true
+        lengthIn:
+          type: number
+          exclusiveMinimum: 0
+        widthIn:
+          type: number
+          exclusiveMinimum: 0
+        quantity:
+          type: integer
+          minimum: 1
+
+    EdgeTreatment:
+      type: string
+      enum: [unfinished, finished, appliance, mitered, waterfall]
+
+    EdgeSegment:
+      type: object
+      required: [id, quoteAreaId, sortOrder, lengthIn, treatment, splashHeightIn, createdAt, updatedAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        quoteAreaId:
+          type: string
+          format: uuid
+        sortOrder:
+          type: integer
+          default: 0
+        lengthIn:
+          type: number
+          exclusiveMinimum: 0
+        treatment:
+          $ref: '#/components/schemas/EdgeTreatment'
+        splashHeightIn:
+          type: number
+          exclusiveMinimum: 0
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    CreateEdgeSegmentRequest:
+      type: object
+      required: [lengthIn, treatment]
+      properties:
+        sortOrder:
+          type: integer
+          default: 0
+        lengthIn:
+          type: number
+          exclusiveMinimum: 0
+        treatment:
+          $ref: '#/components/schemas/EdgeTreatment'
+        splashHeightIn:
+          type: number
+          exclusiveMinimum: 0
+
+    UpdateEdgeSegmentRequest:
+      type: object
+      description: At least one updatable field is required.
+      minProperties: 1
+      properties:
+        sortOrder:
+          type: integer
+        lengthIn:
+          type: number
+          exclusiveMinimum: 0
+        treatment:
+          $ref: '#/components/schemas/EdgeTreatment'
+        splashHeightIn:
+          type: number
+          exclusiveMinimum: 0
+          nullable: true
+
+    SinkType:
+      type: string
+      enum: [undermount, drop_in, farm]
+
+    SinkShape:
+      type: string
+      enum: [rectangle, oval, double, '60_40', '40_60', '70_30', '30_70']
+
+    SinkCenterline:
+      type: string
+      enum: [none, left, right, center]
+
+    SinkCutout:
+      type: object
+      required: [id, quoteAreaId, sortOrder, quantity, model, sinkType, shape, cutoutLengthIn, cutoutWidthIn, faucetHoleCount, centerline, createdAt, updatedAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        quoteAreaId:
+          type: string
+          format: uuid
+        sortOrder:
+          type: integer
+          default: 0
+        quantity:
+          type: integer
+          minimum: 1
+          default: 1
+        model:
+          type: string
+          nullable: true
+        sinkType:
+          $ref: '#/components/schemas/SinkType'
+        shape:
+          $ref: '#/components/schemas/SinkShape'
+        cutoutLengthIn:
+          type: number
+          exclusiveMinimum: 0
+        cutoutWidthIn:
+          type: number
+          exclusiveMinimum: 0
+        faucetHoleCount:
+          type: integer
+          minimum: 0
+          maximum: 5
+          default: 0
+        centerline:
+          $ref: '#/components/schemas/SinkCenterline'
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    CreateSinkCutoutRequest:
+      type: object
+      required: [sinkType, shape, cutoutLengthIn, cutoutWidthIn]
+      properties:
+        sortOrder:
+          type: integer
+          default: 0
+        quantity:
+          type: integer
+          minimum: 1
+          default: 1
+        model:
+          type: string
+          minLength: 1
+        sinkType:
+          $ref: '#/components/schemas/SinkType'
+        shape:
+          $ref: '#/components/schemas/SinkShape'
+        cutoutLengthIn:
+          type: number
+          exclusiveMinimum: 0
+        cutoutWidthIn:
+          type: number
+          exclusiveMinimum: 0
+        faucetHoleCount:
+          type: integer
+          minimum: 0
+          maximum: 5
+          default: 0
+        centerline:
+          $ref: '#/components/schemas/SinkCenterline'
+
+    UpdateSinkCutoutRequest:
+      type: object
+      description: At least one updatable field is required.
+      minProperties: 1
+      properties:
+        sortOrder:
+          type: integer
+        quantity:
+          type: integer
+          minimum: 1
+        model:
+          type: string
+          nullable: true
+        sinkType:
+          $ref: '#/components/schemas/SinkType'
+        shape:
+          $ref: '#/components/schemas/SinkShape'
+        cutoutLengthIn:
+          type: number
+          exclusiveMinimum: 0
+        cutoutWidthIn:
+          type: number
+          exclusiveMinimum: 0
+        faucetHoleCount:
+          type: integer
+          minimum: 0
+          maximum: 5
+        centerline:
+          $ref: '#/components/schemas/SinkCenterline'
+
     Quote:
       type: object
       required:
@@ -858,6 +1779,10 @@ components:
           type: string
           format: uuid
         projectId:
+          type: string
+          format: uuid
+          nullable: true
+        priceListId:
           type: string
           format: uuid
           nullable: true
@@ -913,6 +1838,9 @@ components:
           type: string
           format: uuid
           nullable: true
+        shareToken:
+          type: string
+          format: uuid
         createdAt:
           type: string
           format: date-time
@@ -924,18 +1852,25 @@ components:
       allOf:
         - $ref: '#/components/schemas/Quote'
         - type: object
-          required: [lineItems]
+          required: [lineItems, areas]
           properties:
             lineItems:
               type: array
               items:
                 $ref: '#/components/schemas/QuoteLineItem'
+            areas:
+              type: array
+              items:
+                $ref: '#/components/schemas/QuoteArea'
 
     CreateQuoteLineItemRequest:
       type: object
-      required: [actorUserId, stoneType, qty, qtyUnit, unitPriceCents]
+      required: [stoneType, qty, qtyUnit, unitPriceCents]
       properties:
-        actorUserId:
+        quoteAreaId:
+          type: string
+          format: uuid
+        slabId:
           type: string
           format: uuid
         sortOrder:
@@ -944,12 +1879,12 @@ components:
         stoneType:
           type: string
           minLength: 1
-        lengthMm:
-          type: integer
-        widthMm:
-          type: integer
-        thicknessMm:
-          type: integer
+        lengthIn:
+          type: number
+        widthIn:
+          type: number
+        thicknessCm:
+          type: number
         edgeProfile:
           type: string
         qty:
@@ -971,26 +1906,30 @@ components:
 
     UpdateQuoteLineItemRequest:
       type: object
-      description: At least one updatable field is required in addition to actorUserId.
+      description: At least one updatable field is required.
       minProperties: 2
-      required: [actorUserId]
       properties:
-        actorUserId:
+        quoteAreaId:
           type: string
           format: uuid
+          nullable: true
+        slabId:
+          type: string
+          format: uuid
+          nullable: true
         sortOrder:
           type: integer
         stoneType:
           type: string
           minLength: 1
-        lengthMm:
-          type: integer
+        lengthIn:
+          type: number
           nullable: true
-        widthMm:
-          type: integer
+        widthIn:
+          type: number
           nullable: true
-        thicknessMm:
-          type: integer
+        thicknessCm:
+          type: number
           nullable: true
         edgeProfile:
           type: string
@@ -1012,19 +1951,62 @@ components:
           type: string
           nullable: true
 
+    CreateQuoteAreaRequest:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+          minLength: 1
+        sortOrder:
+          type: integer
+          default: 0
+        material:
+          type: string
+        color:
+          type: string
+        edgeProfile:
+          type: string
+        notes:
+          type: string
+
+    UpdateQuoteAreaRequest:
+      type: object
+      description: At least one updatable field is required.
+      minProperties: 2
+      properties:
+        name:
+          type: string
+          minLength: 1
+        sortOrder:
+          type: integer
+        material:
+          type: string
+          nullable: true
+        color:
+          type: string
+          nullable: true
+        edgeProfile:
+          type: string
+          nullable: true
+        notes:
+          type: string
+          nullable: true
+
     CreateQuoteRequest:
       type: object
-      required: [actorUserId, title]
+      required: [title]
       properties:
-        actorUserId:
-          type: string
-          format: uuid
         title:
           type: string
           minLength: 1
         projectId:
           type: string
           format: uuid
+        priceListId:
+          type: string
+          format: uuid
+          nullable: true
         validUntil:
           type: string
           format: date
@@ -1048,17 +2030,17 @@ components:
 
     UpdateQuoteRequest:
       type: object
-      description: At least one updatable field is required in addition to actorUserId. Only allowed when quote is in draft status.
+      description: At least one updatable field is required. Only allowed when quote is in draft status.
       minProperties: 2
-      required: [actorUserId]
       properties:
-        actorUserId:
-          type: string
-          format: uuid
         title:
           type: string
           minLength: 1
         projectId:
+          type: string
+          format: uuid
+          nullable: true
+        priceListId:
           type: string
           format: uuid
           nullable: true
@@ -1178,11 +2160,8 @@ components:
 
     CreateScheduledEventRequest:
       type: object
-      required: [actorUserId, title, eventType, scheduledAt, durationMinutes, assigneeUserIds]
+      required: [title, eventType, scheduledAt, durationMinutes, assigneeUserIds]
       properties:
-        actorUserId:
-          type: string
-          format: uuid
         customerId:
           type: string
           format: uuid
@@ -1218,13 +2197,9 @@ components:
 
     UpdateScheduledEventRequest:
       type: object
-      description: At least one updatable field is required in addition to actorUserId. Only allowed when status is scheduled or confirmed.
+      description: At least one updatable field is required. Only allowed when status is scheduled or confirmed.
       minProperties: 2
-      required: [actorUserId]
       properties:
-        actorUserId:
-          type: string
-          format: uuid
         projectId:
           type: string
           format: uuid
@@ -1269,10 +2244,1074 @@ components:
         hasMore:
           type: boolean
 
+    SlabStatus:
+      type: string
+      enum: [available, reserved, cut, remnant]
+
+    SlabFinish:
+      type: string
+      enum: [polished, honed, brushed, leathered, sandblasted]
+
+    SlabQualityGrade:
+      type: string
+      enum: [A, B, C]
+
+    Slab:
+      type: object
+      required: [id, stoneType, finish, qualityGrade, lengthIn, widthIn, thicknessCm, costCents, imageUrls, status, createdAt, updatedAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        parentSlabId:
+          type: string
+          format: uuid
+          nullable: true
+        stoneType:
+          type: string
+        finish:
+          $ref: '#/components/schemas/SlabFinish'
+        qualityGrade:
+          $ref: '#/components/schemas/SlabQualityGrade'
+        lengthIn:
+          type: number
+          minimum: 1
+        widthIn:
+          type: number
+          minimum: 1
+        thicknessCm:
+          type: number
+          minimum: 1
+        lotNumber:
+          type: string
+          nullable: true
+        bundleNumber:
+          type: string
+          nullable: true
+        warehouseLocation:
+          type: string
+          nullable: true
+        costCents:
+          type: integer
+          minimum: 0
+        imageUrls:
+          type: array
+          maxItems: 20
+          items:
+            type: string
+            format: uri
+        notes:
+          type: string
+          nullable: true
+        status:
+          $ref: '#/components/schemas/SlabStatus'
+        archivedAt:
+          type: string
+          format: date-time
+          nullable: true
+        archivedByUserId:
+          type: string
+          format: uuid
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    CreateSlabRequest:
+      type: object
+      required: [stoneType, finish, qualityGrade, lengthIn, widthIn, thicknessCm]
+      properties:
+        stoneType:
+          type: string
+          minLength: 1
+        finish:
+          $ref: '#/components/schemas/SlabFinish'
+        qualityGrade:
+          $ref: '#/components/schemas/SlabQualityGrade'
+        lengthIn:
+          type: number
+          minimum: 1
+        widthIn:
+          type: number
+          minimum: 1
+        thicknessCm:
+          type: number
+          minimum: 1
+        lotNumber:
+          type: string
+        bundleNumber:
+          type: string
+        warehouseLocation:
+          type: string
+        costCents:
+          type: integer
+          minimum: 0
+          default: 0
+        imageUrls:
+          type: array
+          maxItems: 20
+          items:
+            type: string
+            format: uri
+        notes:
+          type: string
+
+    UpdateSlabRequest:
+      type: object
+      minProperties: 2
+      properties:
+        stoneType:
+          type: string
+          minLength: 1
+        finish:
+          $ref: '#/components/schemas/SlabFinish'
+        qualityGrade:
+          $ref: '#/components/schemas/SlabQualityGrade'
+        lengthIn:
+          type: number
+          minimum: 1
+        widthIn:
+          type: number
+          minimum: 1
+        thicknessCm:
+          type: number
+          minimum: 1
+        lotNumber:
+          type: string
+          nullable: true
+        bundleNumber:
+          type: string
+          nullable: true
+        warehouseLocation:
+          type: string
+          nullable: true
+        costCents:
+          type: integer
+          minimum: 0
+        imageUrls:
+          type: array
+          maxItems: 20
+          items:
+            type: string
+            format: uri
+        notes:
+          type: string
+          nullable: true
+
+    CutSlabRequest:
+      type: object
+      properties:
+        remnants:
+          type: array
+          items:
+            $ref: '#/components/schemas/CreateSlabRequest'
+
+    CutSlabResponse:
+      type: object
+      required: [slab, remnants]
+      properties:
+        slab:
+          $ref: '#/components/schemas/Slab'
+        remnants:
+          type: array
+          items:
+            $ref: '#/components/schemas/Slab'
+
+    ProjectSlab:
+      type: object
+      required: [id, projectId, slabId, createdAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        projectId:
+          type: string
+          format: uuid
+        slabId:
+          type: string
+          format: uuid
+        consumedByUserId:
+          type: string
+          format: uuid
+          nullable: true
+        consumedAt:
+          type: string
+          format: date-time
+          nullable: true
+        notes:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+
+    AttachProjectSlabRequest:
+      type: object
+      required: [slabId]
+      properties:
+        slabId:
+          type: string
+          format: uuid
+        notes:
+          type: string
+
+    PaginatedSlabsResponse:
+      type: object
+      required: [data, hasMore]
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/Slab'
+        nextCursor:
+          type: string
+          nullable: true
+        hasMore:
+          type: boolean
+
+    OrderPaymentMethod:
+      type: string
+      enum: [cash, check, mastercard, visa, american_express, discover, bank_transfer, echeck]
+
+    OrderPaymentStatus:
+      type: string
+      enum: [unpaid, partially_paid, paid]
+
+    OrderPayment:
+      type: object
+      required:
+        - id
+        - orderId
+        - paymentDate
+        - amountCents
+        - paymentMethod
+        - referenceNumber
+        - notes
+        - createdAt
+        - updatedAt
+      properties:
+        id:
+          type: string
+          format: uuid
+        orderId:
+          type: string
+          format: uuid
+        paymentDate:
+          type: string
+          format: date
+        amountCents:
+          type: integer
+        paymentMethod:
+          $ref: '#/components/schemas/OrderPaymentMethod'
+        referenceNumber:
+          type: string
+          nullable: true
+        notes:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    Order:
+      type: object
+      required:
+        - id
+        - quoteId
+        - customerId
+        - orderNumber
+        - title
+        - saleDate
+        - subtotalCents
+        - discountCents
+        - taxRateBps
+        - totalCents
+        - totalPaidCents
+        - balanceDueCents
+        - paymentStatus
+        - notes
+        - termsAndConditions
+        - archivedAt
+        - archivedByUserId
+        - createdAt
+        - updatedAt
+      properties:
+        id:
+          type: string
+          format: uuid
+        quoteId:
+          type: string
+          format: uuid
+        customerId:
+          type: string
+          format: uuid
+        orderNumber:
+          type: string
+        title:
+          type: string
+        saleDate:
+          type: string
+          format: date
+        subtotalCents:
+          type: integer
+        discountCents:
+          type: integer
+        taxRateBps:
+          type: integer
+        totalCents:
+          type: integer
+        totalPaidCents:
+          type: integer
+        balanceDueCents:
+          type: integer
+        paymentStatus:
+          $ref: '#/components/schemas/OrderPaymentStatus'
+        notes:
+          type: string
+          nullable: true
+        termsAndConditions:
+          type: string
+          nullable: true
+        archivedAt:
+          type: string
+          format: date-time
+          nullable: true
+        archivedByUserId:
+          type: string
+          format: uuid
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    OrderWithPayments:
+      allOf:
+        - $ref: '#/components/schemas/Order'
+        - type: object
+          required: [payments]
+          properties:
+            payments:
+              type: array
+              items:
+                $ref: '#/components/schemas/OrderPayment'
+
+    PaginatedOrdersResponse:
+      type: object
+      required: [data, hasMore]
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/Order'
+        nextCursor:
+          type: string
+          nullable: true
+        hasMore:
+          type: boolean
+
+    ConvertQuoteToOrderRequest:
+      type: object
+      required: [saleDate]
+      properties:
+        saleDate:
+          type: string
+          format: date
+
+    AddOrderPaymentRequest:
+      type: object
+      required: [paymentDate, amountCents, paymentMethod]
+      properties:
+        paymentDate:
+          type: string
+          format: date
+        amountCents:
+          type: integer
+          minimum: 1
+        paymentMethod:
+          $ref: '#/components/schemas/OrderPaymentMethod'
+        referenceNumber:
+          type: string
+        notes:
+          type: string
+
+    RemoveOrderPaymentRequest:
+      type: object
+      properties:
+
+    ArchiveOrderRequest:
+      type: object
+      properties:
+
 security:
   - bearerAuth: []
 
 paths:
+  /dashboard:
+    get:
+      operationId: getDashboard
+      summary: Get dashboard summary statistics and recent quotes
+      security:
+        - cookieAuth: []
+      responses:
+        '200':
+          description: Dashboard stats returned.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DashboardStats'
+
+  /inventory/slabs:
+    get:
+      operationId: listSlabs
+      summary: List global inventory slabs
+      parameters:
+        - $ref: '#/components/parameters/Cursor'
+        - $ref: '#/components/parameters/Limit'
+        - name: status
+          in: query
+          schema:
+            $ref: '#/components/schemas/SlabStatus'
+        - name: stoneType
+          in: query
+          schema:
+            type: string
+        - name: finish
+          in: query
+          schema:
+            $ref: '#/components/schemas/SlabFinish'
+      responses:
+        '200':
+          description: Slabs returned.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedSlabsResponse'
+    post:
+      operationId: createSlab
+      summary: Create a global inventory slab
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateSlabRequest'
+      responses:
+        '201':
+          description: Slab created.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Slab'
+        '400':
+          description: Invalid request.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /price-lists:
+    get:
+      operationId: listPriceLists
+      summary: List price lists
+      parameters:
+        - $ref: '#/components/parameters/Cursor'
+        - name: limit
+          in: query
+          schema:
+            type: integer
+        - name: status
+          in: query
+          schema:
+            $ref: '#/components/schemas/PriceListStatus'
+        - name: search
+          in: query
+          schema:
+            type: string
+        - name: includeArchived
+          in: query
+          schema:
+            type: boolean
+      responses:
+        '200':
+          description: Price lists returned.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PriceListListResponse'
+    post:
+      operationId: createPriceList
+      summary: Create a price list
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreatePriceListRequest'
+      responses:
+        '201':
+          description: Price list created.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PriceList'
+
+  /price-lists/{priceListId}:
+    get:
+      operationId: getPriceList
+      summary: Get a price list
+      parameters:
+        - $ref: '#/components/parameters/PriceListId'
+      responses:
+        '200':
+          description: Price list returned.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PriceListWithItems'
+    patch:
+      operationId: updatePriceList
+      summary: Update a draft price list
+      parameters:
+        - $ref: '#/components/parameters/PriceListId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdatePriceListRequest'
+      responses:
+        '200':
+          description: Price list updated.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PriceList'
+
+  /price-lists/{priceListId}/activate:
+    post:
+      operationId: activatePriceList
+      summary: Activate a draft price list
+      parameters:
+        - $ref: '#/components/parameters/PriceListId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ActorRequest'
+      responses:
+        '201':
+          description: Price list activated.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PriceList'
+
+  /price-lists/{priceListId}/archive:
+    post:
+      operationId: archivePriceList
+      summary: Archive a draft price list
+      parameters:
+        - $ref: '#/components/parameters/PriceListId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ActorRequest'
+      responses:
+        '201':
+          description: Price list archived.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PriceList'
+
+  /price-lists/{priceListId}/items:
+    get:
+      operationId: listPriceListItems
+      summary: List price list items
+      parameters:
+        - $ref: '#/components/parameters/PriceListId'
+      responses:
+        '200':
+          description: Items returned.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PriceListItemsResponse'
+    post:
+      operationId: createPriceListItem
+      summary: Create a price list item
+      parameters:
+        - $ref: '#/components/parameters/PriceListId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreatePriceListItemRequest'
+      responses:
+        '201':
+          description: Item created.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PriceListItem'
+
+  /price-lists/{priceListId}/items/{itemId}:
+    patch:
+      operationId: updatePriceListItem
+      summary: Update a price list item
+      parameters:
+        - $ref: '#/components/parameters/PriceListId'
+        - $ref: '#/components/parameters/PriceListItemId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdatePriceListItemRequest'
+      responses:
+        '200':
+          description: Item updated.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PriceListItem'
+    delete:
+      operationId: deletePriceListItem
+      summary: Hard-delete a price list item
+      parameters:
+        - $ref: '#/components/parameters/PriceListId'
+        - $ref: '#/components/parameters/PriceListItemId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ActorRequest'
+      responses:
+        '200':
+          description: Item deleted.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PriceListItem'
+
+  /customers/{customerId}/orders:
+    get:
+      operationId: listCustomerOrders
+      summary: List customer orders
+      parameters:
+        - $ref: '#/components/parameters/CustomerId'
+        - $ref: '#/components/parameters/Cursor'
+        - $ref: '#/components/parameters/Limit'
+        - name: paymentStatus
+          in: query
+          required: false
+          schema:
+            $ref: '#/components/schemas/OrderPaymentStatus'
+        - name: includeArchived
+          in: query
+          required: false
+          schema:
+            type: boolean
+            default: false
+      responses:
+        '200':
+          description: Orders returned.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedOrdersResponse'
+        '400':
+          description: Invalid request.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /users/me:
+    get:
+      operationId: getMe
+      summary: Get the current user profile
+      responses:
+        '200':
+          description: Current user returned.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserProfile'
+
+  /users:
+    get:
+      operationId: listUsers
+      summary: List users
+      responses:
+        '200':
+          description: Users returned.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/UserProfile'
+
+  /users/{userId}/role:
+    patch:
+      operationId: updateUserRole
+      summary: Update a user's role
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [role]
+              properties:
+                role:
+                  type: string
+                  enum: [admin, estimator, installer]
+      responses:
+        '200':
+          description: User role updated.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserProfile'
+        '404':
+          description: Customer not found.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /customers/{customerId}/orders/{orderId}:
+    get:
+      operationId: getCustomerOrder
+      summary: Get a customer order
+      parameters:
+        - $ref: '#/components/parameters/CustomerId'
+        - $ref: '#/components/parameters/OrderId'
+      responses:
+        '200':
+          description: Order returned.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrderWithPayments'
+        '400':
+          description: Invalid request.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Order or customer not found.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /customers/{customerId}/orders/{orderId}/payments:
+    post:
+      operationId: addOrderPayment
+      summary: Add a payment to an order
+      parameters:
+        - $ref: '#/components/parameters/CustomerId'
+        - $ref: '#/components/parameters/OrderId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AddOrderPaymentRequest'
+      responses:
+        '201':
+          description: Payment added.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrderPayment'
+        '400':
+          description: Invalid request.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Order or customer not found.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /customers/{customerId}/orders/{orderId}/payments/{paymentId}:
+    delete:
+      operationId: removeOrderPayment
+      summary: Remove a payment from an order
+      parameters:
+        - $ref: '#/components/parameters/CustomerId'
+        - $ref: '#/components/parameters/OrderId'
+        - $ref: '#/components/parameters/PaymentId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RemoveOrderPaymentRequest'
+      responses:
+        '200':
+          description: Payment removed.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrderPayment'
+        '400':
+          description: Invalid request.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Order, customer, or payment not found.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /customers/{customerId}/orders/{orderId}/archive:
+    post:
+      operationId: archiveOrder
+      summary: Archive an order
+      parameters:
+        - $ref: '#/components/parameters/CustomerId'
+        - $ref: '#/components/parameters/OrderId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ArchiveOrderRequest'
+      responses:
+        '200':
+          description: Order archived.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Order'
+        '400':
+          description: Invalid request.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Order or customer not found.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /inventory/slabs/{slabId}:
+    get:
+      operationId: getSlab
+      summary: Get slab detail
+      parameters:
+        - $ref: '#/components/parameters/SlabId'
+      responses:
+        '200':
+          description: Slab returned.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Slab'
+        '404':
+          description: Slab not found.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    patch:
+      operationId: updateSlab
+      summary: Update slab fields
+      parameters:
+        - $ref: '#/components/parameters/SlabId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateSlabRequest'
+      responses:
+        '200':
+          description: Slab updated.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Slab'
+        '400':
+          description: Invalid request.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Slab not found.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Slab status does not allow update.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    delete:
+      operationId: archiveSlab
+      summary: Archive slab
+      parameters:
+        - $ref: '#/components/parameters/SlabId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ActorRequest'
+      responses:
+        '200':
+          description: Slab archived.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Slab'
+
+  /inventory/slabs/{slabId}/cut:
+    post:
+      operationId: cutSlab
+      summary: Mark slab cut and optionally create remnants
+      parameters:
+        - $ref: '#/components/parameters/SlabId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CutSlabRequest'
+      responses:
+        '200':
+          description: Slab cut.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CutSlabResponse'
+
+  /customers/{customerId}/projects/{projectId}/slabs:
+    get:
+      operationId: listProjectSlabs
+      summary: List slabs attached to a project
+      parameters:
+        - $ref: '#/components/parameters/CustomerId'
+        - $ref: '#/components/parameters/ProjectId'
+      responses:
+        '200':
+          description: Project slabs returned.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data, projectSlabs]
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Slab'
+                  projectSlabs:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ProjectSlab'
+    post:
+      operationId: attachProjectSlab
+      summary: Attach a slab to a project
+      parameters:
+        - $ref: '#/components/parameters/CustomerId'
+        - $ref: '#/components/parameters/ProjectId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AttachProjectSlabRequest'
+      responses:
+        '201':
+          description: Slab attached to project.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProjectSlab'
+
+  /customers/{customerId}/projects/{projectId}/slabs/{slabId}:
+    delete:
+      operationId: detachProjectSlab
+      summary: Detach a slab from a project
+      parameters:
+        - $ref: '#/components/parameters/CustomerId'
+        - $ref: '#/components/parameters/ProjectId'
+        - $ref: '#/components/parameters/SlabId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ActorRequest'
+      responses:
+        '200':
+          description: Slab detached from project.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProjectSlab'
+
+  /customers/{customerId}/projects/{projectId}/slabs/{slabId}/cut:
+    post:
+      operationId: cutProjectSlab
+      summary: Cut a slab from project context
+      parameters:
+        - $ref: '#/components/parameters/CustomerId'
+        - $ref: '#/components/parameters/ProjectId'
+        - $ref: '#/components/parameters/SlabId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CutSlabRequest'
+      responses:
+        '200':
+          description: Project slab cut.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CutSlabResponse'
+
   /health:
     get:
       operationId: healthCheck
@@ -2435,6 +4474,34 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
 
+  /customers/{customerId}/quotes/{quoteId}/send-email:
+    post:
+      operationId: sendCustomerQuoteEmail
+      summary: Email a quote PDF to the customer's primary contact
+      parameters:
+        - $ref: '#/components/parameters/CustomerId'
+        - $ref: '#/components/parameters/QuoteId'
+      responses:
+        '200':
+          description: Quote PDF emailed.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [sent, to]
+                properties:
+                  sent:
+                    type: boolean
+                  to:
+                    type: string
+                    format: email
+        '422':
+          description: No primary contact with an email address exists.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
   /customers/{customerId}/quotes/{quoteId}/accept:
     post:
       operationId: acceptCustomerQuote
@@ -2541,6 +4608,726 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
         '404':
           description: Quote or customer not found.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /customers/{customerId}/quotes/{quoteId}/convert:
+    post:
+      operationId: convertQuoteToOrder
+      summary: Convert an accepted quote to an order
+      parameters:
+        - $ref: '#/components/parameters/CustomerId'
+        - $ref: '#/components/parameters/QuoteId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ConvertQuoteToOrderRequest'
+      responses:
+        '201':
+          description: Quote converted to order.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrderWithPayments'
+        '400':
+          description: Invalid request.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Quote or customer not found.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Quote cannot be converted.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /customers/{customerId}/quotes/{quoteId}/areas:
+    get:
+      operationId: listQuoteAreas
+      summary: List all areas for a quote
+      parameters:
+        - $ref: '#/components/parameters/CustomerId'
+        - $ref: '#/components/parameters/QuoteId'
+      responses:
+        '200':
+          description: Areas returned.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/QuoteArea'
+        '404':
+          description: Quote or customer not found.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    post:
+      operationId: createQuoteArea
+      summary: Create a quote area (draft only)
+      parameters:
+        - $ref: '#/components/parameters/CustomerId'
+        - $ref: '#/components/parameters/QuoteId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateQuoteAreaRequest'
+      responses:
+        '201':
+          description: Area created.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/QuoteArea'
+        '400':
+          description: Invalid request.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Quote or customer not found.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Quote is not in draft status.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /customers/{customerId}/quotes/{quoteId}/areas/{areaId}:
+    patch:
+      operationId: updateQuoteArea
+      summary: Update a quote area (draft only)
+      parameters:
+        - $ref: '#/components/parameters/CustomerId'
+        - $ref: '#/components/parameters/QuoteId'
+        - $ref: '#/components/parameters/AreaId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateQuoteAreaRequest'
+      responses:
+        '200':
+          description: Area updated.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/QuoteArea'
+        '400':
+          description: Invalid request.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Area, quote, or customer not found.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Quote is not in draft status.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    delete:
+      operationId: removeQuoteArea
+      summary: Remove a quote area (draft only)
+      parameters:
+        - $ref: '#/components/parameters/CustomerId'
+        - $ref: '#/components/parameters/QuoteId'
+        - $ref: '#/components/parameters/AreaId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ActorRequest'
+      responses:
+        '200':
+          description: Area removed.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/QuoteArea'
+        '400':
+          description: Invalid request.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Area, quote, or customer not found.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Area has line items or quote is not in draft status.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /customers/{customerId}/quotes/{quoteId}/areas/{areaId}/pieces:
+    get:
+      operationId: listQuoteAreaPieces
+      summary: List counter pieces for a quote area
+      parameters:
+        - $ref: '#/components/parameters/CustomerId'
+        - $ref: '#/components/parameters/QuoteId'
+        - $ref: '#/components/parameters/AreaId'
+      responses:
+        '200':
+          description: Counter pieces returned.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/CounterPiece'
+        '404':
+          description: Area, quote, or customer not found.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    post:
+      operationId: createQuoteAreaPiece
+      summary: Add a counter piece to a quote area (draft only)
+      parameters:
+        - $ref: '#/components/parameters/CustomerId'
+        - $ref: '#/components/parameters/QuoteId'
+        - $ref: '#/components/parameters/AreaId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateCounterPieceRequest'
+      responses:
+        '201':
+          description: Counter piece added.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CounterPiece'
+        '400':
+          description: Invalid request.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Area, quote, or customer not found.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Quote is not in draft status.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /customers/{customerId}/quotes/{quoteId}/areas/{areaId}/pieces/{id}:
+    patch:
+      operationId: updateQuoteAreaPiece
+      summary: Update a counter piece (draft only)
+      parameters:
+        - $ref: '#/components/parameters/CustomerId'
+        - $ref: '#/components/parameters/QuoteId'
+        - $ref: '#/components/parameters/AreaId'
+        - $ref: '#/components/parameters/PieceId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateCounterPieceRequest'
+      responses:
+        '200':
+          description: Counter piece updated.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CounterPiece'
+        '400':
+          description: Invalid request.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Counter piece, area, quote, or customer not found.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Quote is not in draft status.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    delete:
+      operationId: removeQuoteAreaPiece
+      summary: Remove a counter piece (draft only)
+      parameters:
+        - $ref: '#/components/parameters/CustomerId'
+        - $ref: '#/components/parameters/QuoteId'
+        - $ref: '#/components/parameters/AreaId'
+        - $ref: '#/components/parameters/PieceId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ActorRequest'
+      responses:
+        '200':
+          description: Counter piece removed.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CounterPiece'
+        '400':
+          description: Invalid request.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Counter piece, area, quote, or customer not found.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Quote is not in draft status.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /customers/{customerId}/quotes/{quoteId}/areas/{areaId}/edges:
+    get:
+      operationId: listQuoteAreaEdges
+      summary: List edge segments for a quote area
+      parameters:
+        - $ref: '#/components/parameters/CustomerId'
+        - $ref: '#/components/parameters/QuoteId'
+        - $ref: '#/components/parameters/AreaId'
+      responses:
+        '200':
+          description: Edge segments returned.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/EdgeSegment'
+        '404':
+          description: Area, quote, or customer not found.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    post:
+      operationId: createQuoteAreaEdge
+      summary: Add an edge segment to a quote area (draft only)
+      parameters:
+        - $ref: '#/components/parameters/CustomerId'
+        - $ref: '#/components/parameters/QuoteId'
+        - $ref: '#/components/parameters/AreaId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateEdgeSegmentRequest'
+      responses:
+        '201':
+          description: Edge segment added.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EdgeSegment'
+        '400':
+          description: Invalid request.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Area, quote, or customer not found.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Quote is not in draft status.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /customers/{customerId}/quotes/{quoteId}/areas/{areaId}/edges/{id}:
+    patch:
+      operationId: updateQuoteAreaEdge
+      summary: Update an edge segment (draft only)
+      parameters:
+        - $ref: '#/components/parameters/CustomerId'
+        - $ref: '#/components/parameters/QuoteId'
+        - $ref: '#/components/parameters/AreaId'
+        - $ref: '#/components/parameters/EdgeId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateEdgeSegmentRequest'
+      responses:
+        '200':
+          description: Edge segment updated.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EdgeSegment'
+        '400':
+          description: Invalid request.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Edge segment, area, quote, or customer not found.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Quote is not in draft status.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    delete:
+      operationId: removeQuoteAreaEdge
+      summary: Remove an edge segment (draft only)
+      parameters:
+        - $ref: '#/components/parameters/CustomerId'
+        - $ref: '#/components/parameters/QuoteId'
+        - $ref: '#/components/parameters/AreaId'
+        - $ref: '#/components/parameters/EdgeId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ActorRequest'
+      responses:
+        '200':
+          description: Edge segment removed.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EdgeSegment'
+        '400':
+          description: Invalid request.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Edge segment, area, quote, or customer not found.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Quote is not in draft status.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /customers/{customerId}/quotes/{quoteId}/areas/{areaId}/sinks:
+    get:
+      operationId: listQuoteAreaSinks
+      summary: List sink cutouts for a quote area
+      parameters:
+        - $ref: '#/components/parameters/CustomerId'
+        - $ref: '#/components/parameters/QuoteId'
+        - $ref: '#/components/parameters/AreaId'
+      responses:
+        '200':
+          description: Sink cutouts returned.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/SinkCutout'
+        '404':
+          description: Area, quote, or customer not found.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    post:
+      operationId: createQuoteAreaSink
+      summary: Add a sink cutout to a quote area (draft only)
+      parameters:
+        - $ref: '#/components/parameters/CustomerId'
+        - $ref: '#/components/parameters/QuoteId'
+        - $ref: '#/components/parameters/AreaId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateSinkCutoutRequest'
+      responses:
+        '201':
+          description: Sink cutout added.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SinkCutout'
+        '400':
+          description: Invalid request.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Area, quote, or customer not found.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Quote is not in draft status.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /customers/{customerId}/quotes/{quoteId}/areas/{areaId}/sinks/{id}:
+    patch:
+      operationId: updateQuoteAreaSink
+      summary: Update a sink cutout (draft only)
+      parameters:
+        - $ref: '#/components/parameters/CustomerId'
+        - $ref: '#/components/parameters/QuoteId'
+        - $ref: '#/components/parameters/AreaId'
+        - $ref: '#/components/parameters/SinkId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateSinkCutoutRequest'
+      responses:
+        '200':
+          description: Sink cutout updated.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SinkCutout'
+        '400':
+          description: Invalid request.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Sink cutout, area, quote, or customer not found.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Quote is not in draft status.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    delete:
+      operationId: removeQuoteAreaSink
+      summary: Remove a sink cutout (draft only)
+      parameters:
+        - $ref: '#/components/parameters/CustomerId'
+        - $ref: '#/components/parameters/QuoteId'
+        - $ref: '#/components/parameters/AreaId'
+        - $ref: '#/components/parameters/SinkId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ActorRequest'
+      responses:
+        '200':
+          description: Sink cutout removed.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SinkCutout'
+        '400':
+          description: Invalid request.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Sink cutout, area, quote, or customer not found.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Quote is not in draft status.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /customers/{customerId}/quotes/{quoteId}/areas/{areaId}/pricing:
+    get:
+      operationId: listQuoteAreaPricingLines
+      summary: List generated pricing lines for a quote area
+      parameters:
+        - $ref: '#/components/parameters/CustomerId'
+        - $ref: '#/components/parameters/QuoteId'
+        - $ref: '#/components/parameters/AreaId'
+      responses:
+        '200':
+          description: Generated pricing lines returned.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/GeneratedPriceLine'
+        '404':
+          description: Area, quote, or customer not found.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /customers/{customerId}/quotes/{quoteId}/areas/{areaId}/pricing/generate:
+    post:
+      operationId: generateQuoteAreaPricingLines
+      summary: Generate pricing lines for a quote area (draft only)
+      parameters:
+        - $ref: '#/components/parameters/CustomerId'
+        - $ref: '#/components/parameters/QuoteId'
+        - $ref: '#/components/parameters/AreaId'
+      responses:
+        '201':
+          description: Generated pricing lines replaced.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/GeneratedPriceLine'
+        '404':
+          description: Area, quote, or customer not found.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Quote is not in draft status.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /customers/{customerId}/quotes/{quoteId}/areas/{areaId}/pricing/{lineId}/override:
+    patch:
+      operationId: overrideQuoteAreaPricingLine
+      summary: Override a generated pricing line
+      parameters:
+        - $ref: '#/components/parameters/CustomerId'
+        - $ref: '#/components/parameters/QuoteId'
+        - $ref: '#/components/parameters/AreaId'
+        - name: lineId
+          in: path
+          required: true
+          description: UUID of the generated price line
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OverrideGeneratedPriceLineBody'
+      responses:
+        '200':
+          description: Generated pricing line override updated.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GeneratedPriceLine'
+        '400':
+          description: Invalid request.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Generated price line, area, quote, or customer not found.
           content:
             application/json:
               schema:
@@ -3026,3 +5813,133 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+
+  /customers/{customerId}/quotes/{quoteId}/areas/{areaId}/drawing:
+    get:
+      operationId: getAreaDrawingRevision
+      summary: Get latest drawing revision for a quote area
+      tags: [Quotes]
+      parameters:
+        - $ref: '#/components/parameters/CustomerId'
+        - $ref: '#/components/parameters/QuoteId'
+        - $ref: '#/components/parameters/AreaId'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    oneOf:
+                      - $ref: '#/components/schemas/DrawingRevision'
+                      - type: 'null'
+        '404':
+          description: Quote or area not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    post:
+      operationId: saveAreaDrawingRevision
+      summary: Save a new drawing revision for a quote area
+      tags: [Quotes]
+      parameters:
+        - $ref: '#/components/parameters/CustomerId'
+        - $ref: '#/components/parameters/QuoteId'
+        - $ref: '#/components/parameters/AreaId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SaveDrawingRevisionBody'
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DrawingRevision'
+        '404':
+          description: Quote or area not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Quote is not in draft status
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /portal/quotes/{token}:
+    get:
+      operationId: getPortalQuote
+      summary: Get quote by share token (public)
+      parameters:
+        - name: token
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Quote for customer portal
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PortalQuote'
+        '404':
+          description: Quote not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /portal/quotes/{token}/accept:
+    post:
+      operationId: acceptPortalQuote
+      summary: Accept quote via share link (public)
+      parameters:
+        - name: token
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Accepted
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+
+  /portal/quotes/{token}/reject:
+    post:
+      operationId: rejectPortalQuote
+      summary: Reject quote via share link (public)
+      parameters:
+        - name: token
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Rejected
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean

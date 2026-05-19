@@ -17,6 +17,8 @@ Use this as the working project checklist.
 - [x] Add Better Auth email/password flow in web app
 - [x] Generate typed API client from OpenAPI
 - [x] Build Quotes vertical slice: API, DB, events, tests, generated client
+- [x] Audit Moraware CounterGo/Systemize workflows for replacement parity
+- [x] Create Moraware parity roadmap
 
 ## Right Now
 
@@ -132,9 +134,27 @@ Use this as the working project checklist.
 - [x] Create jobs/projects module spec
 - [x] Create quotes/estimates module spec
 - [x] Build first projects module vertical slice
-- [ ] Create scheduling/calendar module spec
-- [ ] Create inventory/slabs module spec
+- [x] Create scheduling/calendar module spec
+- [x] Create inventory/slabs module spec
 - [ ] Create invoices/payments module spec if client needs it
+
+## Phase 10: Moraware Parity Rebuild
+
+- [x] Capture Moraware quote, drawing, pricing, job, fabrication, forms, calendar, settings, and reports in `docs/moraware-countergo-audit.md`
+- [x] Create parity roadmap in `docs/specs/moraware-parity-roadmap.md`
+- [ ] Upgrade quote spec for quote areas/rooms, drawing revisions, counter pieces, edge segments, corner treatments, sinks, faucet holes, generated price lines, overrides, and manual items
+- [ ] Add quote drawing calculator domain tests: rounding to 1/16 inch, sq ft, linear ft, splash quantities, cutout/faucet counts
+- [ ] Add price engine spec: price lists, revisions, product rules, fabrication rules, edge/splash/cutout/faucet rules, override audit
+- [ ] Add pricing calculator golden tests using Island and Laundry/Desk sample
+- [ ] Decide whether production jobs are a new `jobs` module or an expansion of `projects`
+- [ ] Add production jobs spec: job number, job info, job activities, activity types/statuses, assignees, job forms, templates/processes, job issues
+- [ ] Add fabrication integration tests: create job activity, schedule Tentative Fabrication, assign worker, change status, complete
+- [ ] Add configurable forms spec: Job Checklist, Order Area Details, field types, dropdown custom values, linked order/area fields
+- [ ] Add calendar/dispatch spec: fabrication/install/template views, filters, batch update, map, print packet
+- [ ] Add admin configuration spec: measurement defaults, edge profiles, sink catalog, price lists, email templates, PDF forms, activity config
+- [ ] Add reports spec: installed sq ft by month, jobs by salesperson, install sq ft by week, sales by month
+- [ ] Add browser/E2E harness for quote create/edit/detail and fabrication schedule workflows
+- [ ] Add visual/DOM checks for dense quote and job screens
 
 ## Weekly Review
 

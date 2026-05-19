@@ -7,6 +7,7 @@ import {
   updateScheduledEventSchema
 } from '@stoneboyz/domain';
 import { z } from 'zod';
+import { CurrentUser } from '../auth/current-user.decorator.js';
 import { ScheduledEventsService } from './scheduled-events.service.js';
 
 const customerIdSchema = z.string().uuid();
@@ -59,7 +60,7 @@ export class ScheduledEventsController {
   }
 
   @Post()
-  async create(@Param('customerId') customerId: string, @Body() body: unknown) {
+  async create(@Param('customerId') customerId: string, @Body() body: unknown, @CurrentUser() actorUserId: string) {
     const parsedCustomerId = customerIdSchema.safeParse(customerId);
 
     if (!parsedCustomerId.success) {
@@ -72,7 +73,7 @@ export class ScheduledEventsController {
       throw badRequest(formatZodError(parsedBody.error));
     }
 
-    return this.scheduledEventsService.create(parsedCustomerId.data, parsedBody.data);
+    return this.scheduledEventsService.create(parsedCustomerId.data, { ...parsedBody.data, actorUserId });
   }
 
   @Get(':eventId')
@@ -83,7 +84,7 @@ export class ScheduledEventsController {
   }
 
   @Patch(':eventId')
-  async update(@Param('customerId') customerId: string, @Param('eventId') eventId: string, @Body() body: unknown) {
+  async update(@Param('customerId') customerId: string, @Param('eventId') eventId: string, @Body() body: unknown, @CurrentUser() actorUserId: string) {
     const { parsedCustomerId, parsedEventId } = this.parseCustomerEventIds(customerId, eventId);
     const parsedBody = updateScheduledEventSchema.safeParse(body);
 
@@ -91,12 +92,12 @@ export class ScheduledEventsController {
       throw badRequest(formatZodError(parsedBody.error));
     }
 
-    return this.scheduledEventsService.update(parsedCustomerId, parsedEventId, parsedBody.data);
+    return this.scheduledEventsService.update(parsedCustomerId, parsedEventId, { ...parsedBody.data, actorUserId });
   }
 
   @Post(':eventId/confirm')
   @HttpCode(200)
-  async confirm(@Param('customerId') customerId: string, @Param('eventId') eventId: string, @Body() body: unknown) {
+  async confirm(@Param('customerId') customerId: string, @Param('eventId') eventId: string, @Body() body: unknown, @CurrentUser() actorUserId: string) {
     const { parsedCustomerId, parsedEventId } = this.parseCustomerEventIds(customerId, eventId);
     const parsedBody = transitionScheduledEventSchema.safeParse(body);
 
@@ -104,12 +105,12 @@ export class ScheduledEventsController {
       throw badRequest(formatZodError(parsedBody.error));
     }
 
-    return this.scheduledEventsService.confirm(parsedCustomerId, parsedEventId, parsedBody.data);
+    return this.scheduledEventsService.confirm(parsedCustomerId, parsedEventId, { ...parsedBody.data, actorUserId });
   }
 
   @Post(':eventId/start')
   @HttpCode(200)
-  async start(@Param('customerId') customerId: string, @Param('eventId') eventId: string, @Body() body: unknown) {
+  async start(@Param('customerId') customerId: string, @Param('eventId') eventId: string, @Body() body: unknown, @CurrentUser() actorUserId: string) {
     const { parsedCustomerId, parsedEventId } = this.parseCustomerEventIds(customerId, eventId);
     const parsedBody = transitionScheduledEventSchema.safeParse(body);
 
@@ -117,12 +118,12 @@ export class ScheduledEventsController {
       throw badRequest(formatZodError(parsedBody.error));
     }
 
-    return this.scheduledEventsService.start(parsedCustomerId, parsedEventId, parsedBody.data);
+    return this.scheduledEventsService.start(parsedCustomerId, parsedEventId, { ...parsedBody.data, actorUserId });
   }
 
   @Post(':eventId/complete')
   @HttpCode(200)
-  async complete(@Param('customerId') customerId: string, @Param('eventId') eventId: string, @Body() body: unknown) {
+  async complete(@Param('customerId') customerId: string, @Param('eventId') eventId: string, @Body() body: unknown, @CurrentUser() actorUserId: string) {
     const { parsedCustomerId, parsedEventId } = this.parseCustomerEventIds(customerId, eventId);
     const parsedBody = transitionScheduledEventSchema.safeParse(body);
 
@@ -130,12 +131,12 @@ export class ScheduledEventsController {
       throw badRequest(formatZodError(parsedBody.error));
     }
 
-    return this.scheduledEventsService.complete(parsedCustomerId, parsedEventId, parsedBody.data);
+    return this.scheduledEventsService.complete(parsedCustomerId, parsedEventId, { ...parsedBody.data, actorUserId });
   }
 
   @Post(':eventId/cancel')
   @HttpCode(200)
-  async cancel(@Param('customerId') customerId: string, @Param('eventId') eventId: string, @Body() body: unknown) {
+  async cancel(@Param('customerId') customerId: string, @Param('eventId') eventId: string, @Body() body: unknown, @CurrentUser() actorUserId: string) {
     const { parsedCustomerId, parsedEventId } = this.parseCustomerEventIds(customerId, eventId);
     const parsedBody = transitionScheduledEventSchema.safeParse(body);
 
@@ -143,12 +144,12 @@ export class ScheduledEventsController {
       throw badRequest(formatZodError(parsedBody.error));
     }
 
-    return this.scheduledEventsService.cancel(parsedCustomerId, parsedEventId, parsedBody.data);
+    return this.scheduledEventsService.cancel(parsedCustomerId, parsedEventId, { ...parsedBody.data, actorUserId });
   }
 
   @Post(':eventId/archive')
   @HttpCode(200)
-  async archive(@Param('customerId') customerId: string, @Param('eventId') eventId: string, @Body() body: unknown) {
+  async archive(@Param('customerId') customerId: string, @Param('eventId') eventId: string, @Body() body: unknown, @CurrentUser() actorUserId: string) {
     const { parsedCustomerId, parsedEventId } = this.parseCustomerEventIds(customerId, eventId);
     const parsedBody = archiveScheduledEventSchema.safeParse(body);
 
@@ -156,7 +157,7 @@ export class ScheduledEventsController {
       throw badRequest(formatZodError(parsedBody.error));
     }
 
-    return this.scheduledEventsService.archive(parsedCustomerId, parsedEventId, parsedBody.data);
+    return this.scheduledEventsService.archive(parsedCustomerId, parsedEventId, { ...parsedBody.data, actorUserId });
   }
 
   private parseCustomerEventIds(customerId: string, eventId: string): { parsedCustomerId: string; parsedEventId: string } {

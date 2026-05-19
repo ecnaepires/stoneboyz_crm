@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { getApiClient } from '@/lib/api';
+import { getApiClientWithAuth } from '@/lib/api';
 import { restoreFromArchivedListAction } from '../_actions';
 import {
   Table,
@@ -12,7 +12,7 @@ import {
 import { Button } from '@/components/ui/button';
 
 export default async function ArchivedCustomersPage() {
-  const client = getApiClient();
+  const client = await getApiClientWithAuth();
   const { data, error } = await client.GET('/customers', {
     params: { query: { limit: 50, includeArchived: true } },
   });

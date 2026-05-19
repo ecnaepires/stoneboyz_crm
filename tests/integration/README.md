@@ -15,3 +15,10 @@ First customer tests:
 - `POST /customers` creates a customer
 - `GET /customers/{customerId}` returns a customer
 - Invalid request data returns typed validation errors
+
+Going forward, Moraware-parity integration tests must cover:
+- quote areas, drawing revisions, generated price lines, overrides, and manual items
+- quote accept -> production job creation/attach
+- fabrication activity schedule/status/assignee/duration changes
+- job checklist and order-area form definitions/responses
+- calendar filters, batch updates, and packet preview endpoints when added

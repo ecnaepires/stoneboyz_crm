@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { getApiClient } from '@/lib/api';
+import { getApiClientWithAuth } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { Select } from '@/components/ui/select';
 import {
@@ -17,7 +17,7 @@ export default async function ProjectsPage({
   searchParams: Promise<{ search?: string; status?: 'draft' | 'active' | 'completed' }>;
 }) {
   const { search, status } = await searchParams;
-  const client = getApiClient();
+  const client = await getApiClientWithAuth();
   const { data, error } = await client.GET('/projects', {
     params: {
       query: {

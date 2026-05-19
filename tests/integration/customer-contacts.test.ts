@@ -8,6 +8,8 @@ import type { Pool } from 'pg';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { AppModule } from '../../apps/api/src/app.module.js';
 import { DATABASE_POOL } from '../../apps/api/src/database.provider.js';
+import { seedTestSession } from './helpers/auth.js';
+import { setTestAuthToken } from './helpers/test-auth.js';
 
 const SEEDED_CUSTOMER_ID = '11111111-1111-4111-8111-111111111111';
 const SEEDED_PRIMARY_CONTACT_ID = '33333333-3333-4333-8333-333333333333';
@@ -76,6 +78,8 @@ describe('customer contacts', () => {
 
     baseUrl = await app.getUrl();
     await resetDatabase(app);
+    const _token = await seedTestSession(app.get(DATABASE_POOL));
+    setTestAuthToken(_token);
 
     const emitter = app.get(EventEmitter2);
     captured = [];

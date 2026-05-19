@@ -1,6 +1,7 @@
 import { BadRequestException, Body, Controller, Get, HttpCode, Param, Patch, Post, Query } from '@nestjs/common';
 import { archiveProjectSchema, createProjectSchema, listProjectsSchema, updateProjectSchema } from '@stoneboyz/domain';
 import { z } from 'zod';
+import { CurrentUser } from '../auth/current-user.decorator.js';
 import { ProjectsService } from './projects.service.js';
 
 const projectIdSchema = z.string().uuid();
@@ -55,7 +56,7 @@ export class ProjectsController {
   }
 
   @Post()
-  async create(@Body() body: unknown) {
+  async create(@Body() body: unknown, @CurrentUser() actorUserId: string) {
     const parsed = createProjectSchema.safeParse(body);
 
     if (!parsed.success) {
@@ -66,7 +67,7 @@ export class ProjectsController {
       });
     }
 
-    return this.projectsService.create(parsed.data);
+    return this.projectsService.create({ ...parsed.data, actorUserId });
   }
 
   @Get('archived')
@@ -104,7 +105,7 @@ export class ProjectsController {
   }
 
   @Patch(':projectId')
-  async update(@Param('projectId') projectId: string, @Body() body: unknown) {
+  async update(@Param('projectId') projectId: string, @Body() body: unknown, @CurrentUser() actorUserId: string) {
     const parsedProjectId = projectIdSchema.safeParse(projectId);
 
     if (!parsedProjectId.success) {
@@ -125,12 +126,12 @@ export class ProjectsController {
       });
     }
 
-    return this.projectsService.update(parsedProjectId.data, parsedBody.data);
+    return this.projectsService.update(parsedProjectId.data, { ...parsedBody.data, actorUserId });
   }
 
   @Post(':projectId/archive')
   @HttpCode(200)
-  async archive(@Param('projectId') projectId: string, @Body() body: unknown) {
+  async archive(@Param('projectId') projectId: string, @Body() body: unknown, @CurrentUser() actorUserId: string) {
     const parsedProjectId = projectIdSchema.safeParse(projectId);
 
     if (!parsedProjectId.success) {
@@ -151,6 +152,6 @@ export class ProjectsController {
       });
     }
 
-    return this.projectsService.archive(parsedProjectId.data, parsedBody.data);
+    return this.projectsService.archive(parsedProjectId.data, { ...parsedBody.data, actorUserId });
   }
 }

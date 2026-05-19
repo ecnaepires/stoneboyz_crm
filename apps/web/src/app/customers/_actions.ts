@@ -2,13 +2,12 @@
 
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
-import { getApiClient } from '@/lib/api';
+import { getApiClientWithAuth } from '@/lib/api';
 import { getActorUserId } from '@/lib/actor';
 
 export async function createCustomerAction(formData: FormData) {
-  const client = getApiClient();
-  const actorUserId = await getActorUserId();
-  const ownerUserId = actorUserId;
+  const client = await getApiClientWithAuth();
+  const ownerUserId = await getActorUserId();
 
   const customerKind = formData.get('customerKind') as string;
   const name = formData.get('name') as string;
@@ -25,7 +24,6 @@ export async function createCustomerAction(formData: FormData) {
     customerKind === 'person' ? (formData.get('lastName') as string | null) : undefined;
 
   const body = {
-    actorUserId,
     ownerUserId,
     customerKind: customerKind as 'company' | 'person',
     name,
@@ -49,12 +47,11 @@ export async function createCustomerAction(formData: FormData) {
 }
 
 export async function archiveCustomerAction(customerId: string) {
-  const client = getApiClient();
-  const actorUserId = await getActorUserId();
+  const client = await getApiClientWithAuth();
 
   const { error } = await client.POST('/customers/{customerId}/archive', {
     params: { path: { customerId } },
-    body: { actorUserId },
+    body: {},
   });
 
   if (error) {
@@ -65,12 +62,11 @@ export async function archiveCustomerAction(customerId: string) {
 }
 
 export async function restoreCustomerAction(customerId: string) {
-  const client = getApiClient();
-  const actorUserId = await getActorUserId();
+  const client = await getApiClientWithAuth();
 
   const { error } = await client.POST('/customers/{customerId}/restore', {
     params: { path: { customerId } },
-    body: { actorUserId },
+    body: {},
   });
 
   if (error) {
@@ -81,19 +77,17 @@ export async function restoreCustomerAction(customerId: string) {
 }
 
 export async function restoreFromArchivedListAction(customerId: string) {
-  const client = getApiClient();
-  const actorUserId = await getActorUserId();
+  const client = await getApiClientWithAuth();
   const { error } = await client.POST('/customers/{customerId}/restore', {
     params: { path: { customerId } },
-    body: { actorUserId },
+    body: {},
   });
   if (error) throw new Error('Failed to restore customer');
   redirect('/customers/archived');
 }
 
 export async function updateCustomerAction(customerId: string, formData: FormData) {
-  const client = getApiClient();
-  const actorUserId = await getActorUserId();
+  const client = await getApiClientWithAuth();
 
   const customerKind = formData.get('customerKind') as string;
   const name = formData.get('name') as string;
@@ -112,7 +106,6 @@ export async function updateCustomerAction(customerId: string, formData: FormDat
   const { error } = await client.PATCH('/customers/{customerId}', {
     params: { path: { customerId } },
     body: {
-      actorUserId,
       customerKind: customerKind as 'company' | 'person',
       name,
       status: status as 'lead' | 'qualified' | 'active' | 'inactive' | 'churned',
@@ -134,12 +127,11 @@ export async function updateCustomerAction(customerId: string, formData: FormDat
 }
 
 export async function addNoteAction(customerId: string, formData: FormData) {
-  const client = getApiClient();
-  const actorUserId = await getActorUserId();
+  const client = await getApiClientWithAuth();
 
   const { error } = await client.POST('/customers/{customerId}/notes', {
     params: { path: { customerId } },
-    body: { actorUserId, body: formData.get('body') as string },
+    body: { body: formData.get('body') as string },
   });
 
   if (error) {
@@ -150,12 +142,11 @@ export async function addNoteAction(customerId: string, formData: FormData) {
 }
 
 export async function deleteNoteAction(customerId: string, noteId: string) {
-  const client = getApiClient();
-  const actorUserId = await getActorUserId();
+  const client = await getApiClientWithAuth();
 
   const { error } = await client.DELETE('/customers/{customerId}/notes/{noteId}', {
     params: { path: { customerId, noteId } },
-    body: { actorUserId },
+    body: {},
   });
 
   if (error) {
@@ -166,8 +157,7 @@ export async function deleteNoteAction(customerId: string, noteId: string) {
 }
 
 export async function addContactAction(customerId: string, formData: FormData) {
-  const client = getApiClient();
-  const actorUserId = await getActorUserId();
+  const client = await getApiClientWithAuth();
 
   const firstName = formData.get('firstName') as string;
   const lastName = formData.get('lastName') as string | null;
@@ -178,7 +168,6 @@ export async function addContactAction(customerId: string, formData: FormData) {
   const { error } = await client.POST('/customers/{customerId}/contacts', {
     params: { path: { customerId } },
     body: {
-      actorUserId,
       firstName,
       isPrimary: false,
       isBilling: false,
@@ -197,12 +186,11 @@ export async function addContactAction(customerId: string, formData: FormData) {
 }
 
 export async function deleteContactAction(customerId: string, contactId: string) {
-  const client = getApiClient();
-  const actorUserId = await getActorUserId();
+  const client = await getApiClientWithAuth();
 
   const { error } = await client.DELETE('/customers/{customerId}/contacts/{contactId}', {
     params: { path: { customerId, contactId } },
-    body: { actorUserId },
+    body: {},
   });
 
   if (error) {
@@ -213,12 +201,11 @@ export async function deleteContactAction(customerId: string, contactId: string)
 }
 
 export async function makePrimaryContactAction(customerId: string, contactId: string) {
-  const client = getApiClient();
-  const actorUserId = await getActorUserId();
+  const client = await getApiClientWithAuth();
 
   const { error } = await client.POST('/customers/{customerId}/contacts/{contactId}/make-primary', {
     params: { path: { customerId, contactId } },
-    body: { actorUserId },
+    body: {},
   });
 
   if (error) {
@@ -229,12 +216,11 @@ export async function makePrimaryContactAction(customerId: string, contactId: st
 }
 
 export async function makeBillingContactAction(customerId: string, contactId: string) {
-  const client = getApiClient();
-  const actorUserId = await getActorUserId();
+  const client = await getApiClientWithAuth();
 
   const { error } = await client.POST('/customers/{customerId}/contacts/{contactId}/make-billing', {
     params: { path: { customerId, contactId } },
-    body: { actorUserId },
+    body: {},
   });
 
   if (error) {
@@ -245,8 +231,7 @@ export async function makeBillingContactAction(customerId: string, contactId: st
 }
 
 export async function addAddressAction(customerId: string, formData: FormData) {
-  const client = getApiClient();
-  const actorUserId = await getActorUserId();
+  const client = await getApiClientWithAuth();
 
   const type = formData.get('type') as string;
   const line1 = formData.get('line1') as string;
@@ -259,7 +244,6 @@ export async function addAddressAction(customerId: string, formData: FormData) {
   const { error } = await client.POST('/customers/{customerId}/addresses', {
     params: { path: { customerId } },
     body: {
-      actorUserId,
       type: type as 'billing' | 'shipping' | 'other',
       line1,
       city,
@@ -280,12 +264,11 @@ export async function addAddressAction(customerId: string, formData: FormData) {
 }
 
 export async function deleteAddressAction(customerId: string, addressId: string) {
-  const client = getApiClient();
-  const actorUserId = await getActorUserId();
+  const client = await getApiClientWithAuth();
 
   const { error } = await client.DELETE('/customers/{customerId}/addresses/{addressId}', {
     params: { path: { customerId, addressId } },
-    body: { actorUserId },
+    body: {},
   });
 
   if (error) {

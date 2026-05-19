@@ -96,3 +96,19 @@ The OpenAPI spec changed. Regenerate packages/api-client from docs/specs/api/ope
 Do not edit any generated file by hand.
 After regeneration, check if apps/web imports anything that changed shape.
 ```
+
+---
+
+## Add Moraware-Parity Workflow
+
+```text
+Add Moraware-parity workflow: [workflow name].
+Before writing code:
+1. Read docs/moraware-countergo-audit.md and docs/specs/moraware-parity-roadmap.md.
+2. Update the relevant module spec with entities, business rules, invalid states, and acceptance scenario.
+3. Update OpenAPI, event catalog, DB invariants, and scripts/check-spec-sync.mjs if contract/schema/events change.
+4. Add domain/unit tests for pure measurement, pricing, or transition logic.
+5. Add integration tests against real PostgreSQL.
+6. Add browser/E2E coverage if user workflow UI changes.
+Do not implement until spec and harness plan are clear.
+```
