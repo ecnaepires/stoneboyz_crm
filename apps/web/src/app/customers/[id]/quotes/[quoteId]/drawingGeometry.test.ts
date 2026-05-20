@@ -6,6 +6,8 @@ import {
   drawingShapeEdgeMatchesLine,
   drawingShapeEdgesEqual,
   drawingRectsToChainSegments,
+  isRectangularUnion,
+  visibleBoundaryEdges,
 } from "./drawingGeometry";
 
 const SCALE = 3;
@@ -109,5 +111,33 @@ describe("drawing geometry workflow rules", () => {
         { from: [0, 0], to: [0, 100] },
       ),
     ).toBe(true);
+  });
+
+  it("filters deleted boundary edges from visible edges", () => {
+    const rects = [{ x: 0, y: 0, w: 300, h: 76.5 }];
+    const rightEdge = {
+      from: [300, 0] as [number, number],
+      to: [300, 76.5] as [number, number],
+    };
+
+    const visible = visibleBoundaryEdges({
+      rects,
+      deletedLines: [rightEdge],
+    });
+
+    expect(visible).toHaveLength(3);
+    expect(
+      visible.some((edge) => drawingShapeEdgeMatchesLine(edge, rightEdge)),
+    ).toBe(false);
+  });
+
+  it("identifies rectangle unions so middle dimensions can be skipped", () => {
+    expect(isRectangularUnion([{ x: 0, y: 0, w: 300, h: 76.5 }])).toBe(true);
+    expect(
+      isRectangularUnion([
+        { x: 0, y: 0, w: 300, h: 76.5 },
+        { x: 223.5, y: 76.5, w: 76.5, h: 180 },
+      ]),
+    ).toBe(false);
   });
 });

@@ -37,6 +37,8 @@ import {
   buildOffsetSegment,
   buildReferenceLine,
   connectEdgesToRectangle,
+  isRectangularUnion,
+  visibleBoundaryEdges,
 } from "./drawingGeometry";
 
 const SCALE = 3;
@@ -1117,7 +1119,7 @@ function chainInnerDepthGuides(shape: ChainShapeLayout) {
     w: segment.w,
     h: segment.h,
   }));
-  if (rectUnionOutline(rects).length <= 8) return [];
+  if (isRectangularUnion(rects)) return [];
 
   const edges = mergeBoundaryEdges(rectUnionBoundary(rects));
   const verticalEdges = edges.filter(
@@ -4452,6 +4454,12 @@ export function DrawingCanvasInner({
                                   rects: lShape.rects,
                                 }
                               : null;
+                        const visibleCompoundEdges = compoundEdges
+                          ? visibleBoundaryEdges({
+                              rects: compoundEdges.rects,
+                              deletedLines,
+                            })
+                          : [];
 
                         return (
                           <Group
@@ -4523,15 +4531,8 @@ export function DrawingCanvasInner({
                                     fill={pieceFill}
                                   />
                                 ))}
-                                {chainShape.edges.map((edge, index) => (
+                                {visibleCompoundEdges.map((edge, index) => (
                                   (() => {
-                                    if (
-                                      deletedLines.some((line) =>
-                                        shapeEdgeMatchesLine(edge, line),
-                                      )
-                                    ) {
-                                      return null;
-                                    }
                                     const edgeActionId = `${pos.pieceId}:${index}`;
                                     const isActionSelected =
                                       chainEdgeAction?.pieceId ===
@@ -4778,14 +4779,7 @@ export function DrawingCanvasInner({
                             ) : null}
                             {compoundEdges && !chainShape ? (
                               <>
-                                {compoundEdges.edges.map((edge, index) => {
-                                  if (
-                                    deletedLines.some((line) =>
-                                      shapeEdgeMatchesLine(edge, line),
-                                    )
-                                  ) {
-                                    return null;
-                                  }
+                                {visibleCompoundEdges.map((edge, index) => {
                                   const edgeActionId = `${pos.pieceId}:compound-edge:${index}`;
                                   const isActionSelected =
                                     chainEdgeAction?.pieceId === pos.pieceId &&
@@ -5109,14 +5103,7 @@ export function DrawingCanvasInner({
                             ) : null}
                             {compoundEdges ? (
                               <>
-                                {compoundEdges.edges.map((edge, index) => {
-                                  if (
-                                    deletedLines.some((line) =>
-                                      shapeEdgeMatchesLine(edge, line),
-                                    )
-                                  ) {
-                                    return null;
-                                  }
+                                {visibleCompoundEdges.map((edge, index) => {
                                   const dimensionId = `${pos.pieceId}:${index}`;
                                   const isHovered =
                                     hoveredDimension === dimensionId;
@@ -5445,7 +5432,7 @@ export function DrawingCanvasInner({
                               : null}
                             {compoundEdges && activeStep === 3 ? (
                               <>
-                                {compoundEdges.edges.map((edge, index) => {
+                                {visibleCompoundEdges.map((edge, index) => {
                                   const edgeKey = boundaryEdgeKey(
                                     edge,
                                     compoundEdges.rects,
