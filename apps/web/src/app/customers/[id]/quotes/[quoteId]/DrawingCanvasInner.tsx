@@ -1042,7 +1042,11 @@ function boundaryEdgeLength(edge: ShapeEdge) {
   );
 }
 
-function rectangleShapeEdge(width: number, height: number, edge: EdgeKey): ShapeEdge {
+function rectangleShapeEdge(
+  width: number,
+  height: number,
+  edge: EdgeKey,
+): ShapeEdge {
   if (edge === "top") return { from: [0, 0], to: [width, 0] };
   if (edge === "right") return { from: [width, 0], to: [width, height] };
   if (edge === "bottom") return { from: [width, height], to: [0, height] };
@@ -1082,8 +1086,10 @@ function rectIndexForEdge(rects: ShapeRect[], edge: ShapeEdge) {
   const horizontal = edge.from[1] === edge.to[1];
 
   return rects.findIndex((rect) => {
-    const onX = midpoint.x >= rect.x - 0.001 && midpoint.x <= rect.x + rect.w + 0.001;
-    const onY = midpoint.y >= rect.y - 0.001 && midpoint.y <= rect.y + rect.h + 0.001;
+    const onX =
+      midpoint.x >= rect.x - 0.001 && midpoint.x <= rect.x + rect.w + 0.001;
+    const onY =
+      midpoint.y >= rect.y - 0.001 && midpoint.y <= rect.y + rect.h + 0.001;
 
     if (horizontal) {
       return (
@@ -1129,7 +1135,9 @@ function chainInnerDepthGuides(shape: ChainShapeLayout) {
   const innerEdge = verticalEdges
     .filter((edge) => boundaryOutsideSide(edge, rects) === "left")
     .filter((edge) => boundaryEdgeLength(edge) >= 1)
-    .sort((left, right) => boundaryEdgeLength(right) - boundaryEdgeLength(left))[0];
+    .sort(
+      (left, right) => boundaryEdgeLength(right) - boundaryEdgeLength(left),
+    )[0];
   if (!innerEdge) return [];
 
   const innerY1 = Math.min(innerEdge.from[1], innerEdge.to[1]);
@@ -1199,11 +1207,61 @@ function lineId(prefix: string) {
     : `${prefix}:${Date.now()}`;
 }
 
-function shapeEdgeMatchesLine(edge: ShapeEdge, line: { from: [number, number]; to: [number, number] }) {
+function shapeEdgeMatchesLine(
+  edge: ShapeEdge,
+  line: { from: [number, number]; to: [number, number] },
+) {
   return (
     shapeEdgesEqual(edge, line) ||
     shapeEdgesEqual(edge, { from: line.to, to: line.from })
   );
+}
+
+function addDeletedLineOnce(
+  lines: DeletedLineLayout[],
+  pieceId: string,
+  edge: ShapeEdge,
+) {
+  if (
+    lines.some(
+      (line) => line.pieceId === pieceId && shapeEdgeMatchesLine(edge, line),
+    )
+  ) {
+    return lines;
+  }
+
+  return [
+    ...lines,
+    buildDeletedLine({
+      id: lineId(pieceId),
+      pieceId,
+      edge,
+    }),
+  ];
+}
+
+function drawingRectsForPiece(
+  piece: DrawingPiece,
+  pieceLayout: PieceLayout,
+): ShapeRect[] {
+  if (pieceLayout.shape && isChainShape(pieceLayout.shape)) {
+    return chainShapeGeometry(pieceLayout.shape).rects;
+  }
+  if (pieceLayout.shape && isZShape(pieceLayout.shape)) {
+    return zShapeGeometry(piece, pieceLayout.shape).rects;
+  }
+  if (pieceLayout.shape && isLShape(pieceLayout.shape)) {
+    return lShapeGeometry(piece, pieceLayout.shape).rects;
+  }
+
+  return [
+    {
+      x: 0,
+      y: 0,
+      w: piece.lengthIn * SCALE,
+      h: piece.widthIn * SCALE,
+    },
+  ];
 }
 
 function canvasPointToPiecePoint(
@@ -1326,11 +1384,7 @@ function resizeChainSegments(
     ? chainSegmentAttachmentAxisSide(editedSegment, nextSegment, resizeAxis)
     : null;
   const previousSide = previousSegment
-    ? chainSegmentAttachmentAxisSide(
-        editedSegment,
-        previousSegment,
-        resizeAxis,
-      )
+    ? chainSegmentAttachmentAxisSide(editedSegment, previousSegment, resizeAxis)
     : null;
   const resizeFromEnd =
     downstreamSide === "end" ||
@@ -1694,6 +1748,7 @@ export function DrawingCanvasInner({
     useState<EdgeTreatmentEditorState | null>(null);
   const [saving, setSaving] = useState(false);
   const [isDirty, setIsDirty] = useState(false);
+  const [canvasError, setCanvasError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
   const stageRef = useRef<Konva.Stage | null>(null);
   const stageContainerRef = useRef<HTMLDivElement | null>(null);
@@ -1828,10 +1883,13 @@ export function DrawingCanvasInner({
   }, []);
 
   const screenToCanvas = useCallback(
-    (point: { x: number; y: number }) => ({
-      x: (point.x - pan.x) / zoom,
-      y: (point.y - pan.y) / zoom,
-    }),
+    (point: { x: number; y: number }) => {
+      const safeZoom = zoom || 1;
+      return {
+        x: (point.x - pan.x) / safeZoom,
+        y: (point.y - pan.y) / safeZoom,
+      };
+    },
     [pan.x, pan.y, zoom],
   );
 
@@ -2308,14 +2366,20 @@ export function DrawingCanvasInner({
   const deleteSinkFromCanvas = useCallback(
     (sinkId: string) => {
       startTransition(async () => {
-        await deleteSinkCutoutAction(customerId, quoteId, areaId, sinkId);
-        setLayout((prev) => ({
-          ...prev,
-          sinks: prev.sinks.filter((sink) => sink.sinkId !== sinkId),
-        }));
-        setSelectedSinkId(null);
-        setSinkContextMenu(null);
-        router.refresh();
+        try {
+          await deleteSinkCutoutAction(customerId, quoteId, areaId, sinkId);
+          setLayout((prev) => ({
+            ...prev,
+            sinks: prev.sinks.filter((sink) => sink.sinkId !== sinkId),
+          }));
+          setSelectedSinkId(null);
+          setSinkContextMenu(null);
+          router.refresh();
+        } catch (err) {
+          setCanvasError(
+            err instanceof Error ? err.message : "Failed to delete sink. Please try again.",
+          );
+        }
       });
     },
     [areaId, customerId, quoteId, router],
@@ -2337,9 +2401,15 @@ export function DrawingCanvasInner({
   const createSinkFromCanvas = useCallback(
     (formData: FormData) => {
       startTransition(async () => {
-        await createSinkCutoutAction(customerId, quoteId, areaId, formData);
-        setSinkCreateOpen(false);
-        router.refresh();
+        try {
+          await createSinkCutoutAction(customerId, quoteId, areaId, formData);
+          setSinkCreateOpen(false);
+          router.refresh();
+        } catch (err) {
+          setCanvasError(
+            err instanceof Error ? err.message : "Failed to create sink. Please try again.",
+          );
+        }
       });
     },
     [areaId, customerId, quoteId, router],
@@ -2362,6 +2432,10 @@ export function DrawingCanvasInner({
           resetTransientState();
         }
         router.refresh();
+      } catch (err) {
+        setCanvasError(
+          err instanceof Error ? err.message : "Failed to save drawing. Please try again.",
+        );
       } finally {
         setSaving(false);
       }
@@ -2372,6 +2446,7 @@ export function DrawingCanvasInner({
   const addCounterPiece = useCallback(
     (preview: DrawPreview) => {
       startTransition(async () => {
+        try {
         const nextPieceIndex = Math.max(
           pieces.length,
           layoutRef.current.pieces.length,
@@ -2437,14 +2512,20 @@ export function DrawingCanvasInner({
           },
         ];
 
+        const snapshot = layoutRef.current;
         const nextLayout = {
-          ...layoutRef.current,
-          pieces: [...layoutRef.current.pieces, ...createdLayouts],
+          ...snapshot,
+          pieces: [...snapshot.pieces, ...createdLayouts],
         };
         setLayout(nextLayout);
         await saveDrawingAction(customerId, quoteId, areaId, nextLayout, null);
         setIsDirty(false);
         router.refresh();
+        } catch (err) {
+          setCanvasError(
+            err instanceof Error ? err.message : "Failed to add counter piece. Please try again.",
+          );
+        }
       });
     },
     [areaId, buildPieceFormData, customerId, pieces.length, quoteId, router],
@@ -2504,15 +2585,21 @@ export function DrawingCanvasInner({
     );
 
     startTransition(async () => {
-      await updateCounterPieceAction(
-        customerId,
-        quoteId,
-        areaId,
-        editDraft.pieceId,
-        formData,
-      );
-      markDirty();
-      router.refresh();
+      try {
+        await updateCounterPieceAction(
+          customerId,
+          quoteId,
+          areaId,
+          editDraft.pieceId,
+          formData,
+        );
+        markDirty();
+        router.refresh();
+      } catch (err) {
+        setCanvasError(
+          err instanceof Error ? err.message : "Failed to update piece. Please try again.",
+        );
+      }
     });
   }, [areaId, customerId, editDraft, markDirty, pieces, quoteId, router]);
 
@@ -2534,6 +2621,10 @@ export function DrawingCanvasInner({
       try {
         await updateAreaAction(customerId, quoteId, areaId, formData);
         router.refresh();
+      } catch (err) {
+        setCanvasError(
+          err instanceof Error ? err.message : "Failed to save area details. Please try again.",
+        );
       } finally {
         setAreaSaving(false);
       }
@@ -2558,15 +2649,21 @@ export function DrawingCanvasInner({
       );
 
       startTransition(async () => {
-        await updateCounterPieceAction(
-          customerId,
-          quoteId,
-          areaId,
-          piece.id,
-          formData,
-        );
-        markDirty();
-        router.refresh();
+        try {
+          await updateCounterPieceAction(
+            customerId,
+            quoteId,
+            areaId,
+            piece.id,
+            formData,
+          );
+          markDirty();
+          router.refresh();
+        } catch (err) {
+          setCanvasError(
+            err instanceof Error ? err.message : "Failed to update piece dimensions. Please try again.",
+          );
+        }
       });
     },
     [areaId, customerId, markDirty, pieces, quoteId, router],
@@ -2576,7 +2673,7 @@ export function DrawingCanvasInner({
     (
       piece: DrawingPiece,
       nextSegments: ChainShapeSegment[],
-      referenceLine?: ReferenceLineLayout,
+      referenceLines: ReferenceLineLayout[] = [],
     ) => {
       const currentLayout = layoutRef.current;
       const minX = Math.min(...nextSegments.map((segment) => segment.x));
@@ -2587,10 +2684,7 @@ export function DrawingCanvasInner({
       const maxY = Math.max(
         ...nextSegments.map((segment) => segment.y + segment.h),
       );
-      const lengthIn = roundToSixteenth(
-        (maxX - minX) / SCALE,
-        roundSixteenth,
-      );
+      const lengthIn = roundToSixteenth((maxX - minX) / SCALE, roundSixteenth);
       const widthIn = roundToSixteenth((maxY - minY) / SCALE, roundSixteenth);
       const nextLayout: CanvasLayout = {
         ...currentLayout,
@@ -2605,9 +2699,7 @@ export function DrawingCanvasInner({
               }
             : item,
         ),
-        referenceLines: referenceLine
-          ? [...currentLayout.referenceLines, referenceLine]
-          : currentLayout.referenceLines,
+        referenceLines: [...currentLayout.referenceLines, ...referenceLines],
       };
       const formData = new FormData();
       formData.set("name", piece.name ?? "");
@@ -2624,6 +2716,7 @@ export function DrawingCanvasInner({
         ),
       );
 
+      const snapshot = layoutRef.current;
       setLayout(nextLayout);
       setPieceOverrides((prev) => ({
         ...prev,
@@ -2632,26 +2725,25 @@ export function DrawingCanvasInner({
       markDirty();
 
       startTransition(async () => {
-        await saveDrawingAction(customerId, quoteId, areaId, nextLayout, null);
-        await updateCounterPieceAction(
-          customerId,
-          quoteId,
-          areaId,
-          piece.id,
-          formData,
-        );
-        router.refresh();
+        try {
+          await saveDrawingAction(customerId, quoteId, areaId, nextLayout, null);
+          await updateCounterPieceAction(
+            customerId,
+            quoteId,
+            areaId,
+            piece.id,
+            formData,
+          );
+          router.refresh();
+        } catch (err) {
+          setLayout(snapshot);
+          setCanvasError(
+            err instanceof Error ? err.message : "Failed to save segment changes. Please try again.",
+          );
+        }
       });
     },
-    [
-      areaId,
-      customerId,
-      markDirty,
-      pieces,
-      quoteId,
-      roundSixteenth,
-      router,
-    ],
+    [areaId, customerId, markDirty, pieces, quoteId, roundSixteenth, router],
   );
 
   const createOffsetChainSegment = useCallback(
@@ -2676,7 +2768,14 @@ export function DrawingCanvasInner({
                 ? zShapeGeometry(piece, pieceLayout.shape).rects
                 : pieceLayout.shape && isLShape(pieceLayout.shape)
                   ? lShapeGeometry(piece, pieceLayout.shape).rects
-                  : [{ x: 0, y: 0, w: piece.lengthIn * SCALE, h: piece.widthIn * SCALE }],
+                  : [
+                      {
+                        x: 0,
+                        y: 0,
+                        w: piece.lengthIn * SCALE,
+                        h: piece.widthIn * SCALE,
+                      },
+                    ],
             );
       const segment = shapeSegments[segmentIndex];
       if (!segment) return;
@@ -2692,7 +2791,7 @@ export function DrawingCanvasInner({
       persistChainSegmentsUpdate(
         piece,
         offsetResult.segments,
-        offsetResult.referenceLine,
+        offsetResult.referenceLines,
       );
       setSelectedPieceId(pieceId);
       setChainEdgeAction(null);
@@ -2717,22 +2816,19 @@ export function DrawingCanvasInner({
         deltaPx,
       );
     },
-    [
-      chainEdgeAction,
-      createOffsetChainSegment,
-      offsetAmount,
-    ],
+    [chainEdgeAction, createOffsetChainSegment, offsetAmount],
   );
 
   const connectChainEdges = useCallback(
     (targetEdge: ShapeEdge) => {
       if (!chainEdgeAction || chainEdgeAction.mode !== "connect") return;
+      if (shapeEdgesEqual(chainEdgeAction.edge, targetEdge)) return;
       const currentLayout = layoutRef.current;
       const pieceLayout = currentLayout.pieces.find(
         (item) => item.pieceId === chainEdgeAction.pieceId,
       );
       const piece = pieces.find((item) => item.id === chainEdgeAction.pieceId);
-      if (!pieceLayout?.shape || !isChainShape(pieceLayout.shape) || !piece) {
+      if (!pieceLayout || !piece) {
         return;
       }
 
@@ -2741,6 +2837,8 @@ export function DrawingCanvasInner({
         secondEdge: targetEdge,
         scale: SCALE,
       });
+      if (!connection) return;
+
       const nextLayout: CanvasLayout = {
         ...currentLayout,
         pieces: currentLayout.pieces.map((item) =>
@@ -2778,6 +2876,7 @@ export function DrawingCanvasInner({
         ),
       );
 
+      const snapshot = currentLayout;
       setLayout(nextLayout);
       setPieceOverrides((prev) => ({
         ...prev,
@@ -2789,16 +2888,23 @@ export function DrawingCanvasInner({
       markDirty();
 
       startTransition(async () => {
-        await saveDrawingAction(customerId, quoteId, areaId, nextLayout, null);
-        await updateCounterPieceAction(
-          customerId,
-          quoteId,
-          areaId,
-          piece.id,
-          formData,
-        );
-        setIsDirty(false);
-        router.refresh();
+        try {
+          await saveDrawingAction(customerId, quoteId, areaId, nextLayout, null);
+          await updateCounterPieceAction(
+            customerId,
+            quoteId,
+            areaId,
+            piece.id,
+            formData,
+          );
+          setIsDirty(false);
+          router.refresh();
+        } catch (err) {
+          setLayout(snapshot);
+          setCanvasError(
+            err instanceof Error ? err.message : "Failed to save connection. Please try again.",
+          );
+        }
       });
       return;
     },
@@ -2831,7 +2937,14 @@ export function DrawingCanvasInner({
             ? zShapeGeometry(piece, pieceLayout.shape).rects
             : pieceLayout.shape && isLShape(pieceLayout.shape)
               ? lShapeGeometry(piece, pieceLayout.shape).rects
-              : [{ x: 0, y: 0, w: piece.lengthIn * SCALE, h: piece.widthIn * SCALE }];
+              : [
+                  {
+                    x: 0,
+                    y: 0,
+                    w: piece.lengthIn * SCALE,
+                    h: piece.widthIn * SCALE,
+                  },
+                ];
       const localPointer = canvasPointToPiecePoint(pieceLayout, pointer);
       if (
         tool !== "offset" &&
@@ -2841,14 +2954,13 @@ export function DrawingCanvasInner({
       }
 
       const edge = chainEdgeAction.edge;
-      const direction =
-        valuesNear(edge.from[1], edge.to[1])
-          ? localPointer.y < edge.from[1]
-            ? ("up" as const)
-            : ("down" as const)
-          : localPointer.x < edge.from[0]
-            ? ("left" as const)
-            : ("right" as const);
+      const direction = valuesNear(edge.from[1], edge.to[1])
+        ? localPointer.y < edge.from[1]
+          ? ("up" as const)
+          : ("down" as const)
+        : localPointer.x < edge.from[0]
+          ? ("left" as const)
+          : ("right" as const);
 
       if (tool === "offset") {
         applyOffsetToChainEdge(direction);
@@ -2881,13 +2993,25 @@ export function DrawingCanvasInner({
           (item) => item.pieceId === basePiece.id,
         );
 
-        if (pieceLayout?.shape && isChainShape(pieceLayout.shape)) {
-          const editedSegment =
-            pieceLayout.shape.segments[edgeEditor.segmentIndex];
+        const editableSegments =
+          pieceLayout?.shape && isChainShape(pieceLayout.shape)
+            ? pieceLayout.shape.segments
+            : pieceLayout?.shape && isZShape(pieceLayout.shape)
+              ? rectsToChainSegments(
+                  zShapeGeometry(basePiece, pieceLayout.shape).rects,
+                )
+              : pieceLayout?.shape && isLShape(pieceLayout.shape)
+                ? rectsToChainSegments(
+                    lShapeGeometry(basePiece, pieceLayout.shape).rects,
+                  )
+                : null;
+
+        if (editableSegments) {
+          const editedSegment = editableSegments[edgeEditor.segmentIndex];
           if (!editedSegment) return;
 
           const nextSegments = resizeChainSegments(
-            pieceLayout.shape.segments,
+            editableSegments,
             edgeEditor.segmentIndex,
             numericValue,
             edgeEditor.shapeEdge,
@@ -2937,27 +3061,35 @@ export function DrawingCanvasInner({
             ),
           };
 
+          const snapshot = currentLayout;
           setLayout(nextLayout);
           markDirty();
 
           startTransition(async () => {
-            await saveDrawingAction(
-              customerId,
-              quoteId,
-              areaId,
-              nextLayout,
-              null,
-            );
-            await updateCounterPieceAction(
-              customerId,
-              quoteId,
-              areaId,
-              basePiece.id,
-              formData,
-            );
-            setEdgeEditor(null);
-            setIsDirty(false);
-            router.refresh();
+            try {
+              await saveDrawingAction(
+                customerId,
+                quoteId,
+                areaId,
+                nextLayout,
+                null,
+              );
+              await updateCounterPieceAction(
+                customerId,
+                quoteId,
+                areaId,
+                basePiece.id,
+                formData,
+              );
+              setEdgeEditor(null);
+              setIsDirty(false);
+              router.refresh();
+            } catch (err) {
+              setLayout(snapshot);
+              setCanvasError(
+                err instanceof Error ? err.message : "Failed to save edge length. Please try again.",
+              );
+            }
           });
           return;
         }
@@ -3067,50 +3199,57 @@ export function DrawingCanvasInner({
       );
 
       startTransition(async () => {
-        if (nextLayout) {
-          await saveDrawingAction(
+        try {
+          if (nextLayout) {
+            await saveDrawingAction(
+              customerId,
+              quoteId,
+              areaId,
+              nextLayout,
+              null,
+            );
+          }
+          await updateCounterPieceAction(
             customerId,
             quoteId,
             areaId,
-            nextLayout,
-            null,
+            basePiece.id,
+            formData,
+          );
+          setPieceOverrides((prev) => ({
+            ...prev,
+            [basePiece.id]: { lengthIn, widthIn },
+          }));
+          setEditDraft((prev) =>
+            prev && prev.pieceId === basePiece.id
+              ? {
+                  ...prev,
+                  lengthIn: String(lengthIn),
+                  widthIn: String(widthIn),
+                }
+              : prev,
+          );
+          markDirty();
+
+          if (mode === "next") {
+            const next = nextEdge(edgeEditor.edge);
+            const nextPiece = { ...basePiece, lengthIn, widthIn };
+            setEdgeEditor({
+              pieceId: basePiece.id,
+              edge: next,
+              value: String(edgeValue(nextPiece, next)),
+            });
+          } else {
+            setEdgeEditor(null);
+          }
+
+          router.refresh();
+        } catch (err) {
+          if (nextLayout) setLayout(currentLayout);
+          setCanvasError(
+            err instanceof Error ? err.message : "Failed to save edge length. Please try again.",
           );
         }
-        await updateCounterPieceAction(
-          customerId,
-          quoteId,
-          areaId,
-          basePiece.id,
-          formData,
-        );
-        setPieceOverrides((prev) => ({
-          ...prev,
-          [basePiece.id]: { lengthIn, widthIn },
-        }));
-        setEditDraft((prev) =>
-          prev && prev.pieceId === basePiece.id
-            ? {
-                ...prev,
-                lengthIn: String(lengthIn),
-                widthIn: String(widthIn),
-              }
-            : prev,
-        );
-        markDirty();
-
-        if (mode === "next") {
-          const next = nextEdge(edgeEditor.edge);
-          const nextPiece = { ...basePiece, lengthIn, widthIn };
-          setEdgeEditor({
-            pieceId: basePiece.id,
-            edge: next,
-            value: String(edgeValue(nextPiece, next)),
-          });
-        } else {
-          setEdgeEditor(null);
-        }
-
-        router.refresh();
       });
     },
     [
@@ -3121,6 +3260,7 @@ export function DrawingCanvasInner({
       markDirty,
       pieces,
       quoteId,
+      roundSixteenth,
       router,
     ],
   );
@@ -3214,26 +3354,34 @@ export function DrawingCanvasInner({
           ),
         );
 
+        const snapshot = currentLayout;
         setLayout(nextLayout);
         setSelectedPieceId(pieceId);
         markDirty();
         startTransition(async () => {
-          await saveDrawingAction(
-            customerId,
-            quoteId,
-            areaId,
-            nextLayout,
-            null,
-          );
-          await updateCounterPieceAction(
-            customerId,
-            quoteId,
-            areaId,
-            basePiece.id,
-            formData,
-          );
-          setIsDirty(false);
-          router.refresh();
+          try {
+            await saveDrawingAction(
+              customerId,
+              quoteId,
+              areaId,
+              nextLayout,
+              null,
+            );
+            await updateCounterPieceAction(
+              customerId,
+              quoteId,
+              areaId,
+              basePiece.id,
+              formData,
+            );
+            setIsDirty(false);
+            router.refresh();
+          } catch (err) {
+            setLayout(snapshot);
+            setCanvasError(
+              err instanceof Error ? err.message : "Failed to extend counter. Please try again.",
+            );
+          }
         });
       }
     },
@@ -3374,27 +3522,61 @@ export function DrawingCanvasInner({
   const deletePiece = useCallback(
     (pieceId: string) => {
       startTransition(async () => {
-        await deleteCounterPieceAction(customerId, quoteId, areaId, pieceId);
-        setLayout((prev) => ({
-          ...prev,
-          pieces: prev.pieces.filter((piece) => piece.pieceId !== pieceId),
-        }));
-        setSelectedPieceId(null);
-        setContextMenu(null);
-        setEdgeEditor(null);
-        setCornerEditor(null);
-        setEdgeTreatmentEditor(null);
-        setEditDraft(null);
-        setPieceOverrides((prev) => {
-          const next = { ...prev };
-          delete next[pieceId];
-          return next;
-        });
-        markDirty();
-        router.refresh();
+        try {
+          await deleteCounterPieceAction(customerId, quoteId, areaId, pieceId);
+          setLayout((prev) => ({
+            ...prev,
+            pieces: prev.pieces.filter((piece) => piece.pieceId !== pieceId),
+          }));
+          setSelectedPieceId(null);
+          setContextMenu(null);
+          setEdgeEditor(null);
+          setCornerEditor(null);
+          setEdgeTreatmentEditor(null);
+          setEditDraft(null);
+          setPieceOverrides((prev) => {
+            const next = { ...prev };
+            delete next[pieceId];
+            return next;
+          });
+          markDirty();
+          router.refresh();
+        } catch (err) {
+          setCanvasError(
+            err instanceof Error ? err.message : "Failed to delete piece. Please try again.",
+          );
+        }
       });
     },
     [areaId, customerId, markDirty, quoteId, router],
+  );
+
+  const erasePieceEdge = useCallback(
+    (piece: DrawingPiece, pieceLayout: PieceLayout, edge: ShapeEdge) => {
+      const nextDeletedLines = addDeletedLineOnce(
+        layoutRef.current.deletedLines,
+        piece.id,
+        edge,
+      );
+      const remainingEdges = visibleBoundaryEdges({
+        rects: drawingRectsForPiece(piece, pieceLayout),
+        deletedLines: nextDeletedLines.filter(
+          (line) => line.pieceId === piece.id,
+        ),
+      });
+
+      if (remainingEdges.length === 0) {
+        deletePiece(piece.id);
+        return;
+      }
+
+      setLayout((prev) => ({
+        ...prev,
+        deletedLines: addDeletedLineOnce(prev.deletedLines, piece.id, edge),
+      }));
+      markDirty();
+    },
+    [deletePiece, markDirty],
   );
 
   const rotatePiece = useCallback(
@@ -3428,40 +3610,46 @@ export function DrawingCanvasInner({
       if (!sourcePiece || !sourceLayout) return;
 
       startTransition(async () => {
-        const duplicated = await createCounterPieceForCanvasAction(
-          customerId,
-          quoteId,
-          areaId,
-          buildPieceFormData(
-            sourcePiece.name
-              ? `${sourcePiece.name} Copy`
-              : `Counter ${pieces.length + 1}`,
-            sourcePiece.lengthIn,
-            sourcePiece.widthIn,
-            pieces.length,
-          ),
-        );
+        try {
+          const duplicated = await createCounterPieceForCanvasAction(
+            customerId,
+            quoteId,
+            areaId,
+            buildPieceFormData(
+              sourcePiece.name
+                ? `${sourcePiece.name} Copy`
+                : `Counter ${pieces.length + 1}`,
+              sourcePiece.lengthIn,
+              sourcePiece.widthIn,
+              pieces.length,
+            ),
+          );
 
-        if (isCreatedCounterPiece(duplicated)) {
-          setLayout((prev) => ({
-            ...prev,
-            pieces: [
-              ...prev.pieces,
-              {
-                pieceId: duplicated.id,
-                x: sourceLayout.x + 24,
-                y: sourceLayout.y + 24,
-                rotation: sourceLayout.rotation,
-                shape: sourceLayout.shape ?? null,
-              },
-            ],
-          }));
-          setSelectedPieceId(duplicated.id);
-          markDirty();
+          if (isCreatedCounterPiece(duplicated)) {
+            setLayout((prev) => ({
+              ...prev,
+              pieces: [
+                ...prev.pieces,
+                {
+                  pieceId: duplicated.id,
+                  x: sourceLayout.x + 24,
+                  y: sourceLayout.y + 24,
+                  rotation: sourceLayout.rotation,
+                  shape: sourceLayout.shape ?? null,
+                },
+              ],
+            }));
+            setSelectedPieceId(duplicated.id);
+            markDirty();
+          }
+
+          setContextMenu(null);
+          router.refresh();
+        } catch (err) {
+          setCanvasError(
+            err instanceof Error ? err.message : "Failed to duplicate piece. Please try again.",
+          );
         }
-
-        setContextMenu(null);
-        router.refresh();
       });
     },
     [
@@ -3656,84 +3844,115 @@ export function DrawingCanvasInner({
 
   const toolbarItems: Array<{
     label: string;
-    shortcut: string;
+    icon: string;
     action: () => void;
     active?: boolean;
     draftOnly?: boolean;
+    disabled?: boolean;
+    tone?: "default" | "orange" | "blue" | "purple" | "red" | "muted";
+    dividerBefore?: boolean;
   }> = [
     {
-      label: tool === "text" ? "Cancel Adding Text" : "Text",
-      shortcut: "N",
-      action: () => setTool((prev) => (prev === "text" ? "draw" : "text")),
-      active: tool === "text",
+      label: "Pen",
+      icon: "/",
+      action: () => setTool("draw"),
+      active: tool === "draw",
       draftOnly: true,
     },
     {
-      label: "Page Break",
-      shortcut: "Y",
-      action: () => setTool("pageBreak"),
-      active: tool === "pageBreak",
-      draftOnly: true,
+      label: "Cursor",
+      icon: "·",
+      action: () => setTool("select"),
+      active: tool === "select",
     },
     {
-      label: "Other Counter",
-      shortcut: "E",
-      action: () => setTool("otherCounter"),
-      active: tool === "otherCounter",
-      draftOnly: true,
-    },
-    {
-      label: "Offset",
-      shortcut: "O",
-      action: () => setTool((prev) => (prev === "offset" ? "draw" : "offset")),
-      active: tool === "offset",
-      draftOnly: true,
-    },
-    {
-      label: "Connect",
-      shortcut: "C",
-      action: () =>
-        setTool((prev) => (prev === "connect" ? "draw" : "connect")),
-      active: tool === "connect",
-      draftOnly: true,
-    },
-    {
-      label: "Delete Line",
-      shortcut: "D",
+      label: "Erase",
+      icon: "•",
       action: () =>
         setTool((prev) => (prev === "deleteLine" ? "draw" : "deleteLine")),
       active: tool === "deleteLine",
       draftOnly: true,
     },
     {
-      label: 'Round To Nearest 1/16"',
-      shortcut: "Z",
+      label: "Distance",
+      icon: "⌞",
+      action: () => setTool("select"),
+      active: tool === "select" && activeStep === 1,
+      draftOnly: true,
+      tone: "orange",
+    },
+    {
+      label: "Fill It",
+      icon: "⌜",
+      action: () =>
+        setTool((prev) => (prev === "connect" ? "draw" : "connect")),
+      active: tool === "connect",
+      draftOnly: true,
+      tone: "blue",
+    },
+    {
+      label: "Offset",
+      icon: "=",
+      action: () => setTool((prev) => (prev === "offset" ? "draw" : "offset")),
+      active: tool === "offset",
+      draftOnly: true,
+    },
+    {
+      label: "Rotate",
+      icon: "♂",
+      action: () => {
+        if (selectedPieceId) rotatePiece(selectedPieceId, "right");
+      },
+      draftOnly: true,
+      disabled: !selectedPieceId,
+      tone: "blue",
+    },
+    {
+      label: "Extend",
+      icon: "⊥",
+      action: () => setTool("draw"),
+      active: tool === "draw" && selectedPieceId !== null,
+      draftOnly: true,
+      disabled: !selectedPieceId,
+      tone: "purple",
+    },
+    {
+      label: "Segment",
+      icon: "/",
+      action: () =>
+        setTool((prev) => (prev === "connect" ? "draw" : "connect")),
+      active: tool === "connect",
+      draftOnly: true,
+    },
+    {
+      label: "Dimensions",
+      icon: "↔",
       action: () => setRoundSixteenth((prev) => !prev),
       active: roundSixteenth,
+      tone: "orange",
     },
     {
-      label: "Zoom In",
-      shortcut: "J",
-      action: () => setZoom((prev) => Math.min(prev + 0.15, 2.25)),
+      label: "Color",
+      icon: "•",
+      action: () => setActiveStep(5),
+      active: activeStep === 5,
+      draftOnly: true,
+      tone: "red",
     },
     {
-      label: "Zoom Out",
-      shortcut: "K",
-      action: () => setZoom((prev) => Math.max(prev - 0.15, 0.45)),
+      label: "Undo",
+      icon: "·",
+      action: () => undefined,
+      disabled: true,
+      tone: "muted",
+      dividerBefore: true,
     },
     {
-      label: "Reset Zoom",
-      shortcut: "L",
-      action: () => {
-        setZoom(1);
-        setPan({ x: 0, y: 0 });
-      },
-    },
-    {
-      label: "Pan",
-      shortcut: "M",
-      action: () => setTool((prev) => (prev === "pan" ? "draw" : "pan")),
-      active: tool === "pan",
+      label: "Redo",
+      icon: "·",
+      action: () => undefined,
+      disabled: true,
+      tone: "muted",
     },
   ];
   const activeStepTitle =
@@ -3856,6 +4075,15 @@ export function DrawingCanvasInner({
     setHoveredChainEdgeId(null);
   }, [tool]);
 
+  useEffect(() => {
+    if (!isDirty) return;
+    const handleBeforeUnload = (event: BeforeUnloadEvent) => {
+      event.preventDefault();
+    };
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
+  }, [isDirty]);
+
   return (
     <div className={fullscreen ? "flex min-h-0 flex-1 flex-col" : "space-y-3"}>
       <div
@@ -3865,6 +4093,18 @@ export function DrawingCanvasInner({
             : "overflow-hidden rounded-lg border bg-[#f7faf4] shadow-sm"
         }
       >
+        {canvasError && (
+          <div className="flex items-center gap-2 border-b border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+            <span className="flex-1">{canvasError}</span>
+            <button
+              type="button"
+              className="font-medium hover:text-red-900"
+              onClick={() => setCanvasError(null)}
+            >
+              Dismiss
+            </button>
+          </div>
+        )}
         <div className="flex flex-wrap items-center justify-between gap-2 border-b bg-white px-3 py-2">
           <div className="flex flex-wrap items-center gap-2">
             <Button
@@ -4280,8 +4520,8 @@ export function DrawingCanvasInner({
                               editDraft?.pieceId === item.pieceId,
                           );
 
-                                      return (
-                                          <Group
+                          return (
+                            <Group
                               key={pos.groupId}
                               x={originX}
                               y={originY}
@@ -4385,15 +4625,6 @@ export function DrawingCanvasInner({
                                   </Group>
                                 );
                               })}
-                              {isGroupSelected ? (
-                                <Text
-                                  text="90 deg"
-                                  x={8}
-                                  y={8}
-                                  fontSize={10}
-                                  fill="#6b7280"
-                                />
-                              ) : null}
                             </Group>
                           );
                         }
@@ -4412,7 +4643,6 @@ export function DrawingCanvasInner({
                         const isSelected =
                           selectedPieceId === pos.pieceId ||
                           editDraft?.pieceId === pos.pieceId;
-                        const pieceFill = isSelected ? PIECE_FILL : "#ffffff";
                         const pieceSinks = layout.sinks.filter(
                           (s) =>
                             s.pieceId === pos.pieceId &&
@@ -4424,6 +4654,13 @@ export function DrawingCanvasInner({
                         const deletedLines = layout.deletedLines.filter(
                           (line) => line.pieceId === pos.pieceId,
                         );
+                        const hasDeletedBoundaryLines =
+                          deletedLines.length > 0;
+                        const pieceFill = hasDeletedBoundaryLines
+                          ? "rgba(255,255,255,0)"
+                          : isSelected
+                            ? PIECE_FILL
+                            : "#ffffff";
                         const cornerTreatments = new Map(
                           layout.corners
                             .filter((corner) => corner.pieceId === pos.pieceId)
@@ -4457,6 +4694,33 @@ export function DrawingCanvasInner({
                               deletedLines,
                             })
                           : [];
+                        const visibleRectangleDimensionEdges =
+                          !chainShape && !zShape && !lShape
+                            ? ([
+                                ["top", rectangleShapeEdge(w, h, "top")],
+                                [
+                                  "bottom",
+                                  rectangleShapeEdge(w, h, "bottom"),
+                                ],
+                                ["left", rectangleShapeEdge(w, h, "left")],
+                                ["right", rectangleShapeEdge(w, h, "right")],
+                              ] as Array<[EdgeKey, ShapeEdge]>).filter(
+                                ([, edge]) =>
+                                  !deletedLines.some((line) =>
+                                    shapeEdgeMatchesLine(edge, line),
+                                  ),
+                              )
+                            : [];
+                        const rectangleLengthDimension =
+                          visibleRectangleDimensionEdges.find(
+                            ([edgeKey]) =>
+                              edgeKey === "top" || edgeKey === "bottom",
+                          ) ?? null;
+                        const rectangleDepthDimension =
+                          visibleRectangleDimensionEdges.find(
+                            ([edgeKey]) =>
+                              edgeKey === "left" || edgeKey === "right",
+                          ) ?? null;
 
                         return (
                           <Group
@@ -4528,13 +4792,16 @@ export function DrawingCanvasInner({
                                     fill={pieceFill}
                                   />
                                 ))}
-                                {visibleCompoundEdges.map((edge, index) => (
+                                {visibleCompoundEdges.map((edge, index) =>
                                   (() => {
                                     const edgeActionId = `${pos.pieceId}:${index}`;
                                     const isActionSelected =
                                       chainEdgeAction?.pieceId ===
                                         pos.pieceId &&
-                                      shapeEdgesEqual(chainEdgeAction.edge, edge);
+                                      shapeEdgesEqual(
+                                        chainEdgeAction.edge,
+                                        edge,
+                                      );
                                     const isActionHovered =
                                       hoveredChainEdgeId === edgeActionId;
                                     const selectable =
@@ -4590,23 +4857,17 @@ export function DrawingCanvasInner({
                                             onClick={(event) => {
                                               event.cancelBubble = true;
                                               if (tool === "deleteLine") {
-                                                setLayout((prev) => ({
-                                                  ...prev,
-                                                  deletedLines: [
-                                                    ...prev.deletedLines,
-                                                    buildDeletedLine({
-                                                      id: lineId(basePiece.id),
-                                                      pieceId: basePiece.id,
-                                                      edge,
-                                                    }),
-                                                  ],
-                                                }));
-                                                markDirty();
+                                                erasePieceEdge(
+                                                  basePiece,
+                                                  pos,
+                                                  edge,
+                                                );
                                                 return;
                                               }
+                                              if (!isChainShape(pos.shape)) return;
                                               const segmentIndex =
                                                 chainSegmentIndexForEdge(
-                                                  pos.shape as ChainShapeLayout,
+                                                  pos.shape,
                                                   edge,
                                                 );
                                               if (segmentIndex < 0) return;
@@ -4635,8 +4896,8 @@ export function DrawingCanvasInner({
                                         ) : null}
                                       </Group>
                                     );
-                                  })()
-                                ))}
+                                  })(),
+                                )}
                               </>
                             ) : zShape ? (
                               <Line
@@ -4666,23 +4927,57 @@ export function DrawingCanvasInner({
                             )}
                             {!chainShape && !zShape && !lShape ? (
                               <>
-                                {(["top", "right", "bottom", "left"] as EdgeKey[]).map(
-                                  (edgeKey) => {
-                                    const edge = rectangleShapeEdge(w, h, edgeKey);
-                                    const isDeleted = deletedLines.some((line) =>
-                                      shapeEdgeMatchesLine(edge, line),
-                                    );
-                                    if (isDeleted) return null;
-                                    const edgeActionId = `${pos.pieceId}:rect:${edgeKey}`;
-                                    const isActionSelected =
-                                      chainEdgeAction?.pieceId ===
-                                        pos.pieceId &&
-                                      shapeEdgesEqual(chainEdgeAction.edge, edge);
-                                    const isActionHovered =
-                                      hoveredChainEdgeId === edgeActionId;
+                                {(
+                                  [
+                                    "top",
+                                    "right",
+                                    "bottom",
+                                    "left",
+                                  ] as EdgeKey[]
+                                ).map((edgeKey) => {
+                                  const edge = rectangleShapeEdge(
+                                    w,
+                                    h,
+                                    edgeKey,
+                                  );
+                                  const isDeleted = deletedLines.some((line) =>
+                                    shapeEdgeMatchesLine(edge, line),
+                                  );
+                                  if (isDeleted) return null;
+                                  const edgeActionId = `${pos.pieceId}:rect:${edgeKey}`;
+                                  const isActionSelected =
+                                    chainEdgeAction?.pieceId === pos.pieceId &&
+                                    shapeEdgesEqual(chainEdgeAction.edge, edge);
+                                  const isActionHovered =
+                                    hoveredChainEdgeId === edgeActionId;
 
-                                    return (
-                                      <Group key={edgeActionId}>
+                                  return (
+                                    <Group key={edgeActionId}>
+                                      <Line
+                                        points={[
+                                          edge.from[0],
+                                          edge.from[1],
+                                          edge.to[0],
+                                          edge.to[1],
+                                        ]}
+                                        stroke={
+                                          isActionSelected || isActionHovered
+                                            ? GUIDE_COLOR
+                                            : isSelected
+                                              ? SELECT_STROKE
+                                              : PIECE_STROKE
+                                        }
+                                        strokeWidth={
+                                          isActionSelected || isActionHovered
+                                            ? 4
+                                            : isSelected
+                                              ? 2
+                                              : 1
+                                        }
+                                      />
+                                      {tool === "offset" ||
+                                      tool === "connect" ||
+                                      tool === "deleteLine" ? (
                                         <Line
                                           points={[
                                             edge.from[0],
@@ -4690,86 +4985,53 @@ export function DrawingCanvasInner({
                                             edge.to[0],
                                             edge.to[1],
                                           ]}
-                                          stroke={
-                                            isActionSelected || isActionHovered
-                                              ? GUIDE_COLOR
-                                              : isSelected
-                                                ? SELECT_STROKE
-                                                : PIECE_STROKE
+                                          stroke="transparent"
+                                          strokeWidth={16}
+                                          onMouseEnter={() =>
+                                            setHoveredChainEdgeId(edgeActionId)
                                           }
-                                          strokeWidth={
-                                            isActionSelected || isActionHovered
-                                              ? 4
-                                              : isSelected
-                                                ? 2
-                                                : 1
+                                          onMouseLeave={() =>
+                                            setHoveredChainEdgeId(null)
                                           }
-                                        />
-                                        {tool === "offset" ||
-                                        tool === "connect" ||
-                                        tool === "deleteLine" ? (
-                                          <Line
-                                            points={[
-                                              edge.from[0],
-                                              edge.from[1],
-                                              edge.to[0],
-                                              edge.to[1],
-                                            ]}
-                                            stroke="transparent"
-                                            strokeWidth={16}
-                                            onMouseEnter={() =>
-                                              setHoveredChainEdgeId(edgeActionId)
-                                            }
-                                            onMouseLeave={() =>
-                                              setHoveredChainEdgeId(null)
-                                            }
-                                            onMouseDown={(event) => {
-                                              event.cancelBubble = true;
-                                            }}
-                                            onClick={(event) => {
-                                              event.cancelBubble = true;
-                                              setSelectedPieceId(basePiece.id);
-                                              if (tool === "deleteLine") {
-                                                setLayout((prev) => ({
-                                                  ...prev,
-                                                  deletedLines: [
-                                                    ...prev.deletedLines,
-                                                    buildDeletedLine({
-                                                      id: lineId(basePiece.id),
-                                                      pieceId: basePiece.id,
-                                                      edge,
-                                                    }),
-                                                  ],
-                                                }));
-                                                markDirty();
-                                                return;
-                                              }
-                                              if (
-                                                tool === "connect" &&
-                                                chainEdgeAction?.mode ===
-                                                  "connect" &&
-                                                chainEdgeAction.pieceId ===
-                                                  basePiece.id
-                                              ) {
-                                                connectChainEdges(edge);
-                                                return;
-                                              }
-                                              setChainEdgeAction({
-                                                pieceId: basePiece.id,
+                                          onMouseDown={(event) => {
+                                            event.cancelBubble = true;
+                                          }}
+                                          onClick={(event) => {
+                                            event.cancelBubble = true;
+                                            setSelectedPieceId(basePiece.id);
+                                            if (tool === "deleteLine") {
+                                              erasePieceEdge(
+                                                basePiece,
+                                                pos,
                                                 edge,
-                                                segmentIndex: 0,
-                                                mode:
-                                                  tool === "connect"
-                                                    ? "connect"
-                                                    : "offset",
-                                              });
-                                            }}
-                                          />
-                                        ) : null}
-                                      </Group>
-                                    );
-                                  },
-                                )}
+                                              );
+                                              return;
+                                            }
+                                            if (
+                                              tool === "connect" &&
+                                              chainEdgeAction?.mode ===
+                                                "connect" &&
+                                              chainEdgeAction.pieceId ===
+                                                basePiece.id
+                                            ) {
+                                              connectChainEdges(edge);
+                                              return;
+                                            }
+                                            setChainEdgeAction({
+                                              pieceId: basePiece.id,
+                                              edge,
+                                              segmentIndex: 0,
+                                              mode:
+                                                tool === "connect"
+                                                  ? "connect"
+                                                  : "offset",
+                                            });
+                                          }}
+                                        />
+                                      ) : null}
+                                    </Group>
+                                  );
+                                })}
                               </>
                             ) : null}
                             {compoundEdges && !chainShape ? (
@@ -4835,18 +5097,11 @@ export function DrawingCanvasInner({
                                             event.cancelBubble = true;
                                             setSelectedPieceId(basePiece.id);
                                             if (tool === "deleteLine") {
-                                              setLayout((prev) => ({
-                                                ...prev,
-                                                deletedLines: [
-                                                  ...prev.deletedLines,
-                                                  buildDeletedLine({
-                                                    id: lineId(basePiece.id),
-                                                    pieceId: basePiece.id,
-                                                    edge,
-                                                  }),
-                                                ],
-                                              }));
-                                              markDirty();
+                                              erasePieceEdge(
+                                                basePiece,
+                                                pos,
+                                                edge,
+                                              );
                                               return;
                                             }
                                             if (segmentIndex < 0) return;
@@ -4889,11 +5144,24 @@ export function DrawingCanvasInner({
                                       line.to[0],
                                       line.to[1],
                                     ]}
-                                    stroke={isHovered ? GUIDE_COLOR : line.color}
-                                    strokeWidth={isHovered ? 2 : 1}
-                                    dash={[6, 5]}
+                                    stroke={
+                                      isHovered ? GUIDE_COLOR : line.color
+                                    }
+                                    strokeWidth={
+                                      isHovered || line.color === PIECE_STROKE
+                                        ? 2
+                                        : 1
+                                    }
+                                    dash={
+                                      line.color === PIECE_STROKE ? [] : [6, 5]
+                                    }
                                   />
-                                  {tool === "deleteLine" ? (
+                                  {tool === "deleteLine" ||
+                                  (tool === "connect" &&
+                                    line.color === PIECE_STROKE &&
+                                    chainEdgeAction?.mode === "connect" &&
+                                    chainEdgeAction.pieceId ===
+                                      basePiece.id) ? (
                                     <Line
                                       points={[
                                         line.from[0],
@@ -4916,13 +5184,20 @@ export function DrawingCanvasInner({
                                       }}
                                       onClick={(event) => {
                                         event.cancelBubble = true;
+                                        if (tool === "connect") {
+                                          connectChainEdges({
+                                            from: line.from,
+                                            to: line.to,
+                                          });
+                                          return;
+                                        }
+
                                         setLayout((prev) => ({
                                           ...prev,
-                                          referenceLines:
-                                            removeReferenceLine(
-                                              prev.referenceLines,
-                                              line.id,
-                                            ),
+                                          referenceLines: removeReferenceLine(
+                                            prev.referenceLines,
+                                            line.id,
+                                          ),
                                         }));
                                         setHoveredChainEdgeId(null);
                                         markDirty();
@@ -4934,36 +5209,7 @@ export function DrawingCanvasInner({
                             })}
                             {!chainShape ? (
                               <>
-                                <Line
-                                  points={[0, -10, w, -10]}
-                                  stroke="#d1d5db"
-                                  strokeWidth={1}
-                                />
-                                <Line
-                                  points={[0, -15, 0, -5]}
-                                  stroke="#d1d5db"
-                                  strokeWidth={1}
-                                />
-                                <Line
-                                  points={[w, -15, w, -5]}
-                                  stroke="#d1d5db"
-                                  strokeWidth={1}
-                                />
-                                <Line
-                                  points={[-10, 0, -10, h]}
-                                  stroke="#d1d5db"
-                                  strokeWidth={1}
-                                />
-                                <Line
-                                  points={[-15, 0, -5, 0]}
-                                  stroke="#d1d5db"
-                                  strokeWidth={1}
-                                />
-                                <Line
-                                  points={[-15, h, -5, h]}
-                                  stroke="#d1d5db"
-                                  strokeWidth={1}
-                                />
+                                {rectangleLengthDimension?.[0] === "top" ? (
                                 <Group
                                   onClick={(event) => {
                                     event.cancelBubble = true;
@@ -4985,17 +5231,19 @@ export function DrawingCanvasInner({
                                   onMouseEnter={() =>
                                     setHoveredDimension(`${pos.pieceId}:top`)
                                   }
-                                  onMouseLeave={() =>
-                                    setHoveredDimension(null)
-                                  }
+                                  onMouseLeave={() => setHoveredDimension(null)}
                                 >
                                   <DimensionLabel
                                     text={formatInches(piece.lengthIn)}
                                     x={w / 2}
                                     y={-18}
-                                    hovered={hoveredDimension === `${pos.pieceId}:top`}
+                                    hovered={
+                                      hoveredDimension === `${pos.pieceId}:top`
+                                    }
                                   />
                                 </Group>
+                                ) : null}
+                                {rectangleLengthDimension?.[0] === "bottom" ? (
                                 <Group
                                   onClick={(event) => {
                                     event.cancelBubble = true;
@@ -5003,7 +5251,11 @@ export function DrawingCanvasInner({
                                       setSelectedPieceId(basePiece.id);
                                       setChainEdgeAction({
                                         pieceId: basePiece.id,
-                                        edge: rectangleShapeEdge(w, h, "bottom"),
+                                        edge: rectangleShapeEdge(
+                                          w,
+                                          h,
+                                          "bottom",
+                                        ),
                                         segmentIndex: 0,
                                         mode: "offset",
                                       });
@@ -5017,17 +5269,20 @@ export function DrawingCanvasInner({
                                   onMouseEnter={() =>
                                     setHoveredDimension(`${pos.pieceId}:bottom`)
                                   }
-                                  onMouseLeave={() =>
-                                    setHoveredDimension(null)
-                                  }
+                                  onMouseLeave={() => setHoveredDimension(null)}
                                 >
                                   <DimensionLabel
                                     text={formatInches(piece.lengthIn)}
                                     x={w / 2}
                                     y={h + 14}
-                                    hovered={hoveredDimension === `${pos.pieceId}:bottom`}
+                                    hovered={
+                                      hoveredDimension ===
+                                      `${pos.pieceId}:bottom`
+                                    }
                                   />
                                 </Group>
+                                ) : null}
+                                {rectangleDepthDimension?.[0] === "left" ? (
                                 <Group
                                   onClick={(event) => {
                                     event.cancelBubble = true;
@@ -5049,18 +5304,20 @@ export function DrawingCanvasInner({
                                   onMouseEnter={() =>
                                     setHoveredDimension(`${pos.pieceId}:left`)
                                   }
-                                  onMouseLeave={() =>
-                                    setHoveredDimension(null)
-                                  }
+                                  onMouseLeave={() => setHoveredDimension(null)}
                                 >
                                   <DimensionLabel
                                     text={formatInches(piece.widthIn)}
                                     x={-34}
                                     y={h / 2}
                                     orientation="vertical"
-                                    hovered={hoveredDimension === `${pos.pieceId}:left`}
+                                    hovered={
+                                      hoveredDimension === `${pos.pieceId}:left`
+                                    }
                                   />
                                 </Group>
+                                ) : null}
+                                {rectangleDepthDimension?.[0] === "right" ? (
                                 <Group
                                   onClick={(event) => {
                                     event.cancelBubble = true;
@@ -5082,18 +5339,20 @@ export function DrawingCanvasInner({
                                   onMouseEnter={() =>
                                     setHoveredDimension(`${pos.pieceId}:right`)
                                   }
-                                  onMouseLeave={() =>
-                                    setHoveredDimension(null)
-                                  }
+                                  onMouseLeave={() => setHoveredDimension(null)}
                                 >
                                   <DimensionLabel
                                     text={formatInches(piece.widthIn)}
                                     x={w + 34}
                                     y={h / 2}
                                     orientation="vertical"
-                                    hovered={hoveredDimension === `${pos.pieceId}:right`}
+                                    hovered={
+                                      hoveredDimension ===
+                                      `${pos.pieceId}:right`
+                                    }
                                   />
                                 </Group>
+                                ) : null}
                               </>
                             ) : null}
                             {compoundEdges ? (
@@ -5203,14 +5462,16 @@ export function DrawingCanvasInner({
                                         stroke="transparent"
                                         strokeWidth={18}
                                       />
-                                      {guideSegments.map((segment, segmentIndex) => (
-                                        <Line
-                                          key={`guide-segment-${segmentIndex}`}
-                                          points={segment}
-                                          stroke={DIMENSION_GUIDE}
-                                          strokeWidth={1}
-                                        />
-                                      ))}
+                                      {guideSegments.map(
+                                        (segment, segmentIndex) => (
+                                          <Line
+                                            key={`guide-segment-${segmentIndex}`}
+                                            points={segment}
+                                            stroke={DIMENSION_GUIDE}
+                                            strokeWidth={1}
+                                          />
+                                        ),
+                                      )}
                                       <Line
                                         points={guide.startTick}
                                         stroke={DIMENSION_GUIDE}
@@ -5343,9 +5604,8 @@ export function DrawingCanvasInner({
                             activeStep === 1 &&
                             tool === "draw"
                               ? (() => {
-                                  const freeEnd = chainFreeEnd(
-                                    pos.shape as ChainShapeLayout,
-                                  );
+                                  if (!isChainShape(pos.shape)) return null;
+                                  const freeEnd = chainFreeEnd(pos.shape);
                                   if (!freeEnd) return null;
                                   const arrows: Array<{
                                     direction: ContinueDirection;
@@ -5463,60 +5723,6 @@ export function DrawingCanvasInner({
                                 })}
                               </>
                             ) : null}
-                            {isSelected ? (
-                              <>
-                                <Text
-                                  text="90 deg"
-                                  x={6}
-                                  y={h - 18}
-                                  fontSize={10}
-                                  fill="#6b7280"
-                                />
-                                <Text
-                                  text="90 deg"
-                                  x={w - 42}
-                                  y={h - 18}
-                                  fontSize={10}
-                                  fill="#6b7280"
-                                />
-                                <Text
-                                  text="90 deg"
-                                  x={6}
-                                  y={24}
-                                  fontSize={10}
-                                  fill="#6b7280"
-                                />
-                                <Text
-                                  text="90 deg"
-                                  x={w - 42}
-                                  y={24}
-                                  fontSize={10}
-                                  fill="#6b7280"
-                                />
-                                {lShape ? (
-                                  <Text
-                                    text="90 deg"
-                                    x={
-                                      lShape.legX <= 0
-                                        ? lShape.legX + lShape.legW + 4
-                                        : lShape.legX - 42
-                                    }
-                                    y={lShape.legY < 0 ? 6 : h + 6}
-                                    fontSize={10}
-                                    fill="#6b7280"
-                                  />
-                                ) : null}
-                                {zShape && isZShape(pos.shape) ? (
-                                  <Text
-                                    text="90 deg"
-                                    x={pos.shape.tailX + 6}
-                                    y={pos.shape.tailY + 6}
-                                    fontSize={10}
-                                    fill="#6b7280"
-                                  />
-                                ) : null}
-                              </>
-                            ) : null}
                             <Text
                               text={piece.name ?? "Counter"}
                               x={6}
@@ -5525,58 +5731,6 @@ export function DrawingCanvasInner({
                               fill="#2f6b2c"
                               fontStyle="bold"
                             />
-                            {activeStep === 2 ? (
-                              <>
-                                {[
-                                  { corner: "topLeft" as const, x: 6, y: 6 },
-                                  {
-                                    corner: "topRight" as const,
-                                    x: w - 44,
-                                    y: 6,
-                                  },
-                                  {
-                                    corner: "bottomRight" as const,
-                                    x: w - 44,
-                                    y: h - 18,
-                                  },
-                                  {
-                                    corner: "bottomLeft" as const,
-                                    x: 6,
-                                    y: h - 18,
-                                  },
-                                ].map((marker) => {
-                                  const treatment =
-                                    cornerTreatments.get(marker.corner)
-                                      ?.treatment ?? "none";
-
-                                  return (
-                                    <Text
-                                      key={marker.corner}
-                                      text={treatmentMarker(treatment)}
-                                      x={marker.x}
-                                      y={marker.y}
-                                      fontSize={10}
-                                      fill={
-                                        treatment === "none"
-                                          ? "#2f6b2c"
-                                          : "#b45309"
-                                      }
-                                      fontStyle="bold"
-                                      onClick={(event) => {
-                                        event.cancelBubble = true;
-                                        openCornerEditor(
-                                          basePiece.id,
-                                          marker.corner,
-                                        );
-                                      }}
-                                      onMouseDown={(event) => {
-                                        event.cancelBubble = true;
-                                      }}
-                                    />
-                                  );
-                                })}
-                              </>
-                            ) : null}
                             {activeStep === 3 ? (
                               <>
                                 {[
@@ -5929,26 +6083,40 @@ export function DrawingCanvasInner({
             )}
           </div>
 
-          <aside className="w-40 space-y-2 border-l bg-[#f5f5f5] p-2">
+          <aside className="w-40 border-l bg-[#eeecea] py-1 text-sm shadow-inner">
             {toolbarItems.map((item) => (
-              <button
-                key={item.label}
-                type="button"
-                className={`w-full rounded px-3 py-3 text-left text-sm font-semibold text-white transition ${
-                  item.active
-                    ? "bg-[#2f6b2c]"
-                    : "bg-[#5a9852] hover:bg-[#4f8849]"
-                }`}
-                onClick={item.action}
-                disabled={!isDraft && item.draftOnly}
-              >
-                <span className="flex items-center justify-between gap-2">
-                  <span>{item.label}</span>
-                  <span className="rounded bg-white/20 px-1.5 py-0.5 text-[10px]">
-                    {item.shortcut}
+              <div key={item.label}>
+                {item.dividerBefore ? (
+                  <div className="mx-3 my-2 border-t border-[#d0ccc7]" />
+                ) : null}
+                <button
+                  type="button"
+                  className={`flex h-7 w-full items-center gap-3 px-4 text-left transition ${
+                    item.active
+                      ? "bg-[#d8d5d0]"
+                      : "hover:bg-[#e1ded9]"
+                  } ${
+                    item.tone === "orange"
+                      ? "text-[#ea580c]"
+                      : item.tone === "blue"
+                        ? "text-[#0f3a68]"
+                        : item.tone === "purple"
+                          ? "text-[#7c3aed]"
+                          : item.tone === "red"
+                            ? "text-[#dc2626]"
+                            : item.tone === "muted"
+                              ? "text-[#a39d96]"
+                              : "text-[#111827]"
+                  } disabled:cursor-not-allowed disabled:text-[#b7b0a8]`}
+                  onClick={item.action}
+                  disabled={item.disabled || (!isDraft && item.draftOnly)}
+                >
+                  <span className="w-3 text-center text-xs leading-none">
+                    {item.icon}
                   </span>
-                </span>
-              </button>
+                  <span className="truncate">{item.label}</span>
+                </button>
+              </div>
             ))}
           </aside>
         </div>
@@ -6343,15 +6511,21 @@ export function DrawingCanvasInner({
                         }
                         onClick={() => {
                           startTransition(async () => {
-                            await revertDrawingRevisionAction(
-                              customerId,
-                              quoteId,
-                              areaId,
-                              revision.id,
-                            );
-                            setRevisionsOpen(false);
-                            setContextMenu(null);
-                            router.refresh();
+                            try {
+                              await revertDrawingRevisionAction(
+                                customerId,
+                                quoteId,
+                                areaId,
+                                revision.id,
+                              );
+                              setRevisionsOpen(false);
+                              setContextMenu(null);
+                              router.refresh();
+                            } catch (err) {
+                              setCanvasError(
+                                err instanceof Error ? err.message : "Failed to revert revision. Please try again.",
+                              );
+                            }
                           });
                         }}
                       >
