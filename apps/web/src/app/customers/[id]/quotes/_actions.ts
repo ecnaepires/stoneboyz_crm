@@ -29,6 +29,10 @@ const toOptionalNullableNumber = (value: FormDataEntryValue | null) => {
   return stringValue ? Number(stringValue) : null;
 };
 
+export type ActionResult<T = undefined> =
+  | { ok: true; data: T }
+  | { ok: false; error: string };
+
 type EdgeTreatment = 'unfinished' | 'finished' | 'appliance' | 'mitered' | 'waterfall';
 type SinkType = 'undermount' | 'drop_in' | 'farm';
 type SinkShape = 'rectangle' | 'oval' | 'double' | '60_40' | '40_60' | '70_30' | '30_70';
@@ -89,7 +93,7 @@ export async function createQuoteAction(customerId: string, formData: FormData) 
   });
 
   if (error) {
-    throw new Error('Failed to create quote: ' + JSON.stringify(error));
+    throw new Error('Failed to create quote');
   }
 
   redirect(`/customers/${customerId}/quotes/${data.id}`);
@@ -113,7 +117,7 @@ export async function updateQuoteAction(customerId: string, quoteId: string, for
   });
 
   if (error) {
-    throw new Error('Failed to update quote: ' + JSON.stringify(error));
+    throw new Error('Failed to update quote');
   }
 
   revalidatePath(`/customers/${customerId}/quotes/${quoteId}`);
@@ -129,7 +133,7 @@ export async function sendQuoteAction(customerId: string, quoteId: string) {
   });
 
   if (error) {
-    throw new Error('Failed to send quote: ' + JSON.stringify(error));
+    throw new Error('Failed to send quote');
   }
 
   revalidatePath(`/customers/${customerId}/quotes/${quoteId}`);
@@ -143,7 +147,7 @@ export async function sendQuoteEmailAction(customerId: string, quoteId: string) 
   });
 
   if (error) {
-    throw new Error('Failed to email quote: ' + JSON.stringify(error));
+    throw new Error('Failed to email quote');
   }
 
   revalidatePath(`/customers/${customerId}/quotes/${quoteId}`);
@@ -158,7 +162,7 @@ export async function acceptQuoteAction(customerId: string, quoteId: string) {
   });
 
   if (error) {
-    throw new Error('Failed to accept quote: ' + JSON.stringify(error));
+    throw new Error('Failed to accept quote');
   }
 
   revalidatePath(`/customers/${customerId}/quotes/${quoteId}`);
@@ -173,7 +177,7 @@ export async function rejectQuoteAction(customerId: string, quoteId: string) {
   });
 
   if (error) {
-    throw new Error('Failed to reject quote: ' + JSON.stringify(error));
+    throw new Error('Failed to reject quote');
   }
 
   revalidatePath(`/customers/${customerId}/quotes/${quoteId}`);
@@ -188,7 +192,7 @@ export async function archiveQuoteAction(customerId: string, quoteId: string) {
   });
 
   if (error) {
-    throw new Error('Failed to archive quote: ' + JSON.stringify(error));
+    throw new Error('Failed to archive quote');
   }
 
   redirect(`/customers/${customerId}/quotes`);
@@ -225,7 +229,7 @@ export async function addLineItemAction(customerId: string, quoteId: string, for
   });
 
   if (error) {
-    throw new Error('Failed to add line item: ' + JSON.stringify(error));
+    throw new Error('Failed to add line item');
   }
 
   revalidatePath(`/customers/${customerId}/quotes/${quoteId}`);
@@ -252,7 +256,7 @@ export async function createAreaAction(customerId: string, quoteId: string, form
   });
 
   if (error) {
-    throw new Error('Failed to create area: ' + JSON.stringify(error));
+    throw new Error('Failed to create area');
   }
 
   revalidatePath(`/customers/${customerId}/quotes/${quoteId}`);
@@ -279,10 +283,11 @@ export async function updateAreaAction(customerId: string, quoteId: string, area
   });
 
   if (error) {
-    throw new Error('Failed to update area: ' + JSON.stringify(error));
+    return { ok: false as const, error: 'Failed to update area' };
   }
 
   revalidatePath(`/customers/${customerId}/quotes/${quoteId}`);
+  return { ok: true as const, data: undefined };
 }
 
 export async function deleteAreaAction(customerId: string, quoteId: string, areaId: string) {
@@ -294,7 +299,7 @@ export async function deleteAreaAction(customerId: string, quoteId: string, area
   });
 
   if (error) {
-    throw new Error('Failed to delete area: ' + JSON.stringify(error));
+    throw new Error('Failed to delete area');
   }
 
   revalidatePath(`/customers/${customerId}/quotes/${quoteId}`);
@@ -308,7 +313,7 @@ export async function generatePricingAction(customerId: string, quoteId: string,
   });
 
   if (error) {
-    throw new Error('Failed to generate pricing: ' + JSON.stringify(error));
+    throw new Error('Failed to generate pricing');
   }
 
   revalidatePath(`/customers/${customerId}/quotes/${quoteId}`);
@@ -336,7 +341,7 @@ export async function overridePricingLineAction(
   );
 
   if (error) {
-    throw new Error('Failed to override pricing line: ' + JSON.stringify(error));
+    throw new Error('Failed to override pricing line');
   }
 
   revalidatePath(`/customers/${customerId}/quotes/${quoteId}`);
@@ -372,7 +377,7 @@ export async function updateLineItemAction(
   );
 
   if (error) {
-    throw new Error('Failed to update line item: ' + JSON.stringify(error));
+    throw new Error('Failed to update line item');
   }
 
   revalidatePath(`/customers/${customerId}/quotes/${quoteId}`);
@@ -390,7 +395,7 @@ export async function deleteLineItemAction(customerId: string, quoteId: string, 
   );
 
   if (error) {
-    throw new Error('Failed to delete line item: ' + JSON.stringify(error));
+    throw new Error('Failed to delete line item');
   }
 
   revalidatePath(`/customers/${customerId}/quotes/${quoteId}`);
@@ -417,7 +422,7 @@ export async function createCounterPieceAction(
   });
 
   if (error) {
-    throw new Error('Failed to add counter piece: ' + JSON.stringify(error));
+    throw new Error('Failed to add counter piece');
   }
 
   revalidatePath(`/customers/${customerId}/quotes/${quoteId}`);
@@ -444,12 +449,12 @@ export async function createCounterPieceForCanvasAction(
   });
 
   if (error) {
-    throw new Error('Failed to add counter piece: ' + JSON.stringify(error));
+    return { ok: false as const, error: 'Failed to add counter piece' };
   }
 
   revalidatePath(`/customers/${customerId}/quotes/${quoteId}`);
   revalidatePath(`/customers/${customerId}/quotes/${quoteId}/drawing`);
-  return unwrapApiData(data);
+  return { ok: true as const, data: unwrapApiData(data) };
 }
 
 export async function updateCounterPieceAction(
@@ -473,7 +478,7 @@ export async function updateCounterPieceAction(
   });
 
   if (error) {
-    throw new Error('Failed to update counter piece: ' + JSON.stringify(error));
+    throw new Error('Failed to update counter piece');
   }
 
   revalidatePath(`/customers/${customerId}/quotes/${quoteId}`);
@@ -493,7 +498,7 @@ export async function deleteCounterPieceAction(
   });
 
   if (error) {
-    throw new Error('Failed to delete counter piece: ' + JSON.stringify(error));
+    throw new Error('Failed to delete counter piece');
   }
 
   revalidatePath(`/customers/${customerId}/quotes/${quoteId}`);
@@ -519,7 +524,7 @@ export async function createEdgeSegmentAction(
   });
 
   if (error) {
-    throw new Error('Failed to add edge segment: ' + JSON.stringify(error));
+    throw new Error('Failed to add edge segment');
   }
 
   revalidatePath(`/customers/${customerId}/quotes/${quoteId}`);
@@ -545,7 +550,7 @@ export async function updateEdgeSegmentAction(
   });
 
   if (error) {
-    throw new Error('Failed to update edge segment: ' + JSON.stringify(error));
+    throw new Error('Failed to update edge segment');
   }
 
   revalidatePath(`/customers/${customerId}/quotes/${quoteId}`);
@@ -560,7 +565,7 @@ export async function deleteEdgeSegmentAction(customerId: string, quoteId: strin
   });
 
   if (error) {
-    throw new Error('Failed to delete edge segment: ' + JSON.stringify(error));
+    throw new Error('Failed to delete edge segment');
   }
 
   revalidatePath(`/customers/${customerId}/quotes/${quoteId}`);
@@ -591,7 +596,7 @@ export async function createSinkCutoutAction(
   });
 
   if (error) {
-    throw new Error('Failed to add sink cutout: ' + JSON.stringify(error));
+    throw new Error('Failed to add sink cutout');
   }
 
   revalidatePath(`/customers/${customerId}/quotes/${quoteId}`);
@@ -622,7 +627,7 @@ export async function updateSinkCutoutAction(
   });
 
   if (error) {
-    throw new Error('Failed to update sink cutout: ' + JSON.stringify(error));
+    throw new Error('Failed to update sink cutout');
   }
 
   revalidatePath(`/customers/${customerId}/quotes/${quoteId}`);
@@ -710,11 +715,12 @@ export async function saveDrawingAction(
   });
 
   if (error) {
-    throw new Error('Failed to save drawing: ' + JSON.stringify(error));
+    return { ok: false as const, error: 'Failed to save drawing' };
   }
 
   revalidatePath(`/customers/${customerId}/quotes/${quoteId}`);
   revalidatePath(`/customers/${customerId}/quotes/${quoteId}/drawing`);
+  return { ok: true as const, data: undefined };
 }
 
 export async function revertDrawingRevisionAction(
@@ -733,10 +739,11 @@ export async function revertDrawingRevisionAction(
   );
 
   if (error) {
-    throw new Error('Failed to revert drawing revision: ' + JSON.stringify(error));
+    return { ok: false as const, error: 'Failed to revert drawing revision' };
   }
 
   revalidatePath(`/customers/${customerId}/quotes/${quoteId}`);
+  return { ok: true as const, data: undefined };
 }
 
 export async function deleteSinkCutoutAction(customerId: string, quoteId: string, areaId: string, sinkId: string) {
@@ -748,7 +755,7 @@ export async function deleteSinkCutoutAction(customerId: string, quoteId: string
   });
 
   if (error) {
-    throw new Error('Failed to delete sink cutout: ' + JSON.stringify(error));
+    throw new Error('Failed to delete sink cutout');
   }
 
   revalidatePath(`/customers/${customerId}/quotes/${quoteId}`);

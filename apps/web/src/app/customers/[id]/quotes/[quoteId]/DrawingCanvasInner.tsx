@@ -2418,27 +2418,24 @@ export function DrawingCanvasInner({
   const persistDrawing = useCallback(
     async (mode: "continue" | "save") => {
       setSaving(true);
-      try {
-        await saveDrawingAction(
-          customerId,
-          quoteId,
-          areaId,
-          layoutRef.current,
-          saveNotes.trim() || null,
-        );
-        setSaveModalOpen(false);
-        setSaveNotes("");
-        if (mode === "save") {
-          resetTransientState();
-        }
-        router.refresh();
-      } catch (err) {
-        setCanvasError(
-          err instanceof Error ? err.message : "Failed to save drawing. Please try again.",
-        );
-      } finally {
-        setSaving(false);
+      const result = await saveDrawingAction(
+        customerId,
+        quoteId,
+        areaId,
+        layoutRef.current,
+        saveNotes.trim() || null,
+      );
+      setSaving(false);
+      if (!result.ok) {
+        setCanvasError(result.error);
+        return;
       }
+      setSaveModalOpen(false);
+      setSaveNotes("");
+      if (mode === "save") {
+        resetTransientState();
+      }
+      router.refresh();
     },
     [areaId, customerId, quoteId, resetTransientState, router, saveNotes],
   );
@@ -2446,12 +2443,11 @@ export function DrawingCanvasInner({
   const addCounterPiece = useCallback(
     (preview: DrawPreview) => {
       startTransition(async () => {
-        try {
         const nextPieceIndex = Math.max(
           pieces.length,
           layoutRef.current.pieces.length,
         );
-        const first = await createCounterPieceForCanvasAction(
+        const createResult = await createCounterPieceForCanvasAction(
           customerId,
           quoteId,
           areaId,
@@ -2463,6 +2459,11 @@ export function DrawingCanvasInner({
           ),
         );
 
+        if (!createResult.ok) {
+          setCanvasError(createResult.error);
+          return;
+        }
+        const first = createResult.data;
         if (!isCreatedCounterPiece(first)) {
           return;
         }
@@ -2518,14 +2519,14 @@ export function DrawingCanvasInner({
           pieces: [...snapshot.pieces, ...createdLayouts],
         };
         setLayout(nextLayout);
-        await saveDrawingAction(customerId, quoteId, areaId, nextLayout, null);
+        const saveResult = await saveDrawingAction(customerId, quoteId, areaId, nextLayout, null);
+        if (!saveResult.ok) {
+          setLayout(snapshot);
+          setCanvasError(saveResult.error);
+          return;
+        }
         setIsDirty(false);
         router.refresh();
-        } catch (err) {
-          setCanvasError(
-            err instanceof Error ? err.message : "Failed to add counter piece. Please try again.",
-          );
-        }
       });
     },
     [areaId, buildPieceFormData, customerId, pieces.length, quoteId, router],
@@ -2618,16 +2619,13 @@ export function DrawingCanvasInner({
 
     setAreaSaving(true);
     startTransition(async () => {
-      try {
-        await updateAreaAction(customerId, quoteId, areaId, formData);
-        router.refresh();
-      } catch (err) {
-        setCanvasError(
-          err instanceof Error ? err.message : "Failed to save area details. Please try again.",
-        );
-      } finally {
-        setAreaSaving(false);
+      const result = await updateAreaAction(customerId, quoteId, areaId, formData);
+      setAreaSaving(false);
+      if (!result.ok) {
+        setCanvasError(result.error);
+        return;
       }
+      router.refresh();
     });
   }, [areaDraft, areaId, customerId, quoteId, router, startTransition]);
 
@@ -2725,8 +2723,13 @@ export function DrawingCanvasInner({
       markDirty();
 
       startTransition(async () => {
+        const saveResult = await saveDrawingAction(customerId, quoteId, areaId, nextLayout, null);
+        if (!saveResult.ok) {
+          setLayout(snapshot);
+          setCanvasError(saveResult.error);
+          return;
+        }
         try {
-          await saveDrawingAction(customerId, quoteId, areaId, nextLayout, null);
           await updateCounterPieceAction(
             customerId,
             quoteId,
@@ -2888,8 +2891,13 @@ export function DrawingCanvasInner({
       markDirty();
 
       startTransition(async () => {
+        const saveResult = await saveDrawingAction(customerId, quoteId, areaId, nextLayout, null);
+        if (!saveResult.ok) {
+          setLayout(snapshot);
+          setCanvasError(saveResult.error);
+          return;
+        }
         try {
-          await saveDrawingAction(customerId, quoteId, areaId, nextLayout, null);
           await updateCounterPieceAction(
             customerId,
             quoteId,
@@ -3066,14 +3074,19 @@ export function DrawingCanvasInner({
           markDirty();
 
           startTransition(async () => {
+            const saveResult = await saveDrawingAction(
+              customerId,
+              quoteId,
+              areaId,
+              nextLayout,
+              null,
+            );
+            if (!saveResult.ok) {
+              setLayout(snapshot);
+              setCanvasError(saveResult.error);
+              return;
+            }
             try {
-              await saveDrawingAction(
-                customerId,
-                quoteId,
-                areaId,
-                nextLayout,
-                null,
-              );
               await updateCounterPieceAction(
                 customerId,
                 quoteId,
@@ -3199,16 +3212,21 @@ export function DrawingCanvasInner({
       );
 
       startTransition(async () => {
-        try {
-          if (nextLayout) {
-            await saveDrawingAction(
-              customerId,
-              quoteId,
-              areaId,
-              nextLayout,
-              null,
-            );
+        if (nextLayout) {
+          const saveResult = await saveDrawingAction(
+            customerId,
+            quoteId,
+            areaId,
+            nextLayout,
+            null,
+          );
+          if (!saveResult.ok) {
+            setLayout(currentLayout);
+            setCanvasError(saveResult.error);
+            return;
           }
+        }
+        try {
           await updateCounterPieceAction(
             customerId,
             quoteId,
@@ -3359,14 +3377,19 @@ export function DrawingCanvasInner({
         setSelectedPieceId(pieceId);
         markDirty();
         startTransition(async () => {
+          const saveResult = await saveDrawingAction(
+            customerId,
+            quoteId,
+            areaId,
+            nextLayout,
+            null,
+          );
+          if (!saveResult.ok) {
+            setLayout(snapshot);
+            setCanvasError(saveResult.error);
+            return;
+          }
           try {
-            await saveDrawingAction(
-              customerId,
-              quoteId,
-              areaId,
-              nextLayout,
-              null,
-            );
             await updateCounterPieceAction(
               customerId,
               quoteId,
@@ -6511,21 +6534,19 @@ export function DrawingCanvasInner({
                         }
                         onClick={() => {
                           startTransition(async () => {
-                            try {
-                              await revertDrawingRevisionAction(
-                                customerId,
-                                quoteId,
-                                areaId,
-                                revision.id,
-                              );
-                              setRevisionsOpen(false);
-                              setContextMenu(null);
-                              router.refresh();
-                            } catch (err) {
-                              setCanvasError(
-                                err instanceof Error ? err.message : "Failed to revert revision. Please try again.",
-                              );
+                            const result = await revertDrawingRevisionAction(
+                              customerId,
+                              quoteId,
+                              areaId,
+                              revision.id,
+                            );
+                            if (!result.ok) {
+                              setCanvasError(result.error);
+                              return;
                             }
+                            setRevisionsOpen(false);
+                            setContextMenu(null);
+                            router.refresh();
                           });
                         }}
                       >
