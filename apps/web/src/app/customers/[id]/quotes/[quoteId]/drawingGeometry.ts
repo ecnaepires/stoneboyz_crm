@@ -25,6 +25,13 @@ export interface DrawingReferenceLine {
   color: string;
 }
 
+export interface DrawingDeletedLine {
+  id: string;
+  pieceId: string;
+  from: [number, number];
+  to: [number, number];
+}
+
 export function roundDrawingInches(value: number) {
   return Math.round(value * 16) / 16;
 }
@@ -306,6 +313,51 @@ export function buildReferenceLine(params: {
     to: params.edge.to,
     kind: params.kind ?? "cabinet",
     color: params.color ?? "#6b7280",
+  };
+}
+
+export function buildDeletedLine(params: {
+  id: string;
+  pieceId: string;
+  edge: DrawingShapeEdge;
+}): DrawingDeletedLine {
+  return {
+    id: params.id,
+    pieceId: params.pieceId,
+    from: params.edge.from,
+    to: params.edge.to,
+  };
+}
+
+export function removeReferenceLine<T extends { id: string }>(
+  lines: T[],
+  lineId: string,
+) {
+  return lines.filter((line) => line.id !== lineId);
+}
+
+export function applyOffsetToSegments(params: {
+  segments: DrawingChainShapeSegment[];
+  edge: DrawingShapeEdge;
+  deltaPx: number;
+  scale: number;
+  referenceLineId: string;
+  pieceId: string;
+}) {
+  const offsetSegment = buildOffsetSegment({
+    edge: params.edge,
+    deltaPx: params.deltaPx,
+    scale: params.scale,
+  });
+  const referenceLine = buildReferenceLine({
+    id: params.referenceLineId,
+    pieceId: params.pieceId,
+    edge: params.edge,
+  });
+
+  return {
+    segments: [...params.segments, offsetSegment],
+    referenceLine,
   };
 }
 

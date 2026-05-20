@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
+  applyOffsetToSegments,
+  buildDeletedLine,
   buildOffsetSegment,
   buildReferenceLine,
   connectEdgesToRectangle,
@@ -7,6 +9,7 @@ import {
   drawingShapeEdgesEqual,
   drawingRectsToChainSegments,
   isRectangularUnion,
+  removeReferenceLine,
   visibleBoundaryEdges,
 } from "./drawingGeometry";
 
@@ -139,5 +142,57 @@ describe("drawing geometry workflow rules", () => {
         { x: 223.5, y: 76.5, w: 76.5, h: 180 },
       ]),
     ).toBe(false);
+  });
+
+  it("applies offset to existing chain segments and returns a reference line", () => {
+    const segments = drawingRectsToChainSegments(
+      [{ x: 0, y: 0, w: 300, h: 76.5 }],
+      SCALE,
+    );
+    const edge = { from: [0, 0] as [number, number], to: [300, 0] as [number, number] };
+
+    const result = applyOffsetToSegments({
+      segments,
+      edge,
+      deltaPx: -4.5,
+      scale: SCALE,
+      referenceLineId: "reference-1",
+      pieceId: "piece-1",
+    });
+
+    expect(result.segments).toHaveLength(2);
+    expect(result.segments[1]).toMatchObject({ y: -4.5, h: 4.5 });
+    expect(result.referenceLine).toMatchObject({
+      id: "reference-1",
+      pieceId: "piece-1",
+      from: [0, 0],
+      to: [300, 0],
+      kind: "cabinet",
+    });
+  });
+
+  it("builds deleted lines and removes reference lines by id", () => {
+    const edge = { from: [0, 0] as [number, number], to: [0, 76.5] as [number, number] };
+    const deleted = buildDeletedLine({
+      id: "deleted-1",
+      pieceId: "piece-1",
+      edge,
+    });
+
+    expect(deleted).toEqual({
+      id: "deleted-1",
+      pieceId: "piece-1",
+      from: [0, 0],
+      to: [0, 76.5],
+    });
+    expect(
+      removeReferenceLine(
+        [
+          { id: "keep", pieceId: "piece-1" },
+          { id: "delete", pieceId: "piece-1" },
+        ],
+        "delete",
+      ),
+    ).toEqual([{ id: "keep", pieceId: "piece-1" }]);
   });
 });

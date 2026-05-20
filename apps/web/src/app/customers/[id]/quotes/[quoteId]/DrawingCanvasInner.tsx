@@ -34,10 +34,11 @@ import {
   updateCounterPieceAction,
 } from "../_actions";
 import {
-  buildOffsetSegment,
-  buildReferenceLine,
+  applyOffsetToSegments,
+  buildDeletedLine,
   connectEdgesToRectangle,
   isRectangularUnion,
+  removeReferenceLine,
   visibleBoundaryEdges,
 } from "./drawingGeometry";
 
@@ -2680,23 +2681,19 @@ export function DrawingCanvasInner({
       const segment = shapeSegments[segmentIndex];
       if (!segment) return;
 
-      const offsetSegment = buildOffsetSegment({
+      const offsetResult = applyOffsetToSegments({
+        segments: shapeSegments,
         edge,
         deltaPx,
         scale: SCALE,
-      });
-
-      const referenceLine: ReferenceLineLayout = buildReferenceLine({
-        id: lineId(pieceId),
+        referenceLineId: lineId(pieceId),
         pieceId,
-        edge,
-        kind: "cabinet",
-        color: "#6b7280",
       });
-      persistChainSegmentsUpdate(piece, [
-        ...shapeSegments,
-        offsetSegment,
-      ], referenceLine);
+      persistChainSegmentsUpdate(
+        piece,
+        offsetResult.segments,
+        offsetResult.referenceLine,
+      );
       setSelectedPieceId(pieceId);
       setChainEdgeAction(null);
       setHoveredChainEdgeId(null);
@@ -4597,12 +4594,11 @@ export function DrawingCanvasInner({
                                                   ...prev,
                                                   deletedLines: [
                                                     ...prev.deletedLines,
-                                                    {
+                                                    buildDeletedLine({
                                                       id: lineId(basePiece.id),
                                                       pieceId: basePiece.id,
-                                                      from: edge.from,
-                                                      to: edge.to,
-                                                    },
+                                                      edge,
+                                                    }),
                                                   ],
                                                 }));
                                                 markDirty();
@@ -4738,12 +4734,11 @@ export function DrawingCanvasInner({
                                                   ...prev,
                                                   deletedLines: [
                                                     ...prev.deletedLines,
-                                                    {
+                                                    buildDeletedLine({
                                                       id: lineId(basePiece.id),
                                                       pieceId: basePiece.id,
-                                                      from: edge.from,
-                                                      to: edge.to,
-                                                    },
+                                                      edge,
+                                                    }),
                                                   ],
                                                 }));
                                                 markDirty();
@@ -4844,12 +4839,11 @@ export function DrawingCanvasInner({
                                                 ...prev,
                                                 deletedLines: [
                                                   ...prev.deletedLines,
-                                                  {
+                                                  buildDeletedLine({
                                                     id: lineId(basePiece.id),
                                                     pieceId: basePiece.id,
-                                                    from: edge.from,
-                                                    to: edge.to,
-                                                  },
+                                                    edge,
+                                                  }),
                                                 ],
                                               }));
                                               markDirty();
@@ -4925,8 +4919,9 @@ export function DrawingCanvasInner({
                                         setLayout((prev) => ({
                                           ...prev,
                                           referenceLines:
-                                            prev.referenceLines.filter(
-                                              (item) => item.id !== line.id,
+                                            removeReferenceLine(
+                                              prev.referenceLines,
+                                              line.id,
                                             ),
                                         }));
                                         setHoveredChainEdgeId(null);
