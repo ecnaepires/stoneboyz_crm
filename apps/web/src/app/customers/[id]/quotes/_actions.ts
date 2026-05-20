@@ -686,6 +686,20 @@ export async function saveDrawingAction(
       splashHeightIn: number | null;
       label: string | null;
     }>;
+    referenceLines?: Array<{
+      id: string;
+      pieceId: string;
+      from: [number, number];
+      to: [number, number];
+      kind: 'cabinet' | 'wall';
+      color: string;
+    }>;
+    deletedLines?: Array<{
+      id: string;
+      pieceId: string;
+      from: [number, number];
+      to: [number, number];
+    }>;
   },
   notes?: string | null
 ) {

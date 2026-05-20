@@ -65,11 +65,29 @@ const canvasEdgeLayoutSchema = z.object({
   label: z.string().trim().max(8).nullable().default(null)
 });
 
+const canvasReferenceLineLayoutSchema = z.object({
+  id: z.string(),
+  pieceId: z.string().uuid(),
+  from: z.tuple([z.number(), z.number()]),
+  to: z.tuple([z.number(), z.number()]),
+  kind: z.enum(['cabinet', 'wall']).default('cabinet'),
+  color: z.string().trim().max(32).default('#6b7280')
+});
+
+const canvasDeletedLineLayoutSchema = z.object({
+  id: z.string(),
+  pieceId: z.string().uuid(),
+  from: z.tuple([z.number(), z.number()]),
+  to: z.tuple([z.number(), z.number()])
+});
+
 export const canvasLayoutSchema = z.object({
   pieces: z.array(canvasPieceLayoutSchema).default([]),
   sinks: z.array(canvasSinkLayoutSchema).default([]),
   corners: z.array(canvasCornerLayoutSchema).default([]),
-  edges: z.array(canvasEdgeLayoutSchema).default([])
+  edges: z.array(canvasEdgeLayoutSchema).default([]),
+  referenceLines: z.array(canvasReferenceLineLayoutSchema).default([]),
+  deletedLines: z.array(canvasDeletedLineLayoutSchema).default([])
 });
 
 export const saveDrawingRevisionSchema = z.object({

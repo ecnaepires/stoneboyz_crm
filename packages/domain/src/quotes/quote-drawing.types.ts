@@ -78,11 +78,29 @@ export interface CanvasEdgeLayout {
   label: string | null;
 }
 
+export interface CanvasReferenceLineLayout {
+  id: string;
+  pieceId: string;
+  from: [number, number];
+  to: [number, number];
+  kind: 'cabinet' | 'wall';
+  color: string;
+}
+
+export interface CanvasDeletedLineLayout {
+  id: string;
+  pieceId: string;
+  from: [number, number];
+  to: [number, number];
+}
+
 export interface CanvasLayout {
   pieces: CanvasPieceLayout[];
   sinks: CanvasSinkLayout[];
   corners: CanvasCornerLayout[];
   edges: CanvasEdgeLayout[];
+  referenceLines: CanvasReferenceLineLayout[];
+  deletedLines: CanvasDeletedLineLayout[];
 }
 
 export interface DrawingRevision {
