@@ -33,6 +33,11 @@ import {
   saveDrawingAction,
   updateCounterPieceAction,
 } from "../_actions";
+import {
+  buildOffsetSegment,
+  buildReferenceLine,
+  connectEdgesToRectangle,
+} from "./drawingGeometry";
 
 const SCALE = 3;
 const PIECE_GAP = 40;
@@ -1105,21 +1110,6 @@ function rectsToChainSegments(rects: ShapeRect[]): ChainShapeSegment[] {
   }));
 }
 
-function rectToChainSegment(rect: ShapeRect): ChainShapeSegment {
-  return rectsToChainSegments([rect])[0] as ChainShapeSegment;
-}
-
-function boundsFromEdges(edges: ShapeEdge[]) {
-  const xs = edges.flatMap((edge) => [edge.from[0], edge.to[0]]);
-  const ys = edges.flatMap((edge) => [edge.from[1], edge.to[1]]);
-  return {
-    minX: Math.min(...xs),
-    minY: Math.min(...ys),
-    maxX: Math.max(...xs),
-    maxY: Math.max(...ys),
-  };
-}
-
 function chainInnerDepthGuides(shape: ChainShapeLayout) {
   const rects = shape.segments.map((segment) => ({
     x: segment.x,
@@ -1211,25 +1201,6 @@ function shapeEdgeMatchesLine(edge: ShapeEdge, line: { from: [number, number]; t
     shapeEdgesEqual(edge, line) ||
     shapeEdgesEqual(edge, { from: line.to, to: line.from })
   );
-}
-
-function chainSegmentWithUpdatedSize(
-  segment: ChainShapeSegment,
-  nextX: number,
-  nextY: number,
-  nextW: number,
-  nextH: number,
-  roundSixteenth: boolean,
-): ChainShapeSegment {
-  return {
-    ...segment,
-    x: nextX,
-    y: nextY,
-    w: nextW,
-    h: nextH,
-    lengthIn: roundToSixteenth(nextW / SCALE, roundSixteenth),
-    widthIn: roundToSixteenth(nextH / SCALE, roundSixteenth),
-  };
 }
 
 function canvasPointToPiecePoint(
@@ -2680,73 +2651,6 @@ export function DrawingCanvasInner({
     ],
   );
 
-  const applyChainEdgeDelta = useCallback(
-    (
-      pieceId: string,
-      edge: ShapeEdge,
-      segmentIndex: number,
-      deltaPx: number,
-    ) => {
-      const currentLayout = layoutRef.current;
-      const pieceLayout = currentLayout.pieces.find(
-        (item) => item.pieceId === pieceId,
-      );
-      const piece = pieces.find((item) => item.id === pieceId);
-      if (!pieceLayout || !piece) return;
-
-      const shapeSegments =
-        pieceLayout.shape && isChainShape(pieceLayout.shape)
-          ? pieceLayout.shape.segments
-          : rectsToChainSegments(
-              pieceLayout.shape && isZShape(pieceLayout.shape)
-                ? zShapeGeometry(piece, pieceLayout.shape).rects
-                : pieceLayout.shape && isLShape(pieceLayout.shape)
-                  ? lShapeGeometry(piece, pieceLayout.shape).rects
-                  : [{ x: 0, y: 0, w: piece.lengthIn * SCALE, h: piece.widthIn * SCALE }],
-            );
-      const segment = shapeSegments[segmentIndex];
-      if (!segment) return;
-
-      const horizontalEdge = valuesNear(edge.from[1], edge.to[1]);
-      const nextSegments = shapeSegments.map((item, index) => {
-        if (index !== segmentIndex) return item;
-
-        if (horizontalEdge) {
-          const isTop = valuesNear(edge.from[1], item.y);
-          const nextY = isTop ? item.y + deltaPx : item.y;
-          const nextH = isTop ? item.h - deltaPx : item.h + deltaPx;
-          if (nextH < SCALE) return item;
-          return chainSegmentWithUpdatedSize(
-            item,
-            item.x,
-            nextY,
-            item.w,
-            nextH,
-            roundSixteenth,
-          );
-        }
-
-        const isLeft = valuesNear(edge.from[0], item.x);
-        const nextX = isLeft ? item.x + deltaPx : item.x;
-        const nextW = isLeft ? item.w - deltaPx : item.w + deltaPx;
-        if (nextW < SCALE) return item;
-        return chainSegmentWithUpdatedSize(
-          item,
-          nextX,
-          item.y,
-          nextW,
-          item.h,
-          roundSixteenth,
-        );
-      });
-
-      persistChainSegmentsUpdate(piece, nextSegments);
-      setSelectedPieceId(pieceId);
-      setChainEdgeAction(null);
-    },
-    [persistChainSegmentsUpdate, pieces, roundSixteenth],
-  );
-
   const createOffsetChainSegment = useCallback(
     (
       pieceId: string,
@@ -2774,45 +2678,19 @@ export function DrawingCanvasInner({
       const segment = shapeSegments[segmentIndex];
       if (!segment) return;
 
-      const horizontalEdge = valuesNear(edge.from[1], edge.to[1]);
-      const edgeMinX = Math.min(edge.from[0], edge.to[0]);
-      const edgeMaxX = Math.max(edge.from[0], edge.to[0]);
-      const edgeMinY = Math.min(edge.from[1], edge.to[1]);
-      const edgeMaxY = Math.max(edge.from[1], edge.to[1]);
-      const offsetSegment = horizontalEdge
-        ? (() => {
-            const isTop = valuesNear(edge.from[1], segment.y);
-            const nextY = edge.from[1] + deltaPx - (isTop ? 0 : segment.h);
-            return chainSegmentWithUpdatedSize(
-              segment,
-              edgeMinX,
-              nextY,
-              Math.max(edgeMaxX - edgeMinX, SCALE),
-              segment.h,
-              roundSixteenth,
-            );
-          })()
-        : (() => {
-            const isLeft = valuesNear(edge.from[0], segment.x);
-            const nextX = edge.from[0] + deltaPx - (isLeft ? 0 : segment.w);
-            return chainSegmentWithUpdatedSize(
-              segment,
-              nextX,
-              edgeMinY,
-              segment.w,
-              Math.max(edgeMaxY - edgeMinY, SCALE),
-              roundSixteenth,
-            );
-          })();
+      const offsetSegment = buildOffsetSegment({
+        edge,
+        deltaPx,
+        scale: SCALE,
+      });
 
-      const referenceLine: ReferenceLineLayout = {
+      const referenceLine: ReferenceLineLayout = buildReferenceLine({
         id: lineId(pieceId),
         pieceId,
-        from: edge.from,
-        to: edge.to,
+        edge,
         kind: "cabinet",
         color: "#6b7280",
-      };
+      });
       persistChainSegmentsUpdate(piece, [
         ...shapeSegments,
         offsetSegment,
@@ -2821,7 +2699,7 @@ export function DrawingCanvasInner({
       setChainEdgeAction(null);
       setHoveredChainEdgeId(null);
     },
-    [persistChainSegmentsUpdate, pieces, roundSixteenth],
+    [persistChainSegmentsUpdate, pieces],
   );
 
   const applyOffsetToChainEdge = useCallback(
@@ -2859,13 +2737,11 @@ export function DrawingCanvasInner({
         return;
       }
 
-      const bounds = boundsFromEdges([chainEdgeAction.edge, targetEdge]);
-      const fullRect = {
-        x: bounds.minX,
-        y: bounds.minY,
-        w: bounds.maxX - bounds.minX,
-        h: bounds.maxY - bounds.minY,
-      };
+      const connection = connectEdgesToRectangle({
+        firstEdge: chainEdgeAction.edge,
+        secondEdge: targetEdge,
+        scale: SCALE,
+      });
       const nextLayout: CanvasLayout = {
         ...currentLayout,
         pieces: currentLayout.pieces.map((item) =>
@@ -2874,7 +2750,7 @@ export function DrawingCanvasInner({
                 ...item,
                 shape: {
                   type: "chain",
-                  segments: [rectToChainSegment(fullRect)],
+                  segments: [connection.segment],
                 },
               }
             : item,
@@ -2886,8 +2762,8 @@ export function DrawingCanvasInner({
           (line) => line.pieceId !== chainEdgeAction.pieceId,
         ),
       };
-      const nextLengthIn = roundToSixteenth(fullRect.w / SCALE, roundSixteenth);
-      const nextWidthIn = roundToSixteenth(fullRect.h / SCALE, roundSixteenth);
+      const nextLengthIn = connection.lengthIn;
+      const nextWidthIn = connection.widthIn;
       const formData = new FormData();
       formData.set("name", piece.name ?? "");
       formData.set("lengthIn", String(nextLengthIn));

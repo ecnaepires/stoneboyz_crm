@@ -109,4 +109,59 @@ describe('canvasLayoutSchema', () => {
       ])
     });
   });
+
+  it('preserves reference and deleted lines for drawing edge workflows', () => {
+    const pieceId = '44444444-4444-4444-8444-444444444444';
+    const parsed = canvasLayoutSchema.parse({
+      pieces: [
+        {
+          pieceId,
+          x: 32,
+          y: 48,
+          rotation: 0,
+          shape: null
+        }
+      ],
+      sinks: [],
+      corners: [],
+      edges: [],
+      referenceLines: [
+        {
+          id: 'cabinet-line-1',
+          pieceId,
+          from: [0, 0],
+          to: [120, 0],
+          kind: 'cabinet',
+          color: '#6b7280'
+        }
+      ],
+      deletedLines: [
+        {
+          id: 'deleted-line-1',
+          pieceId,
+          from: [120, 0],
+          to: [120, 76.5]
+        }
+      ]
+    });
+
+    expect(parsed.referenceLines).toEqual([
+      {
+        id: 'cabinet-line-1',
+        pieceId,
+        from: [0, 0],
+        to: [120, 0],
+        kind: 'cabinet',
+        color: '#6b7280'
+      }
+    ]);
+    expect(parsed.deletedLines).toEqual([
+      {
+        id: 'deleted-line-1',
+        pieceId,
+        from: [120, 0],
+        to: [120, 76.5]
+      }
+    ]);
+  });
 });
