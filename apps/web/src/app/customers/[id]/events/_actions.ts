@@ -141,10 +141,6 @@ export async function finishEventAction(customerId: string, eventId: string) {
   revalidatePath(`/customers/${customerId}/events/${eventId}`);
 }
 
-export async function completeEventAction(customerId: string, eventId: string) {
-  return finishEventAction(customerId, eventId);
-}
-
 export async function cancelEventAction(customerId: string, eventId: string) {
   const client = await getApiClientWithAuth();
 
