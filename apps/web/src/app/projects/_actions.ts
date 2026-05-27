@@ -4,8 +4,7 @@ import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { getApiClientWithAuth } from '@/lib/api';
 import { getActorUserId } from '@/lib/actor';
-
-type ProjectStatus = 'draft' | 'active' | 'completed';
+import type { ProjectStatus } from '@stoneboyz/domain';
 
 export async function createProjectAction(formData: FormData) {
   const client = await getApiClientWithAuth();
