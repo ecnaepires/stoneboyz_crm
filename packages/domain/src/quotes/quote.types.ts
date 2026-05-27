@@ -1,7 +1,7 @@
 import type { QuoteMeasurementAreaTotals } from './quote-measurements.types.js';
 import type { PriceCategory } from './quote-pricing.types.js';
 
-export const QUOTE_STATUS_VALUES = ['draft', 'sent', 'accepted', 'rejected'] as const;
+export const QUOTE_STATUS_VALUES = ['draft', 'sent', 'accepted', 'rejected', 'expired'] as const;
 
 export type QuoteStatus = typeof QUOTE_STATUS_VALUES[number];
 
@@ -91,6 +91,7 @@ export interface Quote {
   id: string;
   customerId: string;
   projectId: string | null;
+  phaseId: string | null;
   priceListId: string | null;
   quoteNumber: string;
   title: string;
@@ -101,7 +102,6 @@ export interface Quote {
   taxRateBps: number;
   totalCents: number;
   shareToken: string;
-  notes: string | null;
   termsAndConditions: string | null;
   sentAt: string | null;
   acceptedAt: string | null;
@@ -158,11 +158,11 @@ export interface CreateQuoteInput {
   actorUserId: string;
   title: string;
   projectId?: string | undefined;
+  phaseId?: string | undefined;
   priceListId?: string | null | undefined;
   validUntil?: string | undefined;
   discountCents?: number | undefined;
   taxRateBps?: number | undefined;
-  notes?: string | undefined;
   termsAndConditions?: string | undefined;
   lineItems?: CreateQuoteLineItemInput[] | undefined;
 }
@@ -171,11 +171,11 @@ export interface UpdateQuoteInput {
   actorUserId: string;
   title?: string | undefined;
   projectId?: string | null | undefined;
+  phaseId?: string | null | undefined;
   priceListId?: string | null | undefined;
   validUntil?: string | null | undefined;
   discountCents?: number | undefined;
   taxRateBps?: number | undefined;
-  notes?: string | null | undefined;
   termsAndConditions?: string | null | undefined;
 }
 

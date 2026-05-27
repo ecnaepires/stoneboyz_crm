@@ -56,7 +56,7 @@ const createEvent = async (
     body: JSON.stringify({
       actorUserId: ACTOR_USER_ID,
       eventType: 'appointment',
-      appointmentType: 'measure',
+      appointmentType: 'template',
       title: 'Measure kitchen countertops',
       scheduledAt: '2026-06-01T14:00:00.000Z',
       durationMinutes: 90,
@@ -72,7 +72,7 @@ const createEvent = async (
 
 const transitionEvent = async (
   eventId: string,
-  action: 'confirm' | 'start' | 'complete' | 'cancel' | 'archive'
+  action: 'confirm' | 'start' | 'finish' | 'complete' | 'cancel' | 'archive'
 ): Promise<{ response: Response; body: Record<string, unknown> }> => {
   const response = await fetch(`${eventsUrl()}/${eventId}/${action}`, {
     method: 'POST',
@@ -112,7 +112,7 @@ describe('scheduled events', () => {
     expect(body).toMatchObject({
       customerId: SEEDED_CUSTOMER_ID,
       eventType: 'appointment',
-      appointmentType: 'measure',
+      appointmentType: 'template',
       title: 'Measure kitchen countertops',
       scheduledAt: '2026-06-01T14:00:00.000Z',
       durationMinutes: 90,
@@ -205,7 +205,7 @@ describe('scheduled events', () => {
     await transitionEvent(created.body.id as string, 'confirm');
     await transitionEvent(created.body.id as string, 'start');
 
-    const { response, body } = await transitionEvent(created.body.id as string, 'complete');
+    const { response, body } = await transitionEvent(created.body.id as string, 'finish');
 
     expect(response.status).toBe(200);
     expect(body.status).toBe('completed');
@@ -231,7 +231,7 @@ describe('scheduled events', () => {
     const created = await createEvent();
     await transitionEvent(created.body.id as string, 'confirm');
     await transitionEvent(created.body.id as string, 'start');
-    await transitionEvent(created.body.id as string, 'complete');
+    await transitionEvent(created.body.id as string, 'finish');
 
     const { response, body } = await transitionEvent(created.body.id as string, 'archive');
 

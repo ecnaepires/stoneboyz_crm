@@ -6,10 +6,25 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
   archiveEventAction,
   cancelEventAction,
-  completeEventAction,
   confirmEventAction,
+  finishEventAction,
   startEventAction,
 } from '../_actions';
+import { addActivityNoteAction, deleteActivityNoteAction } from './_actions';
+
+interface ActivityNote {
+  id: string;
+  authorUserId: string;
+  body: string;
+  createdAt: string;
+}
+
+type NotesQueryClient = {
+  GET: (
+    path: '/customers/{customerId}/events/{eventId}/notes',
+    options: { params: { path: { customerId: string; eventId: string } } }
+  ) => Promise<{ data?: ActivityNote[]; error?: unknown }>;
+};
 
 export default async function EventDetailPage({
   params,
@@ -19,11 +34,15 @@ export default async function EventDetailPage({
   const { id: customerId, eventId } = await params;
   const client = await getApiClientWithAuth();
 
-  const [{ data: event, error }, { data: customer }] = await Promise.all([
+  const [{ data: event, error }, { data: customer }, { data: notesRes }, { data: usersRes }] = await Promise.all([
     client.GET('/customers/{customerId}/events/{eventId}', {
       params: { path: { customerId, eventId } },
     }),
     client.GET('/customers/{customerId}', { params: { path: { customerId } } }),
+    (client as unknown as NotesQueryClient).GET('/customers/{customerId}/events/{eventId}/notes', {
+      params: { path: { customerId, eventId } },
+    }),
+    client.GET('/users', {}),
   ]);
 
   if (error || !event) {
@@ -39,9 +58,12 @@ export default async function EventDetailPage({
 
   const confirmWithIds = confirmEventAction.bind(null, customerId, eventId);
   const startWithIds = startEventAction.bind(null, customerId, eventId);
-  const completeWithIds = completeEventAction.bind(null, customerId, eventId);
+  const finishWithIds = finishEventAction.bind(null, customerId, eventId);
   const cancelWithIds = cancelEventAction.bind(null, customerId, eventId);
   const archiveWithIds = archiveEventAction.bind(null, customerId, eventId);
+  const addNoteWithIds = addActivityNoteAction.bind(null, customerId, eventId);
+  const notes = notesRes ?? [];
+  const authorById = new Map<string, string>((usersRes ?? []).map((user) => [user.id, user.name]));
 
   return (
     <div className="max-w-3xl">
@@ -86,8 +108,8 @@ export default async function EventDetailPage({
             </>
           )}
           {event.status === 'in_progress' && (
-            <form action={completeWithIds}>
-              <Button type="submit" size="sm">Complete</Button>
+            <form action={finishWithIds}>
+              <Button type="submit" size="sm">Finish</Button>
             </form>
           )}
           {(event.status === 'completed' || event.status === 'cancelled') && (
@@ -178,6 +200,47 @@ export default async function EventDetailPage({
                 <dd className="whitespace-pre-wrap">{event.notes ?? '-'}</dd>
               </div>
             </dl>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Activity Notes ({notes.length})</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              {notes.length === 0 ? (
+                <p className="text-sm text-muted-foreground">No notes.</p>
+              ) : (
+                <ul className="space-y-3">
+                  {notes.map((note) => (
+                    <li key={note.id} className="rounded-md border p-3 text-sm">
+                      <div className="flex items-start justify-between gap-3">
+                        <div>
+                          <p className="whitespace-pre-wrap">{note.body}</p>
+                          <p className="mt-1 text-xs text-muted-foreground">
+                            {(authorById.get(note.authorUserId) ?? note.authorUserId)} - {new Date(note.createdAt).toLocaleString()}
+                          </p>
+                        </div>
+                        <form action={deleteActivityNoteAction.bind(null, customerId, eventId, note.id)}>
+                          <Button type="submit" variant="ghost" size="sm">Delete</Button>
+                        </form>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              )}
+              <form action={addNoteWithIds} className="space-y-3">
+                <textarea
+                  name="body"
+                  rows={3}
+                  placeholder="Add a note..."
+                  required
+                  className="flex min-h-20 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                />
+                <Button type="submit">Add Note</Button>
+              </form>
+            </div>
           </CardContent>
         </Card>
       </div>

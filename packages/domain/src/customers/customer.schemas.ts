@@ -4,6 +4,7 @@ import {
   CUSTOMER_ADDRESS_TYPE_VALUES,
   CUSTOMER_KIND_VALUES,
   CUSTOMER_SORT_BY_VALUES,
+  CUSTOMER_SOURCE_VALUES,
   CUSTOMER_STATUS_VALUES,
   CUSTOMER_TYPE_VALUES,
   SORT_DIRECTION_VALUES
@@ -12,6 +13,7 @@ import {
 const customerKindSchema = z.enum(CUSTOMER_KIND_VALUES);
 const customerStatusSchema = z.enum(CUSTOMER_STATUS_VALUES);
 const customerTypeSchema = z.enum(CUSTOMER_TYPE_VALUES);
+const customerSourceSchema = z.enum(CUSTOMER_SOURCE_VALUES);
 const contactChannelSchema = z.enum(CONTACT_CHANNEL_VALUES);
 export const customerAddressTypeSchema = z.enum(CUSTOMER_ADDRESS_TYPE_VALUES);
 const customerSortBySchema = z.enum(CUSTOMER_SORT_BY_VALUES);
@@ -33,7 +35,7 @@ export const createCustomerSchema = z.object({
   website: z.string().url().optional(),
   industry: z.string().min(1).optional(),
   companySize: z.string().min(1).optional(),
-  source: z.string().min(1).optional(),
+  source: customerSourceSchema.optional(),
   tags: z.array(z.string().min(1)).optional(),
   notesSummary: z.string().min(1).optional(),
   phone: z.string().min(1).optional(),
@@ -72,7 +74,8 @@ export const updateCustomerSchema = z.object({
   website: z.string().url().nullable().optional(),
   industry: z.string().min(1).nullable().optional(),
   companySize: z.string().min(1).nullable().optional(),
-  source: z.string().min(1).nullable().optional(),
+  source: customerSourceSchema.nullable().optional(),
+  priceListId: z.string().uuid().nullable().optional(),
   tags: z.array(z.string().min(1)).optional(),
   notesSummary: z.string().min(1).nullable().optional(),
   phone: z.string().min(1).nullable().optional(),
@@ -175,7 +178,8 @@ export const listCustomersSchema = z.object({
     z.array(z.string().min(1)).optional()
   ),
   industry: z.string().min(1).optional(),
-  source: z.string().min(1).optional(),
+  source: customerSourceSchema.optional(),
+  priceListId: z.string().uuid().optional(),
   createdAtFrom: z.coerce.date().optional(),
   createdAtTo: z.coerce.date().optional(),
   sortBy: customerSortBySchema.default('updatedAt'),

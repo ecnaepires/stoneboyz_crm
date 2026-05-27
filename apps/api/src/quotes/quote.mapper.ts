@@ -4,6 +4,7 @@ export interface QuoteRow {
   id: string;
   customer_id: string;
   project_id: string | null;
+  phase_id: string | null;
   price_list_id: string | null;
   quote_number: string;
   title: string;
@@ -13,7 +14,6 @@ export interface QuoteRow {
   discount_cents: number;
   tax_rate_bps: number;
   share_token: string;
-  notes: string | null;
   terms_and_conditions: string | null;
   sent_at: Date | null;
   accepted_at: Date | null;
@@ -102,6 +102,7 @@ export const mapQuoteRow = (row: QuoteRow): Quote => {
     id: row.id,
     customerId: row.customer_id,
     projectId: row.project_id,
+    phaseId: row.phase_id,
     priceListId: row.price_list_id,
     quoteNumber: row.quote_number,
     title: row.title,
@@ -112,7 +113,6 @@ export const mapQuoteRow = (row: QuoteRow): Quote => {
     taxRateBps: row.tax_rate_bps,
     totalCents: computeTotalCents(subtotalCents, row.discount_cents, row.tax_rate_bps),
     shareToken: row.share_token,
-    notes: row.notes,
     termsAndConditions: row.terms_and_conditions,
     sentAt: row.sent_at === null ? null : toIso(row.sent_at),
     acceptedAt: row.accepted_at === null ? null : toIso(row.accepted_at),

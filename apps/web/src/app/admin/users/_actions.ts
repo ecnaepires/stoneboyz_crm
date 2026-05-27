@@ -3,7 +3,7 @@
 import { revalidatePath } from 'next/cache';
 import { getApiClientWithAuth } from '@/lib/api';
 
-const validRoles = ['admin', 'estimator', 'installer'] as const;
+const validRoles = ['admin', 'salesperson', 'templater', 'cutter', 'fabricator', 'installer', 'service_tech'] as const;
 
 export async function updateRoleAction(userId: string, roleOrFormData: string | FormData) {
   const roleValue =

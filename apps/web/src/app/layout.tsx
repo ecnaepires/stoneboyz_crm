@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import { getApiClientWithAuth } from '@/lib/api';
+import { AppShell } from '@/components/app-shell';
 import './globals.css';
 
 export const metadata: Metadata = {
@@ -17,106 +18,18 @@ export default async function RootLayout({
 
   if (!me) {
     return (
-      <html lang="en">
+      <html lang='en'>
         <body>{children}</body>
       </html>
     );
   }
 
   return (
-    <html lang="en">
+    <html lang='en'>
       <body>
-        <div className="flex min-h-screen">
-          <nav className="w-64 border-r bg-muted/40 p-4">
-            <div className="mb-6">
-              <h1 className="text-lg font-semibold">Stoneboyz CRM</h1>
-            </div>
-            <ul className="space-y-1">
-              <li>
-                <a
-                  href="/dashboard"
-                  className="block rounded-md px-3 py-2 text-sm font-medium hover:bg-muted"
-                >
-                  Dashboard
-                </a>
-              </li>
-              <li>
-                <a
-                  href="/customers"
-                  className="block rounded-md px-3 py-2 text-sm font-medium hover:bg-muted"
-                >
-                  Customers
-                </a>
-              </li>
-              <li>
-                <a
-                  href="/projects"
-                  className="block rounded-md px-3 py-2 text-sm font-medium hover:bg-muted"
-                >
-                  Projects
-                </a>
-              </li>
-              <li>
-                <a
-                  href="/customers"
-                  className="block rounded-md px-3 py-2 text-sm font-medium hover:bg-muted"
-                >
-                  Quotes
-                </a>
-              </li>
-              <li>
-                <a
-                  href="/customers"
-                  className="block rounded-md px-3 py-2 text-sm font-medium hover:bg-muted"
-                >
-                  Scheduling
-                </a>
-              </li>
-              <li>
-                <a
-                  href="/price-lists"
-                  className="block rounded-md px-3 py-2 text-sm font-medium hover:bg-muted"
-                >
-                  Price Lists
-                </a>
-              </li>
-              <li>
-                <a
-                  href="/slabs"
-                  className="block rounded-md px-3 py-2 text-sm font-medium hover:bg-muted"
-                >
-                  Slabs
-                </a>
-              </li>
-              <li>
-                <a
-                  href="/customers/archived"
-                  className="block rounded-md px-3 py-2 text-sm font-medium hover:bg-muted"
-                >
-                  Archived
-                </a>
-              </li>
-            </ul>
-            {me?.role === 'admin' ? (
-              <div className="mt-6 border-t pt-4">
-                <p className="mb-2 px-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                  Admin
-                </p>
-                <ul className="space-y-1">
-                  <li>
-                    <a
-                      href="/admin/users"
-                      className="block rounded-md px-3 py-2 text-sm font-medium hover:bg-muted"
-                    >
-                      Users
-                    </a>
-                  </li>
-                </ul>
-              </div>
-            ) : null}
-          </nav>
-          <main className="flex-1 p-6">{children}</main>
-        </div>
+        <AppShell isAdmin={me.role === 'admin'}>
+          {children}
+        </AppShell>
       </body>
     </html>
   );

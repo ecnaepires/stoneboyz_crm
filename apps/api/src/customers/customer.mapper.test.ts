@@ -12,7 +12,7 @@ describe('mapCustomerRow', () => {
       last_name: null,
       display_name: null,
       status: 'lead',
-      type: 'prospect',
+      type: 'customer',
       owner_user_id: '22222222-2222-4222-8222-222222222222',
       primary_contact_id: null,
       billing_contact_id: null,

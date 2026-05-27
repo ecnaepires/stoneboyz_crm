@@ -141,7 +141,14 @@ describe('Quote drawing save and load', () => {
     expect(saveRes.status).toBe(201);
     expect(saved['quoteAreaId']).toBe(areaId);
     expect(saved['revisionNumber']).toBe(1);
-    expect(saved['layout']).toEqual({ pieces: [], sinks: [], corners: [], edges: [] });
+    expect(saved['layout']).toEqual({
+      pieces: [],
+      sinks: [],
+      corners: [],
+      edges: [],
+      deletedLines: [],
+      referenceLines: []
+    });
     expect(saved['notes']).toBeNull();
     expect(saved['id']).toEqual(expect.any(String));
     expect(saved['createdAt']).toEqual(expect.any(String));
@@ -338,7 +345,9 @@ describe('Quote drawing revisions', () => {
         pieces: [{ pieceId: '33333333-3333-4333-8333-333333333333', x: 10, y: 20, rotation: 0 }],
         sinks: [],
         corners: [],
-        edges: []
+        edges: [],
+        deletedLines: [],
+        referenceLines: []
       }
     };
     const secondLayout = {

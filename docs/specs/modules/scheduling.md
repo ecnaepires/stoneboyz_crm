@@ -15,23 +15,28 @@ A scheduled event represents either a customer site visit (appointment) or an in
 
 ### ScheduledEvent
 
-A single calendar event — either a customer-facing appointment or an internal shop job.
+A single calendar event - either a customer-facing appointment or an internal shop job.
 
 Fields:
 - `id`: UUID
-- `customerId`: UUID — required FK to customers
-- `projectId`: UUID — optional FK to projects, nullable
+- `customerId`: UUID - required FK to customers
+- `projectId`: UUID - optional FK to projects, nullable
 - `eventType`: one of `appointment`, `shop_job`
-- `appointmentType`: one of `measure`, `template`, `install`, `follow_up`, `other` — required when `eventType = appointment`; must be null when `eventType = shop_job`
+- `appointmentType`: one of `template`, `deposit`, `material`, `fabrication`, `install`, `invoice`, `repair`, `other` - required when `eventType = appointment`; must be null when `eventType = shop_job`
+- `templateKind`: one of `measurement_only`, `physical_template`, `laser_template` - only valid when `appointmentType = template`; otherwise null
 - `title`: required string label for the event
-- `scheduledAt`: required timestamptz — event start time in UTC
+- `scheduledAt`: required timestamptz - event start time in UTC
 - `durationMinutes`: required integer, default 60, must be greater than 0
-- `assigneeUserIds`: required UUID array — at least one element, no duplicates
-- `address`: optional text — site address, most relevant for appointment events
-- `notes`: optional text — internal notes
+- `assigneeUserIds`: required UUID array - at least one element, no duplicates
+- `address`: optional text - site address, most relevant for appointment events
+- `notes`: optional text - internal notes
 - `status`: one of `scheduled`, `confirmed`, `in_progress`, `completed`, `cancelled`
 - `archivedAt`: nullable ISO 8601 UTC timestamp exposed by API; stored as `deleted_at` in DB
 - `archivedByUserId`: nullable UUID
+- `startedByUserId`: nullable UUID of the user who started the event
+- `startedAt`: nullable timestamptz when the event moved to in_progress
+- `completedByUserId`: nullable UUID of the user who completed the event
+- `completedAt`: nullable timestamptz when the event moved to completed
 - `createdAt`: ISO 8601 UTC timestamp
 - `updatedAt`: ISO 8601 UTC timestamp
 
@@ -39,12 +44,13 @@ Fields:
 
 - `customerId` is always required regardless of `eventType`.
 - `appointmentType` is required when `eventType = appointment` and must be null when `eventType = shop_job`.
+- `templateKind` is only valid when `appointmentType = template`.
 - `assigneeUserIds` must contain at least one valid UUID. Duplicate IDs within the array are not allowed.
 - Status transitions allowed:
-  - `scheduled` → `confirmed` (via POST .../confirm)
-  - `confirmed` → `in_progress` (via POST .../start)
-  - `in_progress` → `completed` (via POST .../complete)
-  - Any status except `completed` → `cancelled` (via POST .../cancel)
+  - `scheduled` -> `confirmed` (via POST .../confirm)
+  - `confirmed` -> `in_progress` (via POST .../start)
+  - `in_progress` -> `completed` (via POST .../finish; `.../complete` remains a compatibility alias)
+  - Any status except `completed` -> `cancelled` (via POST .../cancel)
   - No back-transitions are allowed (e.g. `confirmed` cannot return to `scheduled`).
 - Rescheduling (`scheduledAt` updated via PATCH) is only allowed when status is `scheduled` or `confirmed`.
 - Archiving (soft delete) is only allowed when status is `completed` or `cancelled`.
@@ -64,7 +70,8 @@ Base path: `/customers/{customerId}/events`
 - `PATCH /customers/{customerId}/events/{eventId}`: Update event fields (only when status is `scheduled` or `confirmed`).
 - `POST /customers/{customerId}/events/{eventId}/confirm`: Transition status from `scheduled` to `confirmed`.
 - `POST /customers/{customerId}/events/{eventId}/start`: Transition status from `confirmed` to `in_progress`.
-- `POST /customers/{customerId}/events/{eventId}/complete`: Transition status from `in_progress` to `completed`.
+- `POST /customers/{customerId}/events/{eventId}/finish`: Transition status from `in_progress` to `completed`.
+- `POST /customers/{customerId}/events/{eventId}/complete`: Compatibility alias for `finish`.
 - `POST /customers/{customerId}/events/{eventId}/cancel`: Transition status to `cancelled` (allowed from any status except `completed`).
 - `POST /customers/{customerId}/events/{eventId}/archive`: Soft-delete event (only when status is `completed` or `cancelled`).
 
@@ -72,8 +79,8 @@ List filters:
 - `eventType`
 - `status`
 - `projectId`
-- `from` (ISO date — filter events with `scheduledAt` on or after this date)
-- `to` (ISO date — filter events with `scheduledAt` on or before this date)
+- `from` (ISO date - filter events with `scheduledAt` on or after this date)
+- `to` (ISO date - filter events with `scheduledAt` on or before this date)
 
 List pagination:
 - Cursor-based, default page size 25.
@@ -89,7 +96,7 @@ Event names follow `entity.action` format.
 - `scheduled_event.started`: Event transitioned to in_progress.
 - `scheduled_event.completed`: Event transitioned to completed.
 - `scheduled_event.cancelled`: Event transitioned to cancelled.
-- `scheduled_event.rescheduled`: `scheduledAt` changed via PATCH — emitted in addition to `scheduled_event.updated`.
+- `scheduled_event.rescheduled`: `scheduledAt` changed via PATCH - emitted in addition to `scheduled_event.updated`.
 - `scheduled_event.archived`: Event soft-deleted.
 
 Minimum event payload fields:
@@ -101,7 +108,7 @@ Minimum event payload fields:
 - `data.actorUserId`: UUID
 
 Additional payload fields per event type:
-- `scheduled_event.updated`: `data.changedFields` — array of field names that changed
+- `scheduled_event.updated`: `data.changedFields` - array of field names that changed
 - `scheduled_event.rescheduled`: `data.previousScheduledAt`, `data.newScheduledAt`
 
 ## Moraware Production Expansion

@@ -1088,3 +1088,34 @@ Context:
 - Gap: The CRM still looked like multiple joined blocks and could not keep walking the path through repeated depth-threshold turns the way Moraware does.
 - Fix requirement: Render the preview/saved surface as one union outline and persist a generic chained segment shape for multi-turn paths.
 - Verification: Draw a path that goes right, down, right, down, right. The CRM should show one filled counter outline with no internal orange seams and all repeated turns preserved.
+
+## Live Notes - 2026-05-20 (User Recording Review)
+
+Source:
+
+- User-recorded Moraware CounterGo videos saved under `output/moraware-recordings`.
+- Contact sheet generated at `output/moraware-recordings/frames/contact-sheet.jpg`.
+
+### Finding: Finished Drawing Uses Perimeter Segment Dimensions
+
+- Moraware behavior: Finished project drawings show dimension labels directly on the perimeter of each visible segment, including chained turns and complex connected runs.
+- CRM behavior: The canvas had labels for simple rectangular pieces and partial labels for chained shapes, but compound outlines did not consistently label every visible perimeter segment.
+- Gap: Complex drawings looked less like the recorded CounterGo output, especially on multi-turn shapes.
+- Fix requirement: Render dimension labels for every boundary segment on L, Z, and chained counter shapes, with labels placed outside the piece perimeter and clickable from the drawing surface.
+- Verification: Complex compound counters show repeated perimeter labels across all visible segments, not only one length/depth pair.
+
+### Finding: Tool Rail Shortcut Rhythm
+
+- Moraware behavior: The right tool rail shows repeated-use shortcut hints beside tools such as text, page break, other counter, rounding, zoom, reset, and pan.
+- CRM behavior: The right rail had matching tool names but no shortcut hints and no keyboard handling for those hints.
+- Gap: Experienced users lose part of CounterGo's fast repeat-use rhythm.
+- Fix requirement: Show shortcut hints on the right rail and wire matching keyboard shortcuts when focus is not inside a form field.
+- Verification: Right rail displays shortcuts, and pressing `N`, `Y`, `E`, `Z`, `J`, `K`, `L`, or `M` triggers the matching tool action.
+
+### Finding: Chained Resize Must Preserve Connected Runs
+
+- Moraware behavior: In the user recording from 2026-05-20, editing a chained/L-shaped counter dimension keeps the drawing as one connected counter surface; the downstream leg slides with the changed edge and does not separate from the shared corner.
+- CRM behavior: The chain segment resize logic updated the edited segment size, but its downstream-shift threshold could miss the attached perpendicular segment at the overlap-depth corner, leaving connected runs visually separated.
+- Gap: Resizing a chained counter could break the one-piece CounterGo feel and make a continuous run look like disconnected pieces.
+- Fix requirement: When a chain segment dimension changes, detect whether the neighboring segment is attached to the edited segment's start or end and move the downstream connected segments from that shared corner.
+- Verification: Draw a right/down/right chained counter, click a perimeter dimension, enter a new length, and save. The vertical/downstream run should remain connected to the edited segment with no gap.

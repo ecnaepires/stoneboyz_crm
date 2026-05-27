@@ -27,13 +27,14 @@ interface ScheduledEventCursor {
 
 const UPDATE_COLUMNS = {
   projectId: 'project_id',
+  phaseId: 'phase_id',
   appointmentType: 'appointment_type',
+  templateKind: 'template_kind',
   title: 'title',
   scheduledAt: 'scheduled_at',
   durationMinutes: 'duration_minutes',
   assigneeUserIds: 'assignee_user_ids',
-  address: 'address',
-  notes: 'notes'
+  address: 'address'
 } satisfies Record<Exclude<keyof UpdateScheduledEventInput, 'actorUserId'>, string>;
 
 export class InvalidScheduledEventCursorError extends Error {
@@ -161,29 +162,31 @@ export class ScheduledEventsRepository {
         INSERT INTO scheduled_events (
           customer_id,
           project_id,
+          phase_id,
           event_type,
           appointment_type,
+          template_kind,
           title,
           scheduled_at,
           duration_minutes,
           assignee_user_ids,
-          address,
-          notes
+          address
         )
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8::uuid[], $9, $10)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10::uuid[], $11)
         RETURNING *
       `,
       [
         customerId,
         input.projectId ?? null,
+        input.phaseId ?? null,
         input.eventType,
         input.appointmentType ?? null,
+        input.templateKind ?? null,
         input.title,
         input.scheduledAt,
         input.durationMinutes ?? 60,
         input.assigneeUserIds,
-        input.address ?? null,
-        input.notes ?? null
+        input.address ?? null
       ]
     );
 
@@ -258,12 +261,20 @@ export class ScheduledEventsRepository {
     return this.transition(customerId, eventId, ['scheduled'], 'confirmed');
   }
 
-  async start(customerId: string, eventId: string): Promise<ScheduledEvent | null> {
-    return this.transition(customerId, eventId, ['confirmed'], 'in_progress');
+  async start(customerId: string, eventId: string, actorUserId: string): Promise<ScheduledEvent | null> {
+    return this.transitionWithAudit(customerId, eventId, ['confirmed'], 'in_progress', {
+      userIdColumn: 'started_by_user_id',
+      atColumn: 'started_at',
+      actorUserId
+    });
   }
 
-  async complete(customerId: string, eventId: string): Promise<ScheduledEvent | null> {
-    return this.transition(customerId, eventId, ['in_progress'], 'completed');
+  async complete(customerId: string, eventId: string, actorUserId: string): Promise<ScheduledEvent | null> {
+    return this.transitionWithAudit(customerId, eventId, ['in_progress'], 'completed', {
+      userIdColumn: 'completed_by_user_id',
+      atColumn: 'completed_at',
+      actorUserId
+    });
   }
 
   async cancel(customerId: string, eventId: string): Promise<ScheduledEvent | null> {
@@ -315,6 +326,41 @@ export class ScheduledEventsRepository {
         RETURNING *
       `,
       [customerId, eventId, toStatus, fromStatuses]
+    );
+
+    const row = result.rows[0];
+
+    if (row !== undefined) {
+      return mapScheduledEventRow(row);
+    }
+
+    const current = await this.findById(customerId, eventId);
+    if (current !== null) {
+      throw new InvalidScheduledEventStatusError();
+    }
+
+    return null;
+  }
+
+  private async transitionWithAudit(
+    customerId: string,
+    eventId: string,
+    fromStatuses: ScheduledEventStatus[],
+    toStatus: Extract<ScheduledEventStatus, 'in_progress' | 'completed'>,
+    audit: { userIdColumn: 'started_by_user_id' | 'completed_by_user_id'; atColumn: 'started_at' | 'completed_at'; actorUserId: string }
+  ): Promise<ScheduledEvent | null> {
+    const values: unknown[] = [customerId, eventId, toStatus, audit.actorUserId, fromStatuses];
+    const result = await this.pool.query<ScheduledEventRow>(
+      `
+        UPDATE scheduled_events
+        SET status = $3, ${audit.userIdColumn} = $4, ${audit.atColumn} = now(), updated_at = now()
+        WHERE customer_id = $1
+          AND id = $2
+          AND deleted_at IS NULL
+          AND status = ANY($5::text[])
+        RETURNING *
+      `,
+      values
     );
 
     const row = result.rows[0];

@@ -1,0 +1,22 @@
+{
+  "feature": "slab-measurement-validator",
+  "spec": "docs/specs/next.md",
+  "startedAt": "2026-05-20T00:00:00.000Z",
+  "status": "red",
+  "pipeline": {
+    "step0_init":        { "status": "done",    "note": "log initialized" },
+    "step1_test_file":   { "status": "done",    "path": "packages/domain/src/__tests__/slab-measurement-validator.test.ts" },
+    "step2_codex_brief": { "status": "done",    "path": "docs/plans/tdd-slab-measurement-validator-impl.md" },
+    "step3_impl":        { "status": "pending", "note": "awaiting codex:rescue invocation" },
+    "step4_gates":       { "status": "red",     "note": "first gate run — impl file does not exist yet" }
+  },
+  "acceptanceCriteria": [
+    { "id": "AC-1", "desc": "valid measurement passes",           "gateStatus": "red" },
+    { "id": "AC-2", "desc": "zero/negative dimensions rejected",  "gateStatus": "red" },
+    { "id": "AC-3", "desc": "unreasonably large slab rejected",   "gateStatus": "red" },
+    { "id": "AC-4", "desc": "thickness outside range rejected",   "gateStatus": "red" },
+    { "id": "AC-5", "desc": "missing fields rejected",            "gateStatus": "red" },
+    { "id": "AC-6", "desc": "non-numeric input rejected",         "gateStatus": "red" }
+  ],
+  "iterations": []
+}

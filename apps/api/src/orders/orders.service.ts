@@ -77,9 +77,11 @@ export class OrdersService {
         discountCents: quote.discountCents,
         taxRateBps: quote.taxRateBps,
         totalCents: quote.totalCents,
-        notes: quote.notes,
+        notes: null,
         termsAndConditions: quote.termsAndConditions
       });
+      await this.ordersRepository.copyQuoteAreasToOrder(client, order.id, quoteId);
+      await this.ordersRepository.copyQuoteLineItemsToOrder(client, order.id, quoteId);
       await client.query('COMMIT');
     } catch (error) {
       await client.query('ROLLBACK');
@@ -88,9 +90,12 @@ export class OrdersService {
       client.release();
     }
 
+    const snapshotOrder = await this.ordersRepository.findById(customerId, order.id);
+    const orderWithSnapshots = snapshotOrder ?? order;
+
     this.eventBus.emit('order.created', buildOrderPayload(customerId, order.id, input.actorUserId));
 
-    return { ...order, payments: [] };
+    return { ...orderWithSnapshots, payments: [] };
   }
 
   async getById(customerId: string, orderId: string): Promise<OrderWithPayments> {

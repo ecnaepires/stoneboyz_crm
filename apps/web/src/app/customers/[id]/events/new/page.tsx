@@ -59,10 +59,13 @@ export default async function NewEventPage({
                 <Label htmlFor="appointmentType">Appointment Type</Label>
                 <Select id="appointmentType" name="appointmentType" defaultValue="">
                   <option value="">N/A</option>
-                  <option value="measure">Measure</option>
                   <option value="template">Template</option>
+                  <option value="deposit">Deposit</option>
+                  <option value="material">Material</option>
+                  <option value="fabrication">Fabrication</option>
                   <option value="install">Install</option>
-                  <option value="follow_up">Follow Up</option>
+                  <option value="invoice">Invoice</option>
+                  <option value="repair">Repair</option>
                   <option value="other">Other</option>
                 </Select>
               </div>

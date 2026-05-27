@@ -23,6 +23,7 @@ interface PaginatedCustomersResponse {
 }
 
 const UNIQUE_VIOLATION_CODE = '23505';
+const FOREIGN_KEY_VIOLATION_CODE = '23503';
 
 const isDatabaseError = (error: unknown): error is DatabaseError => {
   return typeof error === 'object' && error !== null && 'code' in error;
@@ -67,6 +68,10 @@ export class CustomersService {
           code: 'CONFLICT',
           message: 'Customer conflicts with an existing non-archived customer'
         });
+      }
+
+      if (isDatabaseError(error) && error.code === FOREIGN_KEY_VIOLATION_CODE) {
+        throw new NotFoundException({ code: 'NOT_FOUND', message: 'Price list not found' });
       }
 
       throw error;
@@ -139,6 +144,10 @@ export class CustomersService {
           code: 'CONFLICT',
           message: 'Customer conflicts with an existing non-archived customer'
         });
+      }
+
+      if (isDatabaseError(error) && error.code === FOREIGN_KEY_VIOLATION_CODE) {
+        throw new NotFoundException({ code: 'NOT_FOUND', message: 'Price list not found' });
       }
 
       throw error;

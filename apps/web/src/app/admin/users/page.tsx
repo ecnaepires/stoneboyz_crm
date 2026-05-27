@@ -39,8 +39,12 @@ export default async function AdminUsersPage() {
                 <form action={updateRoleAction.bind(null, user.id)} className="flex items-center gap-2">
                   <Select name="role" defaultValue={user.role} className="w-40">
                     <option value="admin">Admin</option>
-                    <option value="estimator">Estimator</option>
+                    <option value="salesperson">Salesperson</option>
+                    <option value="templater">Templater</option>
+                    <option value="cutter">Cutter</option>
+                    <option value="fabricator">Fabricator</option>
                     <option value="installer">Installer</option>
+                    <option value="service_tech">Service Tech</option>
                   </Select>
                   <Button type="submit" variant="outline">Save</Button>
                 </form>

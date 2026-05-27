@@ -1,5 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
-import type { CreateCustomerNoteInput, CustomerNote, UpdateCustomerNoteInput } from '@stoneboyz/domain';
+import type { CreateCustomerNoteInput, CustomerNote } from '@stoneboyz/domain';
 import type { Pool } from 'pg';
 import { DATABASE_POOL } from '../database.provider.js';
 import { mapCustomerNoteRow, type CustomerNoteRow } from './customer-note.mapper.js';
@@ -65,15 +65,15 @@ export class CustomerNotesRepository {
     return mapCustomerNoteRow(result.rows[0] as CustomerNoteRow);
   }
 
-  async update(customerId: string, noteId: string, input: UpdateCustomerNoteInput): Promise<CustomerNote | null> {
+  async update(customerId: string, noteId: string, body: string): Promise<CustomerNote | null> {
     const result = await this.pool.query<CustomerNoteRow>(
       `
         UPDATE customer_notes
-        SET body = $3, updated_at = now()
-        WHERE customer_id = $1 AND id = $2 AND deleted_at IS NULL
+        SET body = $3, edited_at = now()
+        WHERE id = $2 AND customer_id = $1 AND deleted_at IS NULL
         RETURNING *
       `,
-      [customerId, noteId, input.body]
+      [customerId, noteId, body]
     );
 
     const row = result.rows[0];

@@ -61,7 +61,7 @@ const createCustomer = async (name: string): Promise<Record<string, unknown>> =>
       name,
       companyName: name,
       status: 'lead',
-      type: 'prospect',
+      type: 'customer',
       ownerUserId: ACTOR_USER_ID
     })
   });

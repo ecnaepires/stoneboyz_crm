@@ -1,12 +1,12 @@
 import { BadRequestException, Body, Controller, Get, Param, Patch } from '@nestjs/common';
 import { z } from 'zod';
 import { CurrentUser } from '../auth/current-user.decorator.js';
-import { Roles } from '../auth/roles.decorator.js';
+import { ROLE_VALUES, Roles } from '../auth/roles.decorator.js';
 import { UsersService } from './users.service.js';
 
 const userIdSchema = z.string().uuid();
 const updateRoleSchema = z.object({
-  role: z.enum(['admin', 'estimator', 'installer'])
+  role: z.enum(ROLE_VALUES)
 });
 
 const formatZodError = (error: z.ZodError): Record<string, string[]> => z.flattenError(error).fieldErrors;

@@ -1124,6 +1124,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/customers/{customerId}/events/{eventId}/finish": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Transition event from in_progress to completed */
+        post: operations["finishCustomerEvent"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/customers/{customerId}/events/{eventId}/complete": {
         parameters: {
             query?: never;
@@ -1287,7 +1304,7 @@ export interface components {
             email: string;
             name: string;
             /** @enum {string} */
-            role: "admin" | "estimator" | "installer";
+            role: "admin" | "salesperson" | "templater" | "cutter" | "fabricator" | "installer" | "service_tech";
             /** Format: date-time */
             createdAt: string;
         };
@@ -1309,6 +1326,10 @@ export interface components {
             taxRateBps: number;
             /** Format: uuid */
             shareToken: string;
+            pipelineStage: string | null;
+            pipelineStatus: string | null;
+            nextActivityDate: string | null;
+            phaseName: string | null;
             areas: {
                 /** Format: uuid */
                 id: string;
@@ -1839,6 +1860,11 @@ export interface components {
             widthIn: number;
             /** @default 1 */
             quantity: number;
+            /**
+             * @default countertop
+             * @enum {string}
+             */
+            kind: "countertop" | "backsplash";
             /** Format: date-time */
             createdAt: string;
             /** Format: date-time */
@@ -1852,6 +1878,11 @@ export interface components {
             widthIn: number;
             /** @default 1 */
             quantity: number;
+            /**
+             * @default countertop
+             * @enum {string}
+             */
+            kind: "countertop" | "backsplash";
         };
         /** @description At least one updatable field is required. */
         UpdateCounterPieceRequest: {
@@ -2091,7 +2122,7 @@ export interface components {
         /** @enum {string} */
         ScheduledEventType: "appointment" | "shop_job";
         /** @enum {string} */
-        AppointmentType: "measure" | "template" | "install" | "follow_up" | "other";
+        AppointmentType: "template" | "deposit" | "material" | "fabrication" | "install" | "invoice" | "repair" | "other";
         /** @enum {string} */
         ScheduledEventStatus: "scheduled" | "confirmed" | "in_progress" | "completed" | "cancelled";
         ScheduledEvent: {
@@ -2104,6 +2135,11 @@ export interface components {
             eventType: components["schemas"]["ScheduledEventType"];
             /** @description Required when eventType is appointment; must be null when eventType is shop_job. */
             appointmentType?: components["schemas"]["AppointmentType"];
+            /**
+             * @description Only valid when appointmentType is template.
+             * @enum {string|null}
+             */
+            templateKind?: "measurement_only" | "physical_template" | "laser_template" | null;
             title: string;
             /**
              * Format: date-time
@@ -2122,6 +2158,14 @@ export interface components {
             archivedAt?: string | null;
             /** Format: uuid */
             archivedByUserId?: string | null;
+            /** Format: uuid */
+            startedByUserId?: string | null;
+            /** Format: date-time */
+            startedAt?: string | null;
+            /** Format: uuid */
+            completedByUserId?: string | null;
+            /** Format: date-time */
+            completedAt?: string | null;
             /** Format: date-time */
             createdAt: string;
             /** Format: date-time */
@@ -2138,6 +2182,11 @@ export interface components {
             eventType: components["schemas"]["ScheduledEventType"];
             /** @description Required when eventType is appointment; must be omitted or null when eventType is shop_job. */
             appointmentType?: components["schemas"]["AppointmentType"];
+            /**
+             * @description Only valid when appointmentType is template.
+             * @enum {string|null}
+             */
+            templateKind?: "measurement_only" | "physical_template" | "laser_template" | null;
             title: string;
             /** Format: date-time */
             scheduledAt: string;
@@ -2152,6 +2201,8 @@ export interface components {
             /** Format: uuid */
             projectId?: string | null;
             appointmentType?: components["schemas"]["AppointmentType"];
+            /** @enum {string|null} */
+            templateKind?: "measurement_only" | "physical_template" | "laser_template" | null;
             title?: string;
             /**
              * Format: date-time
@@ -2306,6 +2357,49 @@ export interface components {
             archivedAt: string | null;
             /** Format: uuid */
             archivedByUserId: string | null;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+            areas?: components["schemas"]["OrderArea"][];
+            lineItems?: components["schemas"]["OrderLineItem"][];
+        };
+        OrderArea: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            orderId: string;
+            sortOrder: number;
+            name: string;
+            material?: string | null;
+            color?: string | null;
+            edgeProfile?: string | null;
+            notes?: string | null;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+        };
+        OrderLineItem: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            orderId: string;
+            /** Format: uuid */
+            quoteAreaId?: string | null;
+            /** Format: uuid */
+            slabId?: string | null;
+            sortOrder: number;
+            stoneType: string;
+            lengthIn?: number | null;
+            widthIn?: number | null;
+            thicknessCm?: number | null;
+            edgeProfile?: string | null;
+            qty: number;
+            qtyUnit: string;
+            unitPriceCents: number;
+            laborPriceCents: number;
+            notes?: string | null;
             /** Format: date-time */
             createdAt: string;
             /** Format: date-time */
@@ -2789,7 +2883,7 @@ export interface operations {
             content: {
                 "application/json": {
                     /** @enum {string} */
-                    role: "admin" | "estimator" | "installer";
+                    role: "admin" | "salesperson" | "templater" | "cutter" | "fabricator" | "installer" | "service_tech";
                 };
             };
         };
@@ -6348,6 +6442,61 @@ export interface operations {
                 };
             };
             /** @description Event is not in confirmed status — transition not allowed. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    finishCustomerEvent: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                customerId: components["parameters"]["CustomerId"];
+                /** @description UUID of the scheduled event */
+                eventId: components["parameters"]["EventId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ActorRequest"];
+            };
+        };
+        responses: {
+            /** @description Event transitioned to completed. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ScheduledEvent"];
+                };
+            };
+            /** @description Invalid request. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Event or customer not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Event is not in in_progress status â€” transition not allowed. */
             409: {
                 headers: {
                     [name: string]: unknown;

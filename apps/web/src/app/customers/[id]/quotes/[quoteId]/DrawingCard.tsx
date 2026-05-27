@@ -101,7 +101,7 @@ export async function DrawingCard({
   const body = areas.length === 0 ? (
     <p className="text-sm text-muted-foreground">Add an area before using the drawing canvas.</p>
   ) : (
-    <div className="space-y-6">
+    <div className={standalone ? "flex min-h-0 flex-1 flex-col" : "space-y-6"}>
       {areas.map((area) => {
         const data = dataByArea.get(area.id) ?? {
           pieces: [],
@@ -113,8 +113,11 @@ export async function DrawingCard({
         };
 
         return (
-          <section key={area.id} className="space-y-2">
-            <h3 className="font-medium">{area.name}</h3>
+          <section
+            key={area.id}
+            className={standalone ? "flex min-h-0 flex-1 flex-col" : "space-y-2"}
+          >
+            <h3 className={standalone ? "sr-only" : "font-medium"}>{area.name}</h3>
             {isDraft || data.pieces.length > 0 ? (
               <DrawingCanvasInner
                 customerId={customerId}
@@ -129,6 +132,7 @@ export async function DrawingCard({
                 pricingLines={data.pricingLines}
                 hasPriceList={hasPriceList}
                 isDraft={isDraft}
+                fullscreen={standalone}
               />
             ) : (
               <p className="text-sm text-muted-foreground">No counter pieces have been drawn for this area.</p>
@@ -140,7 +144,7 @@ export async function DrawingCard({
   );
 
   if (standalone) {
-    return <div className="space-y-6">{body}</div>;
+    return <div className="flex min-h-0 flex-1 flex-col">{body}</div>;
   }
 
   return (

@@ -29,8 +29,8 @@ export default async function QuoteDrawingWorkspacePage({
   const hasPriceList = quote.priceListId !== null;
 
   return (
-    <div className="max-w-none space-y-6">
-      <div className="flex flex-wrap items-start justify-between gap-4">
+    <div className="fixed inset-0 z-40 flex min-h-0 flex-col bg-white">
+      <div className="flex flex-wrap items-start justify-between gap-4 border-b bg-white px-4 py-3">
         <div>
           <div className="mb-1 text-sm text-muted-foreground">
             <Link href={`/customers/${customerId}`} className="hover:underline">
@@ -42,29 +42,28 @@ export default async function QuoteDrawingWorkspacePage({
             </Link>{' '}
             / Drawing Workspace
           </div>
-          <h2 className="text-3xl font-bold">{quote.title}</h2>
-          <p className="mt-1 text-sm text-muted-foreground">
-            CounterGo-style workspace for drawing, edge treatment, sink placement, area setup, and pricing.
-          </p>
+          <h2 className="text-2xl font-bold">{quote.title}</h2>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <span className="inline-flex items-center rounded-full border px-3 py-1 text-xs font-medium capitalize">
             {quote.status}
           </span>
           <Button asChild variant="outline" size="sm">
-            <Link href={`/customers/${customerId}/quotes/${quoteId}`}>Back to Quote</Link>
+            <Link href={`/customers/${customerId}/quotes/${quoteId}`}>Exit</Link>
           </Button>
         </div>
       </div>
 
-      <DrawingCard
-        customerId={customerId}
-        quoteId={quoteId}
-        areas={areas}
-        isDraft={isDraft}
-        hasPriceList={hasPriceList}
-        standalone
-      />
+      <div className="flex min-h-0 flex-1 flex-col">
+        <DrawingCard
+          customerId={customerId}
+          quoteId={quoteId}
+          areas={areas}
+          isDraft={isDraft}
+          hasPriceList={hasPriceList}
+          standalone
+        />
+      </div>
     </div>
   );
 }

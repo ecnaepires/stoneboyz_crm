@@ -1,8 +1,25 @@
 import { Inject, Injectable } from '@nestjs/common';
-import type { AddOrderPaymentInput, ListOrdersInput, Order, OrderPayment, OrderPaymentStatus } from '@stoneboyz/domain';
+import type {
+  AddOrderPaymentInput,
+  ListOrdersInput,
+  Order,
+  OrderArea,
+  OrderLineItem,
+  OrderPayment,
+  OrderPaymentStatus
+} from '@stoneboyz/domain';
 import type { Pool, PoolClient } from 'pg';
 import { DATABASE_POOL } from '../database.provider.js';
-import { mapOrderPaymentRow, mapOrderRow, type OrderPaymentRow, type OrderRow } from './order.mapper.js';
+import {
+  mapOrderAreaRow,
+  mapOrderLineItemRow,
+  mapOrderPaymentRow,
+  mapOrderRow,
+  type OrderAreaRow,
+  type OrderLineItemRow,
+  type OrderPaymentRow,
+  type OrderRow
+} from './order.mapper.js';
 
 type Queryable = Pick<Pool, 'query'> | PoolClient;
 
@@ -159,7 +176,121 @@ export class OrdersRepository {
       [customerId, orderId]
     );
     const row = result.rows[0];
-    return row === undefined ? null : mapOrderRow(row);
+    if (row === undefined) {
+      return null;
+    }
+
+    const [areas, lineItems] = await Promise.all([this.listAreas(orderId), this.listLineItems(orderId)]);
+
+    return {
+      ...mapOrderRow(row),
+      areas,
+      lineItems
+    };
+  }
+
+  async listAreas(orderId: string): Promise<OrderArea[]> {
+    const result = await this.pool.query<OrderAreaRow>(
+      `
+        SELECT *
+        FROM order_areas
+        WHERE order_id = $1
+        ORDER BY created_at ASC
+      `,
+      [orderId]
+    );
+
+    return result.rows.map(mapOrderAreaRow);
+  }
+
+  async listLineItems(orderId: string): Promise<OrderLineItem[]> {
+    const result = await this.pool.query<OrderLineItemRow>(
+      `
+        SELECT *
+        FROM order_line_items
+        WHERE order_id = $1
+        ORDER BY sort_order ASC, created_at ASC, id ASC
+      `,
+      [orderId]
+    );
+
+    return result.rows.map(mapOrderLineItemRow);
+  }
+
+  async copyQuoteAreasToOrder(client: PoolClient, orderId: string, quoteId: string): Promise<void> {
+    await client.query(
+      `
+        INSERT INTO order_areas (
+          order_id,
+          sort_order,
+          name,
+          material,
+          color,
+          edge_profile,
+          notes,
+          created_at,
+          updated_at
+        )
+        SELECT
+          $1,
+          sort_order,
+          name,
+          material,
+          color,
+          edge_profile,
+          notes,
+          created_at,
+          updated_at
+        FROM quote_areas
+        WHERE quote_id = $2
+      `,
+      [orderId, quoteId]
+    );
+  }
+
+  async copyQuoteLineItemsToOrder(client: PoolClient, orderId: string, quoteId: string): Promise<void> {
+    await client.query(
+      `
+        INSERT INTO order_line_items (
+          order_id,
+          quote_area_id,
+          slab_id,
+          sort_order,
+          stone_type,
+          length_in,
+          width_in,
+          thickness_cm,
+          edge_profile,
+          qty,
+          qty_unit,
+          unit_price_cents,
+          labor_price_cents,
+          notes,
+          created_at,
+          updated_at
+        )
+        SELECT
+          $1,
+          quote_area_id,
+          slab_id,
+          sort_order,
+          stone_type,
+          length_in,
+          width_in,
+          thickness_cm,
+          edge_profile,
+          qty,
+          qty_unit,
+          unit_price_cents,
+          labor_price_cents,
+          notes,
+          created_at,
+          updated_at
+        FROM quote_line_items
+        WHERE quote_id = $2
+      `,
+      [orderId, quoteId]
+    );
   }
 
   async listPayments(orderId: string): Promise<OrderPayment[]> {

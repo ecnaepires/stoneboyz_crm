@@ -206,6 +206,24 @@ export class QuotesService {
     return quote;
   }
 
+  async expire(customerId: string, quoteId: string, input: TransitionQuoteInput): Promise<Quote> {
+    const current = await this.ensureQuoteExists(customerId, quoteId);
+
+    if (current.status !== 'sent') {
+      throw new ConflictException({ code: 'INVALID_QUOTE_STATUS', message: 'Quote is not in sent status' });
+    }
+
+    const quote = await this.quotesRepository.expire(customerId, quoteId);
+
+    if (quote === null) {
+      throw new NotFoundException({ code: 'NOT_FOUND', message: 'Quote not found' });
+    }
+
+    this.eventBus.emit('quote.expired', buildQuoteTransitionPayload(customerId, quoteId, input.actorUserId));
+
+    return quote;
+  }
+
   async archive(customerId: string, quoteId: string, input: ArchiveQuoteInput): Promise<Quote> {
     await this.ensureQuoteExists(customerId, quoteId);
     const client = await this.pool.connect();

@@ -47,27 +47,27 @@ Add per-module invariants here as modules are built.
 
 ### quotes
 
-- `quote_number`: `VARCHAR NOT NULL`, UNIQUE index — application generates sequential value per calendar year in format `Q-{YYYY}-{NNN}`
+- `quote_number`: `VARCHAR NOT NULL`, UNIQUE index - application generates sequential value per calendar year in format `Q-{YYYY}-{NNN}`
 - `status`: `VARCHAR NOT NULL DEFAULT 'draft'`, CHECK constraint `IN ('draft', 'sent', 'accepted', 'rejected')`
-- `customer_id`: `UUID NOT NULL` FK → `customers(id)` — customer is required
-- `project_id`: `UUID NULL` FK → `projects(id)` — project is optional
+- `customer_id`: `UUID NOT NULL` FK -> `customers(id)` - customer is required
+- `project_id`: `UUID NULL` FK -> `projects(id)` - project is optional
 - `discount_cents`: `INTEGER NOT NULL DEFAULT 0`, CHECK `>= 0`
 - `tax_rate_bps`: `INTEGER NOT NULL DEFAULT 0`, CHECK `>= 0`
-- `subtotal_cents` and `total_cents`: NOT stored in DB — computed in application layer from line items at read time
-- `sent_at`, `accepted_at`, `rejected_at`: `TIMESTAMPTZ NULL` — set by application on status transition
+- `subtotal_cents` and `total_cents`: NOT stored in DB - computed in application layer from line items at read time
+- `sent_at`, `accepted_at`, `rejected_at`: `TIMESTAMPTZ NULL` - set by application on status transition
 - `deleted_at` / `deleted_by_user_id`: follow universal soft-delete pattern; API exposes as `archivedAt` / `archivedByUserId`
 
 ### quote_line_items
 
-- `quote_id`: `UUID NOT NULL` FK → `quotes(id)` ON DELETE CASCADE — line items are hard-deleted when quote is deleted
-- `slab_id`: `UUID NULL` FK → `slabs(id)` ON DELETE SET NULL — optional global inventory reservation link
+- `quote_id`: `UUID NOT NULL` FK -> `quotes(id)` ON DELETE CASCADE - line items are hard-deleted when quote is deleted
+- `slab_id`: `UUID NULL` FK -> `slabs(id)` ON DELETE SET NULL - optional global inventory reservation link
 - `sort_order`: `INTEGER NOT NULL DEFAULT 0`
 - `stone_type`: `VARCHAR NOT NULL`
 - `qty`: `NUMERIC(10,4) NOT NULL`, CHECK `> 0`
 - `qty_unit`: `VARCHAR NOT NULL`
 - `unit_price_cents`: `INTEGER NOT NULL`, CHECK `>= 0`
 - `labor_price_cents`: `INTEGER NOT NULL DEFAULT 0`, CHECK `>= 0`
-- `line_total_cents`: NOT stored in DB — computed in application layer as `floor(qty * (unit_price_cents + labor_price_cents))`
+- `line_total_cents`: NOT stored in DB - computed in application layer as `floor(qty * (unit_price_cents + labor_price_cents))`
 - No soft-delete on line items: hard-deleted via cascade when quote is deleted, or via explicit API call (draft quotes only)
 
 ### slabs
@@ -85,26 +85,31 @@ Add per-module invariants here as modules are built.
 
 ### project_slabs
 
-- `project_id`: `UUID NOT NULL` FK → `projects(id)` ON DELETE CASCADE
-- `slab_id`: `UUID NOT NULL` FK → `slabs(id)` ON DELETE RESTRICT
+- `project_id`: `UUID NOT NULL` FK -> `projects(id)` ON DELETE CASCADE
+- `slab_id`: `UUID NOT NULL` FK -> `slabs(id)` ON DELETE RESTRICT
 - `(project_id, slab_id)`: UNIQUE; a slab can be attached to a project only once
 - `consumed_by_user_id` / `consumed_at`: set when a project slab is cut
 
 ### scheduled_events
 
-- `customer_id`: `UUID NOT NULL` FK → `customers(id)` — customer is always required
-- `project_id`: `UUID NULL` FK → `projects(id)` — project is optional
+- `customer_id`: `UUID NOT NULL` FK -> `customers(id)` - customer is always required
+- `project_id`: `UUID NULL` FK -> `projects(id)` - project is optional
 - `event_type`: `TEXT NOT NULL` CHECK `IN ('appointment', 'shop_job')`
-- `appointment_type`: `TEXT NULL` CHECK `IN ('measure', 'template', 'install', 'follow_up', 'other')` — must be NOT NULL when `event_type = 'appointment'` (application-enforced); must be NULL when `event_type = 'shop_job'` (application-enforced)
+- `appointment_type`: `TEXT NULL` CHECK `IN ('template', 'deposit', 'material', 'fabrication', 'install', 'invoice', 'repair', 'other')` - must be NOT NULL when `event_type = 'appointment'` (application-enforced); must be NULL when `event_type = 'shop_job'` (application-enforced)
+- `template_kind`: `TEXT NULL` CHECK `IN ('measurement_only', 'physical_template', 'laser_template')` - only valid when `appointment_type = 'template'` (application-enforced)
 - `title`: `TEXT NOT NULL`
 - `scheduled_at`: `TIMESTAMPTZ NOT NULL`
 - `duration_minutes`: `INTEGER NOT NULL DEFAULT 60` CHECK `> 0`
-- `assignee_user_ids`: `UUID[] NOT NULL` — stored as PostgreSQL array; application validates non-empty and no duplicates
+- `assignee_user_ids`: `UUID[] NOT NULL` - stored as PostgreSQL array; application validates non-empty and no duplicates
 - `address`: `TEXT NULL`
 - `notes`: `TEXT NULL`
 - `status`: `TEXT NOT NULL DEFAULT 'scheduled'` CHECK `IN ('scheduled', 'confirmed', 'in_progress', 'completed', 'cancelled')`
+- `started_by_user_id`: `UUID NULL` FK -> `users(id)` ON DELETE SET NULL
+- `started_at`: `TIMESTAMPTZ NULL`
+- `completed_by_user_id`: `UUID NULL` FK -> `users(id)` ON DELETE SET NULL
+- `completed_at`: `TIMESTAMPTZ NULL`
 - `deleted_at` / `deleted_by_user_id`: follow universal soft-delete pattern; API exposes as `archivedAt` / `archivedByUserId`
-- No cascade archive when parent customer is archived — events remain untouched
+- No cascade archive when parent customer is archived - events remain untouched
 
 ### Quote Measurements MVP
 
@@ -145,4 +150,4 @@ Add per-module invariants here as modules are built.
 - At most one row per  pair (UNIQUE index). On regeneration, upsert by (quote_area_id, category).
 - Override consistency:  iff  (DB CHECK constraint).
 - Rows cascade-delete when  is deleted.
--  nullable FK — can be NULL if price list item was deleted.
+-  nullable FK - can be NULL if price list item was deleted.

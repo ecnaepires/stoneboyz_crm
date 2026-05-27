@@ -9,7 +9,7 @@ import type {
   SortDirection,
   UpdateCustomerInput,
 } from "@stoneboyz/domain";
-import type { Pool } from "pg";
+import type { Pool, PoolClient } from "pg";
 import { DATABASE_POOL } from "../database.provider.js";
 import { mapCustomerRow, type CustomerRow } from "./customer.mapper.js";
 
@@ -29,10 +29,10 @@ interface CustomerCursor {
 }
 
 const SORT_COLUMNS: Record<CustomerSortBy, string> = {
-  name: "name",
-  createdAt: "created_at",
-  updatedAt: "updated_at",
-  status: "status",
+  name: "c.name",
+  createdAt: "c.created_at",
+  updatedAt: "c.updated_at",
+  status: "c.status",
 };
 
 const UPDATE_COLUMNS = {
@@ -50,12 +50,28 @@ const UPDATE_COLUMNS = {
   industry: "industry",
   companySize: "company_size",
   source: "source",
-  tags: "tags",
+  priceListId: "price_list_id",
   notesSummary: "notes_summary",
   phone: "phone",
   whatsappPhone: "whatsapp_phone",
   billingEmail: "billing_email",
-} satisfies Record<Exclude<keyof UpdateCustomerInput, "actorUserId">, string>;
+} satisfies Record<Exclude<keyof UpdateCustomerInput, "actorUserId" | "tags">, string>;
+
+const CUSTOMER_SELECT_WITH_TAGS = `
+  SELECT
+    c.*,
+    COALESCE(
+      (
+        SELECT array_agg(t.name ORDER BY t.name)
+        FROM customer_tags ct
+        JOIN tags t ON t.id = ct.tag_id
+        WHERE ct.customer_id = c.id
+          AND t.archived_at IS NULL
+      ),
+      '{}'::text[]
+    ) AS tags
+  FROM customers c
+`;
 
 export class InvalidCustomerCursorError extends Error {
   constructor() {
@@ -125,7 +141,7 @@ export class CustomersRepository {
     }> {
     const values: unknown[] = [];
     const where: string[] = [
-      input.includeArchived ? "deleted_at IS NOT NULL" : "deleted_at IS NULL",
+      input.includeArchived ? "c.deleted_at IS NOT NULL" : "c.deleted_at IS NULL",
     ];
 
     const addValue = (value: unknown): string => {
@@ -134,43 +150,52 @@ export class CustomersRepository {
     };
 
     if (input.search !== undefined) {
-      where.push(`name ILIKE ${addValue(`%${input.search}%`)}`);
+      where.push(`c.name ILIKE ${addValue(`%${input.search}%`)}`);
     }
 
     if (input.status !== undefined) {
-      where.push(`status = ${addValue(input.status)}`);
+      where.push(`c.status = ${addValue(input.status)}`);
     }
 
     if (input.type !== undefined) {
-      where.push(`type = ${addValue(input.type)}`);
+      where.push(`c.type = ${addValue(input.type)}`);
     }
 
     if (input.ownerUserId !== undefined) {
-      where.push(`owner_user_id = ${addValue(input.ownerUserId)}`);
+      where.push(`c.owner_user_id = ${addValue(input.ownerUserId)}`);
     }
 
     if (input.customerKind !== undefined) {
-      where.push(`customer_kind = ${addValue(input.customerKind)}`);
+      where.push(`c.customer_kind = ${addValue(input.customerKind)}`);
     }
 
     if (input.tag !== undefined && input.tag.length > 0) {
-      where.push(`tags && ${addValue(input.tag)}::text[]`);
+      where.push(
+        `EXISTS (
+          SELECT 1
+          FROM customer_tags ct
+          JOIN tags t ON t.id = ct.tag_id
+          WHERE ct.customer_id = c.id
+            AND t.archived_at IS NULL
+            AND t.name = ANY(${addValue(input.tag)}::text[])
+        )`
+      );
     }
 
     if (input.industry !== undefined) {
-      where.push(`industry = ${addValue(input.industry)}`);
+      where.push(`c.industry = ${addValue(input.industry)}`);
     }
 
     if (input.source !== undefined) {
-      where.push(`source = ${addValue(input.source)}`);
+      where.push(`c.source = ${addValue(input.source)}`);
     }
 
     if (input.createdAtFrom !== undefined) {
-      where.push(`created_at >= ${addValue(input.createdAtFrom)}`);
+      where.push(`c.created_at >= ${addValue(input.createdAtFrom)}`);
     }
 
     if (input.createdAtTo !== undefined) {
-      where.push(`created_at <= ${addValue(input.createdAtTo)}`);
+      where.push(`c.created_at <= ${addValue(input.createdAtTo)}`);
     }
 
     const sortColumn = SORT_COLUMNS[input.sortBy];
@@ -186,11 +211,11 @@ export class CustomersRepository {
 
       if (input.sortDirection === "asc") {
         where.push(
-          `(${sortColumn} > ${addValue(cursor.sortValue)} OR (${sortColumn} = ${addValue(cursor.sortValue)} AND id > ${addValue(cursor.id)}))`,
+          `(${sortColumn} > ${addValue(cursor.sortValue)} OR (${sortColumn} = ${addValue(cursor.sortValue)} AND c.id > ${addValue(cursor.id)}))`,
         );
       } else {
         where.push(
-          `(${sortColumn} < ${addValue(cursor.sortValue)} OR (${sortColumn} = ${addValue(cursor.sortValue)} AND id > ${addValue(cursor.id)}))`,
+          `(${sortColumn} < ${addValue(cursor.sortValue)} OR (${sortColumn} = ${addValue(cursor.sortValue)} AND c.id > ${addValue(cursor.id)}))`,
         );
       }
     }
@@ -199,10 +224,9 @@ export class CustomersRepository {
 
     const result = await this.pool.query<CustomerRow>(
       `
-        SELECT *
-        FROM customers
+        ${CUSTOMER_SELECT_WITH_TAGS}
         WHERE ${where.join(" AND ")}
-        ORDER BY ${sortColumn} ${sortDirection}, id ASC
+        ORDER BY ${sortColumn} ${sortDirection}, c.id ASC
         LIMIT ${limitValue}
       `,
       values,
@@ -225,67 +249,114 @@ export class CustomersRepository {
   }
 
   async create(input: CreateCustomerInput): Promise<Customer> {
-    const result = await this.pool.query<CustomerRow>(
-      `
-        INSERT INTO customers (
-          customer_kind,
-          name,
-          company_name,
-          first_name,
-          last_name,
-          display_name,
-          status,
-          type,
-          owner_user_id,
-          tax_id,
-          website,
-          industry,
-          company_size,
-          source,
-          tags,
-          notes_summary,
-          phone,
-          whatsapp_phone,
-          billing_email
-        )
-        VALUES (
-          $1, $2, $3, $4, $5, $6, $7, $8, $9,
-          $10, $11, $12, $13, $14, $15, $16, $17, $18, $19
-        )
-        RETURNING *
-      `,
-      [
-        input.customerKind,
-        input.name,
-        input.companyName ?? null,
-        input.firstName ?? null,
-        input.lastName ?? null,
-        input.displayName ?? null,
-        input.status,
-        input.type,
-        input.ownerUserId,
-        input.taxId ?? null,
-        input.website ?? null,
-        input.industry ?? null,
-        input.companySize ?? null,
-        input.source ?? null,
-        input.tags ?? [],
-        input.notesSummary ?? null,
-        input.phone ?? null,
-        input.whatsappPhone ?? null,
-        input.billingEmail ?? null,
-      ],
-    );
+    const client = await this.pool.connect();
 
-    return mapCustomerRow(result.rows[0] as CustomerRow);
+    try {
+      await client.query("BEGIN");
+
+      const result = await client.query<{ id: string }>(
+        `
+          INSERT INTO customers (
+            customer_kind,
+            name,
+            company_name,
+            first_name,
+            last_name,
+            display_name,
+            status,
+            type,
+            owner_user_id,
+            tax_id,
+            website,
+            industry,
+            company_size,
+            source,
+            price_list_id,
+            notes_summary,
+            phone,
+            whatsapp_phone,
+            billing_email
+          )
+          VALUES (
+            $1, $2, $3, $4, $5, $6, $7, $8, $9,
+            $10, $11, $12, $13, $14, $15, $16, $17, $18, $19
+          )
+          RETURNING id
+        `,
+        [
+          input.customerKind,
+          input.name,
+          input.companyName ?? null,
+          input.firstName ?? null,
+          input.lastName ?? null,
+          input.displayName ?? null,
+          input.status,
+          input.type,
+          input.ownerUserId,
+          input.taxId ?? null,
+          input.website ?? null,
+          input.industry ?? null,
+          input.companySize ?? null,
+          input.source ?? null,
+          input.priceListId ?? null,
+          input.notesSummary ?? null,
+          input.phone ?? null,
+          input.whatsappPhone ?? null,
+          input.billingEmail ?? null,
+        ],
+      );
+
+      const created = result.rows[0] as { id: string };
+
+      if (input.tags !== undefined && input.tags.length > 0) {
+        await client.query(
+          `
+            INSERT INTO tags (name)
+            SELECT unnest($1::text[])
+            ON CONFLICT (name) DO NOTHING
+          `,
+          [input.tags],
+        );
+
+        await client.query(
+          `
+            INSERT INTO customer_tags (customer_id, tag_id)
+            SELECT $1, t.id
+            FROM tags t
+            WHERE t.name = ANY($2::text[])
+            ON CONFLICT DO NOTHING
+          `,
+          [created.id, input.tags],
+        );
+      }
+
+      await client.query("COMMIT");
+
+      const withTags = await this.findById(created.id);
+
+      return withTags!;
+    } catch (error) {
+      await client.query("ROLLBACK");
+      throw error;
+    } finally {
+      client.release();
+    }
   }
 
   async findById(customerId: string): Promise<Customer | null> {
     const result = await this.pool.query<CustomerRow>(
       `
-        SELECT *
-        FROM customers
-        WHERE id = $1 AND deleted_at IS NULL
+        SELECT
+          c.*,
+          ARRAY(
+            SELECT t.name
+            FROM customer_tags ct
+            JOIN tags t ON t.id = ct.tag_id
+            WHERE ct.customer_id = c.id
+            ORDER BY t.name
+          ) AS tags
+        FROM customers c
+        WHERE c.id = $1 AND c.deleted_at IS NULL
       `,
       [customerId],
     );

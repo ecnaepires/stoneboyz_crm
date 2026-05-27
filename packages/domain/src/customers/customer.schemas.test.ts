@@ -11,7 +11,7 @@ describe("createCustomerSchema", () => {
       name: "Acme Stone Works",
       companyName: "Acme Stone Works",
       status: "lead",
-      type: "prospect",
+      type: "customer",
       ownerUserId: "22222222-2222-4222-8222-222222222222",
     });
 
@@ -26,7 +26,7 @@ describe("createCustomerSchema", () => {
       name: "Acme Stone Works",
       companyName: "Acme Stone Works",
       status: "lead",
-      type: "prospect",
+      type: "customer",
       ownerUserId: "not-a-uuid",
     });
 
@@ -39,7 +39,7 @@ describe("createCustomerSchema", () => {
       customerKind: "company",
       name: "Acme Stone Works",
       status: "lead",
-      type: "prospect",
+      type: "customer",
       ownerUserId: "22222222-2222-4222-8222-222222222222",
     });
 
@@ -53,7 +53,7 @@ describe("createCustomerSchema", () => {
       customerKind: "person",
       name: "Jane Smith",
       status: "lead",
-      type: "prospect",
+      type: "customer",
       ownerUserId: "22222222-2222-4222-8222-222222222222",
     });
 

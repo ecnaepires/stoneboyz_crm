@@ -7,7 +7,7 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 
 const connectionString =
   process.env.DATABASE_URL ??
-  'postgresql://stoneboyz:stoneboyz@localhost:5432/stoneboyz_crm';
+  'postgresql://stoneboyz:stoneboyz@localhost:5432/stoneboyz_crm_dev';
 
 const client = new Client({ connectionString });
 await client.connect();

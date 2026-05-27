@@ -1,4 +1,4 @@
-import type { CounterPiece, EdgeSegment, SinkCutout } from '@stoneboyz/domain';
+import type { CounterPiece, EdgeSegment, SinkCutout } from "@stoneboyz/domain";
 
 export interface CounterPieceRow {
   id: string;
@@ -8,6 +8,7 @@ export interface CounterPieceRow {
   length_in: number | string;
   width_in: number | string;
   quantity: number;
+  kind: string;
   created_at: Date;
   updated_at: Date;
 }
@@ -17,7 +18,7 @@ export interface EdgeSegmentRow {
   quote_area_id: string;
   sort_order: number;
   length_in: number | string;
-  treatment: EdgeSegment['treatment'];
+  treatment: EdgeSegment["treatment"];
   splash_height_in: number | string | null;
   created_at: Date;
   updated_at: Date;
@@ -29,12 +30,12 @@ export interface SinkCutoutRow {
   sort_order: number;
   quantity: number;
   model: string | null;
-  sink_type: SinkCutout['sinkType'];
-  shape: SinkCutout['shape'];
+  sink_type: SinkCutout["sinkType"];
+  shape: SinkCutout["shape"];
   cutout_length_in: number | string;
   cutout_width_in: number | string;
   faucet_hole_count: number;
-  centerline: SinkCutout['centerline'];
+  centerline: SinkCutout["centerline"];
   created_at: Date;
   updated_at: Date;
 }
@@ -49,8 +50,9 @@ export const mapCounterPieceRow = (row: CounterPieceRow): CounterPiece => ({
   lengthIn: Number(row.length_in),
   widthIn: Number(row.width_in),
   quantity: row.quantity,
+  kind: row.kind as CounterPiece["kind"],
   createdAt: toIso(row.created_at),
-  updatedAt: toIso(row.updated_at)
+  updatedAt: toIso(row.updated_at),
 });
 
 export const mapEdgeSegmentRow = (row: EdgeSegmentRow): EdgeSegment => ({
@@ -59,9 +61,10 @@ export const mapEdgeSegmentRow = (row: EdgeSegmentRow): EdgeSegment => ({
   sortOrder: row.sort_order,
   lengthIn: Number(row.length_in),
   treatment: row.treatment,
-  splashHeightIn: row.splash_height_in === null ? null : Number(row.splash_height_in),
+  splashHeightIn:
+    row.splash_height_in === null ? null : Number(row.splash_height_in),
   createdAt: toIso(row.created_at),
-  updatedAt: toIso(row.updated_at)
+  updatedAt: toIso(row.updated_at),
 });
 
 export const mapSinkCutoutRow = (row: SinkCutoutRow): SinkCutout => ({
@@ -77,5 +80,5 @@ export const mapSinkCutoutRow = (row: SinkCutoutRow): SinkCutout => ({
   faucetHoleCount: row.faucet_hole_count,
   centerline: row.centerline,
   createdAt: toIso(row.created_at),
-  updatedAt: toIso(row.updated_at)
+  updatedAt: toIso(row.updated_at),
 });

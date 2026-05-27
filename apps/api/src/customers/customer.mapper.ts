@@ -18,7 +18,8 @@ export interface CustomerRow {
   website: string | null;
   industry: string | null;
   company_size: string | null;
-  source: string | null;
+  source: Customer['source'];
+  price_list_id: string | null;
   tags: string[];
   notes_summary: string | null;
   phone: string | null;
@@ -52,6 +53,7 @@ export const mapCustomerRow = (row: CustomerRow): Customer => ({
   industry: row.industry,
   companySize: row.company_size,
   source: row.source,
+  priceListId: row.price_list_id,
   tags: row.tags,
   notesSummary: row.notes_summary,
   phone: row.phone,
@@ -63,4 +65,3 @@ export const mapCustomerRow = (row: CustomerRow): Customer => ({
   createdAt: toIso(row.created_at),
   updatedAt: toIso(row.updated_at)
 });
-

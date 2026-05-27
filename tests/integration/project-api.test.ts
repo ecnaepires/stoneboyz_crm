@@ -169,7 +169,7 @@ describe('project API', () => {
         name: 'Project Filter Customer',
         companyName: 'Project Filter Customer',
         status: 'lead',
-        type: 'prospect',
+        type: 'customer',
         ownerUserId: ACTOR_USER_ID
       })
     }).then((response) => response.json() as Promise<Record<string, unknown>>);

@@ -6,18 +6,34 @@ const projectStatusSchema = z.enum(PROJECT_STATUS_VALUES);
 const projectSortBySchema = z.enum(PROJECT_SORT_BY_VALUES);
 const sortDirectionSchema = z.enum(SORT_DIRECTION_VALUES);
 
+const projectJobAddressSchema = z.object({
+  line1: z.string().min(1).nullable().optional(),
+  line2: z.string().min(1).nullable().optional(),
+  city: z.string().min(1).nullable().optional(),
+  region: z.string().min(1).nullable().optional(),
+  postalCode: z.string().min(1).nullable().optional(),
+  country: z.string().min(1).nullable().optional(),
+  contactName: z.string().min(1).nullable().optional(),
+  phone: z.string().min(1).nullable().optional(),
+  email: z.string().email().nullable().optional()
+});
+
 export const createProjectSchema = z.object({
   customerId: z.string().uuid(),
   title: z.string().min(1),
   description: z.string().min(1).optional(),
+  jobAddress: projectJobAddressSchema.optional(),
+  copyFromCustomerPrimary: z.boolean().default(true),
   status: projectStatusSchema.default('draft'),
-  ownerUserId: z.string().min(1)
+  ownerUserId: z.string().min(1),
+  jobTemplateId: z.string().uuid().optional()
 });
 
 export const updateProjectSchema = z.object({
   customerId: z.string().uuid().optional(),
   title: z.string().min(1).optional(),
   description: z.string().min(1).nullable().optional(),
+  jobAddress: projectJobAddressSchema.nullable().optional(),
   status: projectStatusSchema.optional(),
   ownerUserId: z.string().min(1).optional()
 }).refine((input) => Object.keys(input).length > 0, {

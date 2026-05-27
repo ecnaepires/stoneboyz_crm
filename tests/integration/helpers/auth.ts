@@ -9,9 +9,9 @@ export async function seedTestSession(pool: Pool): Promise<string> {
   const expiresAt = new Date(Date.now() + 1000 * 60 * 60 * 24); // 24h
 
   await pool.query(
-    `INSERT INTO "user" (id, name, email, "emailVerified", "createdAt", "updatedAt")
-     VALUES ($1, 'Test Actor', 'test@stoneboyz.test', true, now(), now())
-     ON CONFLICT (id) DO NOTHING`,
+    `INSERT INTO "user" (id, name, email, "emailVerified", "createdAt", "updatedAt", role)
+     VALUES ($1, 'Test Actor', 'test@stoneboyz.test', true, now(), now(), 'admin')
+     ON CONFLICT (id) DO UPDATE SET role = 'admin'`,
     [TEST_ACTOR_USER_ID]
   );
 

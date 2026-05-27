@@ -70,11 +70,11 @@ const initialLineItemSchema = createQuoteLineItemSchema;
 export const createQuoteSchema = z.object({
   title: z.string().min(1),
   projectId: z.string().uuid().optional(),
+  phaseId: z.string().uuid().optional(),
   priceListId: z.string().uuid().nullish(),
   validUntil: optionalDateSchema.optional(),
   discountCents: z.number().int().min(0).default(0),
   taxRateBps: z.number().int().min(0).default(0),
-  notes: z.string().min(1).optional(),
   termsAndConditions: z.string().min(1).optional(),
   lineItems: z.array(initialLineItemSchema).optional()
 });
@@ -82,11 +82,11 @@ export const createQuoteSchema = z.object({
 export const updateQuoteSchema = z.object({
   title: z.string().min(1).optional(),
   projectId: z.string().uuid().nullable().optional(),
+  phaseId: z.string().uuid().nullable().optional(),
   priceListId: z.string().uuid().nullable().optional(),
   validUntil: optionalDateSchema.nullable().optional(),
   discountCents: z.number().int().min(0).optional(),
   taxRateBps: z.number().int().min(0).optional(),
-  notes: z.string().min(1).nullable().optional(),
   termsAndConditions: z.string().min(1).nullable().optional()
 }).refine((input) => Object.keys(input).length > 0, {
   message: 'At least one field is required',

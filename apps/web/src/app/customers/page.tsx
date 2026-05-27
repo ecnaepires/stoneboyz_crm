@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { redirect } from 'next/navigation';
 import { getApiClientWithAuth } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import {
@@ -22,6 +23,10 @@ export default async function CustomersPage({
   });
 
   if (error) {
+    if ('statusCode' in error && error.statusCode === 401) {
+      redirect('/sign-in');
+    }
+
     return (
       <div className="text-red-600">
         Failed to load customers: {JSON.stringify(error)}

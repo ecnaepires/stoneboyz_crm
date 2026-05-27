@@ -1,4 +1,4 @@
-import type { Order, OrderPayment, OrderPaymentMethod, OrderPaymentStatus } from '@stoneboyz/domain';
+import type { Order, OrderArea, OrderLineItem, OrderPayment, OrderPaymentMethod, OrderPaymentStatus } from '@stoneboyz/domain';
 
 export interface OrderRow {
   id: string;
@@ -27,6 +27,39 @@ export interface OrderPaymentRow {
   amount_cents: number;
   payment_method: string;
   reference_number: string | null;
+  notes: string | null;
+  created_at: Date;
+  updated_at: Date;
+}
+
+export interface OrderAreaRow {
+  id: string;
+  order_id: string;
+  sort_order: number;
+  name: string;
+  material: string | null;
+  color: string | null;
+  edge_profile: string | null;
+  notes: string | null;
+  created_at: Date;
+  updated_at: Date;
+}
+
+export interface OrderLineItemRow {
+  id: string;
+  order_id: string;
+  quote_area_id: string | null;
+  slab_id: string | null;
+  sort_order: number;
+  stone_type: string;
+  length_in: number | null;
+  width_in: number | null;
+  thickness_cm: number | null;
+  edge_profile: string | null;
+  qty: string | number;
+  qty_unit: string;
+  unit_price_cents: number;
+  labor_price_cents: number;
   notes: string | null;
   created_at: Date;
   updated_at: Date;
@@ -77,6 +110,39 @@ export const mapOrderPaymentRow = (row: OrderPaymentRow): OrderPayment => ({
   amountCents: row.amount_cents,
   paymentMethod: row.payment_method as OrderPaymentMethod,
   referenceNumber: row.reference_number,
+  notes: row.notes,
+  createdAt: toIso(row.created_at),
+  updatedAt: toIso(row.updated_at)
+});
+
+export const mapOrderAreaRow = (row: OrderAreaRow): OrderArea => ({
+  id: row.id,
+  orderId: row.order_id,
+  sortOrder: row.sort_order,
+  name: row.name,
+  material: row.material,
+  color: row.color,
+  edgeProfile: row.edge_profile,
+  notes: row.notes,
+  createdAt: toIso(row.created_at),
+  updatedAt: toIso(row.updated_at)
+});
+
+export const mapOrderLineItemRow = (row: OrderLineItemRow): OrderLineItem => ({
+  id: row.id,
+  orderId: row.order_id,
+  quoteAreaId: row.quote_area_id,
+  slabId: row.slab_id,
+  sortOrder: row.sort_order,
+  stoneType: row.stone_type,
+  lengthIn: row.length_in,
+  widthIn: row.width_in,
+  thicknessCm: row.thickness_cm,
+  edgeProfile: row.edge_profile,
+  qty: Number(row.qty),
+  qtyUnit: row.qty_unit,
+  unitPriceCents: row.unit_price_cents,
+  laborPriceCents: row.labor_price_cents,
   notes: row.notes,
   createdAt: toIso(row.created_at),
   updatedAt: toIso(row.updated_at)

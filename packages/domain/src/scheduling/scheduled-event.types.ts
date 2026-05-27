@@ -1,24 +1,31 @@
 export const SCHEDULED_EVENT_TYPE_VALUES = ['appointment', 'shop_job'] as const;
-export const APPOINTMENT_TYPE_VALUES = ['measure', 'template', 'install', 'follow_up', 'other'] as const;
+export const APPOINTMENT_TYPE_VALUES = ['template', 'deposit', 'material', 'fabrication', 'install', 'invoice', 'repair', 'other'] as const;
+export const TEMPLATE_KIND_VALUES = ['measurement_only', 'physical_template', 'laser_template'] as const;
 export const SCHEDULED_EVENT_STATUS_VALUES = ['scheduled', 'confirmed', 'in_progress', 'completed', 'cancelled'] as const;
 
 export type ScheduledEventType = typeof SCHEDULED_EVENT_TYPE_VALUES[number];
 export type AppointmentType = typeof APPOINTMENT_TYPE_VALUES[number];
+export type TemplateKind = typeof TEMPLATE_KIND_VALUES[number];
 export type ScheduledEventStatus = typeof SCHEDULED_EVENT_STATUS_VALUES[number];
 
 export interface ScheduledEvent {
   id: string;
   customerId: string;
   projectId: string | null;
+  phaseId: string | null;
   eventType: ScheduledEventType;
   appointmentType: AppointmentType | null;
+  templateKind: TemplateKind | null;
   title: string;
   scheduledAt: string;
   durationMinutes: number;
   assigneeUserIds: string[];
   address: string | null;
-  notes: string | null;
   status: ScheduledEventStatus;
+  startedByUserId: string | null;
+  startedAt: string | null;
+  completedByUserId: string | null;
+  completedAt: string | null;
   archivedAt: string | null;
   archivedByUserId: string | null;
   createdAt: string;
@@ -29,26 +36,28 @@ export interface CreateScheduledEventInput {
   actorUserId: string;
   customerId?: string | undefined;
   projectId?: string | undefined;
+  phaseId?: string | undefined;
   eventType: ScheduledEventType;
   appointmentType?: AppointmentType | null | undefined;
+  templateKind?: TemplateKind | null | undefined;
   title: string;
   scheduledAt: string;
   durationMinutes?: number | undefined;
   assigneeUserIds: string[];
   address?: string | undefined;
-  notes?: string | undefined;
 }
 
 export interface UpdateScheduledEventInput {
   actorUserId: string;
   projectId?: string | null | undefined;
+  phaseId?: string | null | undefined;
   appointmentType?: AppointmentType | null | undefined;
+  templateKind?: TemplateKind | null | undefined;
   title?: string | undefined;
   scheduledAt?: string | undefined;
   durationMinutes?: number | undefined;
   assigneeUserIds?: string[] | undefined;
   address?: string | null | undefined;
-  notes?: string | null | undefined;
 }
 
 export interface TransitionScheduledEventInput {

@@ -90,7 +90,7 @@ export class CustomerNotesController {
       });
     }
 
-    return this.customerNotesService.update(parsedCustomerId.data, parsedNoteId.data, { ...parsedBody.data, actorUserId });
+    return this.customerNotesService.update(parsedCustomerId.data, parsedNoteId.data, parsedBody.data, actorUserId);
   }
 
   @Delete(':noteId')

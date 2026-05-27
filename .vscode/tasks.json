@@ -1,0 +1,27 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Open Dashboard in VS Code",
+      "type": "shell",
+      "command": "echo ${input:openDashboardInSimpleBrowser}",
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "never",
+        "echo": false,
+        "focus": false,
+        "panel": "shared"
+      }
+    }
+  ],
+  "inputs": [
+    {
+      "id": "openDashboardInSimpleBrowser",
+      "type": "command",
+      "command": "simpleBrowser.api.open",
+      "args": [
+        "http://localhost:3000/dashboard"
+      ]
+    }
+  ]
+}

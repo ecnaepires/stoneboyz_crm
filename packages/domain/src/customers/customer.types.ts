@@ -3,6 +3,7 @@ import type {
   CustomerAddressType,
   CustomerKind,
   CustomerSortBy,
+  CustomerSource,
   CustomerStatus,
   CustomerType,
   SortDirection
@@ -26,7 +27,8 @@ export interface Customer {
   website: string | null;
   industry: string | null;
   companySize: string | null;
-  source: string | null;
+  source: CustomerSource | null;
+  priceListId: string | null;
   tags: string[];
   notesSummary: string | null;
   phone: string | null;
@@ -149,7 +151,6 @@ export interface CreateCustomerNoteInput {
 }
 
 export interface UpdateCustomerNoteInput {
-  actorUserId: string;
   body: string;
 }
 
@@ -172,7 +173,8 @@ export interface CreateCustomerInput {
   website?: string | undefined;
   industry?: string | undefined;
   companySize?: string | undefined;
-  source?: string | undefined;
+  source?: CustomerSource | undefined;
+  priceListId?: string | undefined;
   tags?: string[] | undefined;
   notesSummary?: string | undefined;
   phone?: string | undefined;
@@ -195,7 +197,8 @@ export interface UpdateCustomerInput {
   website?: string | null | undefined;
   industry?: string | null | undefined;
   companySize?: string | null | undefined;
-  source?: string | null | undefined;
+  source?: CustomerSource | null | undefined;
+  priceListId?: string | null | undefined;
   tags?: string[] | undefined;
   notesSummary?: string | null | undefined;
   phone?: string | null | undefined;
@@ -222,7 +225,7 @@ export interface ListCustomersInput {
   customerKind?: CustomerKind | undefined;
   tag?: string[] | undefined;
   industry?: string | undefined;
-  source?: string | undefined;
+  source?: CustomerSource | undefined;
   createdAtFrom?: Date | undefined;
   createdAtTo?: Date | undefined;
   sortBy?: CustomerSortBy | undefined;

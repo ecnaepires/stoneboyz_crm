@@ -1,4 +1,4 @@
-import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException, Injectable, NotFoundException, UnprocessableEntityException } from '@nestjs/common';
 import type {
   ArchiveScheduledEventInput,
   CreateScheduledEventInput,
@@ -9,6 +9,7 @@ import type {
 } from '@stoneboyz/domain';
 import type { DatabaseError } from 'pg';
 import { EventBus } from '../events/event-bus.js';
+import { JobChecklistsRepository } from '../job-checklists/job-checklists.repository.js';
 import {
   buildScheduledEventArchivedPayload,
   buildScheduledEventCreatedPayload,
@@ -36,7 +37,8 @@ const isDifferentInstant = (left: string, right: string): boolean => {
 export class ScheduledEventsService {
   constructor(
     private readonly scheduledEventsRepository: ScheduledEventsRepository,
-    private readonly eventBus: EventBus
+    private readonly eventBus: EventBus,
+    private readonly jobChecklistsRepository: JobChecklistsRepository
   ) {}
 
   async list(
@@ -65,7 +67,7 @@ export class ScheduledEventsService {
 
   async create(customerId: string, input: CreateScheduledEventInput): Promise<ScheduledEvent> {
     await this.ensureCustomerExists(customerId);
-    this.ensureValidEventTypeFields(input.eventType, input.appointmentType ?? null);
+    this.ensureValidEventTypeFields(input.eventType, input.appointmentType ?? null, input.templateKind ?? null);
 
     try {
       const scheduledEvent = await this.scheduledEventsRepository.create(customerId, input);
@@ -138,11 +140,17 @@ export class ScheduledEventsService {
   }
 
   async start(customerId: string, eventId: string, input: TransitionScheduledEventInput): Promise<ScheduledEvent> {
+    const event = await this.ensureScheduledEventExists(customerId, eventId);
+    await this.enforceChecklistGating(customerId, event);
     return this.transition(customerId, eventId, input, 'confirmed', 'in_progress', 'scheduled_event.started');
   }
 
   async complete(customerId: string, eventId: string, input: TransitionScheduledEventInput): Promise<ScheduledEvent> {
     return this.transition(customerId, eventId, input, 'in_progress', 'completed', 'scheduled_event.completed');
+  }
+
+  async finish(customerId: string, eventId: string, input: TransitionScheduledEventInput): Promise<ScheduledEvent> {
+    return this.complete(customerId, eventId, input);
   }
 
   async cancel(customerId: string, eventId: string, input: TransitionScheduledEventInput): Promise<ScheduledEvent> {
@@ -216,8 +224,8 @@ export class ScheduledEventsService {
         toStatus === 'confirmed'
           ? await this.scheduledEventsRepository.confirm(customerId, eventId)
           : toStatus === 'in_progress'
-            ? await this.scheduledEventsRepository.start(customerId, eventId)
-            : await this.scheduledEventsRepository.complete(customerId, eventId);
+            ? await this.scheduledEventsRepository.start(customerId, eventId, input.actorUserId)
+            : await this.scheduledEventsRepository.complete(customerId, eventId, input.actorUserId);
 
       if (scheduledEvent === null) {
         throw new NotFoundException({ code: 'NOT_FOUND', message: 'Scheduled event not found' });
@@ -232,6 +240,32 @@ export class ScheduledEventsService {
       }
 
       throw error;
+    }
+  }
+
+  private async enforceChecklistGating(customerId: string, event: ScheduledEvent): Promise<void> {
+    if (event.phaseId == null || event.projectId == null || event.appointmentType == null) {
+      return;
+    }
+
+    const GATED_TYPES = new Set<string>(['template', 'material', 'install']);
+    if (!GATED_TYPES.has(event.appointmentType)) {
+      return;
+    }
+
+    const checklist = await this.jobChecklistsRepository.findByPhaseId(customerId, event.projectId, event.phaseId);
+    if (checklist == null) {
+      return;
+    }
+
+    const blocked =
+      (event.appointmentType === 'template' && !checklist.readyToTemplate) ||
+      (event.appointmentType === 'material' && !checklist.depositReceived) ||
+      (event.appointmentType === 'install' &&
+        (!checklist.approvedForInstall || (checklist.tearoutRequired && !checklist.tearoutCompleted)));
+
+    if (blocked) {
+      throw new UnprocessableEntityException({ code: 'CHECKLIST_GATE_FAILED', message: 'Checklist requirements not met' });
     }
   }
 
@@ -254,14 +288,22 @@ export class ScheduledEventsService {
   }
 
   private ensureValidAppointmentTypeUpdate(current: ScheduledEvent, input: UpdateScheduledEventInput): void {
-    if (!Object.hasOwn(input, 'appointmentType')) {
+    if (!Object.hasOwn(input, 'appointmentType') && !Object.hasOwn(input, 'templateKind')) {
       return;
     }
 
-    this.ensureValidEventTypeFields(current.eventType, input.appointmentType ?? null);
+    this.ensureValidEventTypeFields(
+      current.eventType,
+      input.appointmentType ?? current.appointmentType,
+      input.templateKind ?? current.templateKind
+    );
   }
 
-  private ensureValidEventTypeFields(eventType: ScheduledEvent['eventType'], appointmentType: ScheduledEvent['appointmentType']): void {
+  private ensureValidEventTypeFields(
+    eventType: ScheduledEvent['eventType'],
+    appointmentType: ScheduledEvent['appointmentType'],
+    templateKind: ScheduledEvent['templateKind']
+  ): void {
     if (eventType === 'appointment' && appointmentType === null) {
       throw new BadRequestException({
         code: 'VALIDATION_ERROR',
@@ -275,6 +317,14 @@ export class ScheduledEventsService {
         code: 'VALIDATION_ERROR',
         message: 'Request validation failed',
         details: { appointmentType: ['appointmentType must be null for shop_job events'] }
+      });
+    }
+
+    if (templateKind !== null && appointmentType !== 'template') {
+      throw new BadRequestException({
+        code: 'VALIDATION_ERROR',
+        message: 'Request validation failed',
+        details: { templateKind: ['templateKind is only valid when appointmentType is template'] }
       });
     }
   }

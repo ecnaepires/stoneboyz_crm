@@ -277,3 +277,18 @@ export async function deleteAddressAction(customerId: string, addressId: string)
 
   revalidatePath(`/customers/${customerId}`);
 }
+
+export async function updateNoteAction(customerId: string, noteId: string, formData: FormData) {
+  const client = await getApiClientWithAuth();
+
+  const { error } = await client.PATCH('/customers/{customerId}/notes/{noteId}', {
+    params: { path: { customerId, noteId } },
+    body: { body: formData.get('body') as string },
+  });
+
+  if (error) {
+    throw new Error('Failed to update note: ' + JSON.stringify(error));
+  }
+
+  revalidatePath(`/customers/${customerId}`);
+}

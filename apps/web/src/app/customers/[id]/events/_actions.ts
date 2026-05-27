@@ -6,7 +6,7 @@ import { getActorUserId } from '@/lib/actor';
 import { getApiClientWithAuth } from '@/lib/api';
 
 type ScheduledEventType = 'appointment' | 'shop_job';
-type AppointmentType = 'measure' | 'template' | 'install' | 'follow_up' | 'other';
+type AppointmentType = 'template' | 'deposit' | 'material' | 'fabrication' | 'install' | 'invoice' | 'repair' | 'other';
 
 const toOptionalString = (value: FormDataEntryValue | null) => {
   const stringValue = typeof value === 'string' ? value.trim() : '';
@@ -126,19 +126,23 @@ export async function startEventAction(customerId: string, eventId: string) {
   revalidatePath(`/customers/${customerId}/events/${eventId}`);
 }
 
-export async function completeEventAction(customerId: string, eventId: string) {
+export async function finishEventAction(customerId: string, eventId: string) {
   const client = await getApiClientWithAuth();
 
-  const { error } = await client.POST('/customers/{customerId}/events/{eventId}/complete', {
+  const { error } = await client.POST('/customers/{customerId}/events/{eventId}/finish', {
     params: { path: { customerId, eventId } },
     body: {},
   });
 
   if (error) {
-    throw new Error('Failed to complete event: ' + JSON.stringify(error));
+    throw new Error('Failed to finish event: ' + JSON.stringify(error));
   }
 
   revalidatePath(`/customers/${customerId}/events/${eventId}`);
+}
+
+export async function completeEventAction(customerId: string, eventId: string) {
+  return finishEventAction(customerId, eventId);
 }
 
 export async function cancelEventAction(customerId: string, eventId: string) {

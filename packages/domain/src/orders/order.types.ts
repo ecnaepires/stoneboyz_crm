@@ -27,6 +27,39 @@ export interface OrderPayment {
   updatedAt: string;
 }
 
+export interface OrderArea {
+  id: string;
+  orderId: string;
+  sortOrder: number;
+  name: string;
+  material: string | null;
+  color: string | null;
+  edgeProfile: string | null;
+  notes: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface OrderLineItem {
+  id: string;
+  orderId: string;
+  quoteAreaId: string | null;
+  slabId: string | null;
+  sortOrder: number;
+  stoneType: string;
+  lengthIn: number | null;
+  widthIn: number | null;
+  thicknessCm: number | null;
+  edgeProfile: string | null;
+  qty: number;
+  qtyUnit: string;
+  unitPriceCents: number;
+  laborPriceCents: number;
+  notes: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface Order {
   id: string;
   quoteId: string;
@@ -47,6 +80,8 @@ export interface Order {
   archivedByUserId: string | null;
   createdAt: string;
   updatedAt: string;
+  areas?: OrderArea[] | undefined;
+  lineItems?: OrderLineItem[] | undefined;
 }
 
 export interface OrderWithPayments extends Order {

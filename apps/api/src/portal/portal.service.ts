@@ -38,6 +38,40 @@ export class PortalService {
     // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     const q = quoteRows[0]!;
 
+    const { rows: phaseRows } = await this.pool.query<{
+      id: string;
+      name: string;
+      phase_number: number;
+    }>(
+      `SELECT id, name, phase_number
+       FROM phases
+       WHERE id = (SELECT phase_id FROM quotes WHERE share_token = $1)
+         AND deleted_at IS NULL
+       LIMIT 1`,
+      [token]
+    );
+    const phase = phaseRows[0] ?? null;
+
+    const { rows: activityRows } =
+      phase === null
+        ? { rows: [] as { appointment_type: string | null; status: 'confirmed' | 'in_progress'; scheduled_at: Date | null; started_at: Date | null }[] }
+        : await this.pool.query<{
+            appointment_type: string | null;
+            status: 'confirmed' | 'in_progress';
+            scheduled_at: Date | null;
+            started_at: Date | null;
+          }>(
+            `SELECT appointment_type, status, scheduled_at, started_at
+             FROM scheduled_events
+             WHERE phase_id = $1
+               AND deleted_at IS NULL
+               AND status IN ('confirmed', 'in_progress')
+             ORDER BY CASE status WHEN 'in_progress' THEN 0 ELSE 1 END, scheduled_at ASC
+             LIMIT 1`,
+            [phase.id]
+          );
+    const activity = activityRows[0] ?? null;
+
     const { rows: areas } = await this.pool.query<{ id: string; name: string; sort_order: number }>(
       `SELECT id, name, sort_order FROM quote_areas WHERE quote_id = $1 ORDER BY sort_order`,
       [q.id]
@@ -68,6 +102,19 @@ export class PortalService {
     const discountCents = Number(q.discount_cents);
     const taxRateBps = Number(q.tax_rate_bps);
     const taxCents = Math.floor((subtotalCents - discountCents) * (taxRateBps / 10000));
+    const pipelineStageLabels: Record<string, string> = {
+      template: 'Templating',
+      fabrication: 'Fabrication',
+      install: 'Installation',
+      deposit: 'Deposit',
+      material: 'Material Selection',
+      cut: 'Cutting',
+      invoice: 'Final Invoice',
+      repair: 'Service/Repair',
+      other: 'In Progress',
+    };
+    const pipelineStage =
+      activity?.appointment_type == null ? null : (pipelineStageLabels[activity.appointment_type] ?? 'In Progress');
 
     return {
       id: q.id,
@@ -84,6 +131,10 @@ export class PortalService {
       subtotalCents,
       taxRateBps,
       shareToken: q.share_token,
+      pipelineStage,
+      pipelineStatus: activity?.status ?? null,
+      nextActivityDate: activity?.scheduled_at == null ? null : activity.scheduled_at.toISOString(),
+      phaseName: phase?.name ?? null,
       areas: areas.map((a) => ({ id: a.id, name: a.name, sortOrder: a.sort_order })),
       lineItems: items.map((i) => ({
         id: i.id,

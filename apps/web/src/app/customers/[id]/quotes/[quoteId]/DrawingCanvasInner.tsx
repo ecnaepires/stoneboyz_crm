@@ -10,7 +10,16 @@ import {
 } from "react";
 import { useRouter } from "next/navigation";
 import type Konva from "konva";
-import { Group, Layer, Line, Rect, Stage, Text } from "react-konva";
+import {
+  Circle,
+  Group,
+  Layer,
+  Line,
+  Rect,
+  Shape,
+  Stage,
+  Text,
+} from "react-konva";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -34,13 +43,18 @@ import {
   updateCounterPieceAction,
 } from "../_actions";
 import {
+  DEFAULT_DRAWING_MARKUP_COLOR,
+  DRAWING_MARKUP_COLORS,
+} from "./drawing-colors";
+import {
   applyOffsetToSegments,
+  buildReferenceLine,
+  buildReferenceLineCornerVisuals,
   buildDeletedLine,
-  connectEdgesToRectangle,
   isRectangularUnion,
   removeReferenceLine,
   visibleBoundaryEdges,
-} from "./drawingGeometry";
+} from "@stoneboyz/domain";
 
 const SCALE = 3;
 const PIECE_GAP = 40;
@@ -54,7 +68,12 @@ const SINK_COLOR = "#60a5fa";
 const PIECE_FILL = "#eef7ec";
 const PIECE_STROKE = "#78aa72";
 const SELECT_STROKE = "#5f9659";
+const MARQUEE_STROKE = "#2563eb";
+const MARQUEE_FILL = "rgba(37, 99, 235, 0.12)";
 const GUIDE_COLOR = "#f5a884";
+const PAINTED_EDGE_STROKE_WIDTH = 1;
+const DEFAULT_BACKSPLASH_HEIGHT_IN = 4;
+const DEFAULT_BACKSPLASH_OFFSET_IN = 3;
 const DIMENSION_GUIDE = "#d9dee3";
 const DIMENSION_TEXT = "#000000";
 const DIMENSION_HOVER_TEXT = "#ea580c";
@@ -65,6 +84,7 @@ const CONTINUE_RUN_IN = 36;
 
 type Tool =
   | "draw"
+  | "segment"
   | "text"
   | "pageBreak"
   | "otherCounter"
@@ -72,7 +92,10 @@ type Tool =
   | "select"
   | "offset"
   | "connect"
-  | "deleteLine";
+  | "deleteLine"
+  | "centerline"
+  | "paint"
+  | "backsplash";
 type EditorStep = 1 | 2 | 3 | 4 | 5 | 6;
 type EdgeKey = "top" | "right" | "bottom" | "left";
 type CornerKey = "topLeft" | "topRight" | "bottomRight" | "bottomLeft";
@@ -102,6 +125,7 @@ export interface DrawingPiece {
   name: string | null;
   lengthIn: number;
   widthIn: number;
+  kind?: "countertop" | "backsplash";
 }
 
 export interface DrawingSink {
@@ -109,6 +133,7 @@ export interface DrawingSink {
   model: string | null;
   cutoutLengthIn: number;
   cutoutWidthIn: number;
+  centerline: SinkCenterline;
 }
 
 export interface LShapeLayout {
@@ -178,15 +203,24 @@ export interface EdgeLayout {
   treatment: EdgeTreatment;
   splashHeightIn: number | null;
   label: string | null;
+  color?: string;
 }
 
+export interface PaintedEdgeLayout {
+  id: string;
+  pieceId: string;
+  from: [number, number];
+  to: [number, number];
+  color: string;
+}
 export interface ReferenceLineLayout {
   id: string;
   pieceId: string;
   from: [number, number];
   to: [number, number];
-  kind: "cabinet" | "wall";
+  kind: "cabinet" | "wall" | "centerline" | "dimension";
   color: string;
+  dash?: boolean;
 }
 
 export interface DeletedLineLayout {
@@ -201,6 +235,7 @@ export interface CanvasLayout {
   sinks: SinkLayout[];
   corners: CornerLayout[];
   edges: EdgeLayout[];
+  paintedEdges: PaintedEdgeLayout[];
   referenceLines: ReferenceLineLayout[];
   deletedLines: DeletedLineLayout[];
 }
@@ -297,6 +332,11 @@ interface TextNote {
   text: string;
 }
 
+interface SegmentPreview {
+  from: { x: number; y: number };
+  to: { x: number; y: number };
+}
+
 interface CreatedCounterPiece {
   id: string;
 }
@@ -336,11 +376,28 @@ interface EdgeTreatmentEditorState {
   label: string;
 }
 
+interface BacksplashSnapPoint {
+  pieceId: string;
+  edge: EdgeKey;
+  x: number;
+  y: number;
+}
+
+interface BacksplashCornerSnap extends BacksplashSnapPoint {
+  corner: CornerKey;
+}
+
+interface BacksplashSpan {
+  dot1: BacksplashSnapPoint;
+  dot2: BacksplashSnapPoint;
+}
+
 interface ChainEdgeActionState {
   pieceId: string;
   edge: ShapeEdge;
   segmentIndex: number;
   mode?: "offset" | "connect";
+  sourceLineId?: string;
 }
 
 const steps: Array<{ id: EditorStep; title: string; shortTitle: string }> = [
@@ -413,6 +470,9 @@ function mergeLayout(
     edges: (layout?.edges ?? []).filter((edge) =>
       validPieceIds.has(edge.pieceId),
     ),
+    paintedEdges: (layout?.paintedEdges ?? []).filter((edge) =>
+      validPieceIds.has(edge.pieceId),
+    ),
     referenceLines: (layout?.referenceLines ?? []).filter((line) =>
       validPieceIds.has(line.pieceId),
     ),
@@ -441,6 +501,32 @@ function mergeLayout(
   return { ...base, pieces: [...base.pieces, ...additions] };
 }
 
+function removePiecesFromLayout(
+  layout: CanvasLayout,
+  pieceIds: Set<string>,
+): CanvasLayout {
+  return {
+    ...layout,
+    pieces: layout.pieces.filter((piece) => !pieceIds.has(piece.pieceId)),
+    sinks: layout.sinks.map((sink) =>
+      sink.pieceId && pieceIds.has(sink.pieceId)
+        ? { ...sink, pieceId: null, x: 0, y: 0 }
+        : sink,
+    ),
+    corners: layout.corners.filter((corner) => !pieceIds.has(corner.pieceId)),
+    edges: layout.edges.filter((edge) => !pieceIds.has(edge.pieceId)),
+    paintedEdges: layout.paintedEdges.filter(
+      (edge) => !pieceIds.has(edge.pieceId),
+    ),
+    referenceLines: layout.referenceLines.filter(
+      (line) => !pieceIds.has(line.pieceId),
+    ),
+    deletedLines: layout.deletedLines.filter(
+      (line) => !pieceIds.has(line.pieceId),
+    ),
+  };
+}
+
 function roundToSixteenth(value: number, enabled: boolean) {
   return enabled ? Math.round(value * 16) / 16 : Math.round(value * 10) / 10;
 }
@@ -466,6 +552,8 @@ function formatInches(value: number) {
 function toolCursor(tool: Tool, isDraft: boolean) {
   if (!isDraft) return "default";
   if (tool === "draw") return "crosshair";
+  if (tool === "select") return "crosshair";
+  if (tool === "segment") return "crosshair";
   if (tool === "pan") return "grab";
   if (tool === "text") return "text";
   return "default";
@@ -557,6 +645,101 @@ function edgeMarker(edge: EdgeLayout | undefined) {
 
 function edgeValue(piece: DrawingPiece, edge: EdgeKey) {
   return edge === "top" || edge === "bottom" ? piece.lengthIn : piece.widthIn;
+}
+
+function nearestBacksplashCorner(params: {
+  pieceId: string;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  tolerance?: number;
+}): BacksplashCornerSnap | null {
+  const tolerance = params.tolerance ?? 18;
+
+  const corners: BacksplashCornerSnap[] = [
+    {
+      pieceId: params.pieceId,
+      edge: "top",
+      corner: "topLeft",
+      x: 0,
+      y: 0,
+    },
+    {
+      pieceId: params.pieceId,
+      edge: "top",
+      corner: "topRight",
+      x: params.width,
+      y: 0,
+    },
+    {
+      pieceId: params.pieceId,
+      edge: "bottom",
+      corner: "bottomRight",
+      x: params.width,
+      y: params.height,
+    },
+    {
+      pieceId: params.pieceId,
+      edge: "bottom",
+      corner: "bottomLeft",
+      x: 0,
+      y: params.height,
+    },
+  ];
+
+  let nearest: BacksplashCornerSnap | null = null;
+  let nearestDistance = Number.POSITIVE_INFINITY;
+
+  for (const corner of corners) {
+    const distance = Math.hypot(params.x - corner.x, params.y - corner.y);
+    if (distance < nearestDistance) {
+      nearest = corner;
+      nearestDistance = distance;
+    }
+  }
+
+  return nearestDistance <= tolerance ? nearest : null;
+}
+
+function areAdjacentBacksplashCorners(
+  first: BacksplashCornerSnap,
+  second: BacksplashCornerSnap,
+): boolean {
+  if (first.pieceId !== second.pieceId) return false;
+  if (first.corner === second.corner) return false;
+
+  const adjacentPairs = new Set([
+    "topLeft:topRight",
+    "topRight:bottomRight",
+    "bottomRight:bottomLeft",
+    "bottomLeft:topLeft",
+    "topRight:topLeft",
+    "bottomRight:topRight",
+    "bottomLeft:bottomRight",
+    "topLeft:bottomLeft",
+  ]);
+
+  return adjacentPairs.has(`${first.corner}:${second.corner}`);
+}
+
+function nearestRectangleEdge(
+  x: number,
+  y: number,
+  width: number,
+  height: number,
+  tolerance = 18,
+): EdgeKey | null {
+  const distances: Array<[EdgeKey, number]> = [
+    ["top", Math.abs(y)],
+    ["right", Math.abs(width - x)],
+    ["bottom", Math.abs(height - y)],
+    ["left", Math.abs(x)],
+  ];
+  const [edge, distance] = distances.reduce((nearest, current) =>
+    current[1] < nearest[1] ? current : nearest,
+  );
+  return distance <= tolerance ? edge : null;
 }
 
 function isLShape(shape: PieceShape | null | undefined): shape is LShapeLayout {
@@ -655,6 +838,23 @@ interface ShapeRect {
   y: number;
   w: number;
   h: number;
+}
+
+interface CanvasRect {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
+interface MarqueeSelection {
+  start: { x: number; y: number };
+  end: { x: number; y: number };
+}
+
+interface SelectionDragState {
+  start: { x: number; y: number };
+  pieces: Array<{ pieceId: string; x: number; y: number }>;
 }
 
 interface ShapeEdge {
@@ -934,6 +1134,208 @@ function shapeBounds(rects: ShapeRect[]) {
       maxY: Number.NEGATIVE_INFINITY,
     },
   );
+}
+
+function selectionRectFromPoints(
+  start: { x: number; y: number },
+  end: { x: number; y: number },
+): CanvasRect {
+  const x = Math.min(start.x, end.x);
+  const y = Math.min(start.y, end.y);
+
+  return {
+    x,
+    y,
+    width: Math.abs(end.x - start.x),
+    height: Math.abs(end.y - start.y),
+  };
+}
+
+function rectsOverlap(a: CanvasRect, b: CanvasRect) {
+  return (
+    a.x <= b.x + b.width &&
+    a.x + a.width >= b.x &&
+    a.y <= b.y + b.height &&
+    a.y + a.height >= b.y
+  );
+}
+
+function piecePointToCanvasPoint(
+  pieceLayout: PieceLayout,
+  point: { x: number; y: number },
+) {
+  const radians = (pieceLayout.rotation * Math.PI) / 180;
+  const cos = Math.cos(radians);
+  const sin = Math.sin(radians);
+
+  return {
+    x: pieceLayout.x + point.x * cos - point.y * sin,
+    y: pieceLayout.y + point.x * sin + point.y * cos,
+  };
+}
+
+function canvasBoundsForPiece(
+  piece: DrawingPiece,
+  pieceLayout: PieceLayout,
+): CanvasRect {
+  const points = drawingRectsForPiece(piece, pieceLayout).flatMap((rect) => [
+    piecePointToCanvasPoint(pieceLayout, { x: rect.x, y: rect.y }),
+    piecePointToCanvasPoint(pieceLayout, { x: rect.x + rect.w, y: rect.y }),
+    piecePointToCanvasPoint(pieceLayout, { x: rect.x, y: rect.y + rect.h }),
+    piecePointToCanvasPoint(pieceLayout, {
+      x: rect.x + rect.w,
+      y: rect.y + rect.h,
+    }),
+  ]);
+  const minX = Math.min(...points.map((point) => point.x));
+  const minY = Math.min(...points.map((point) => point.y));
+  const maxX = Math.max(...points.map((point) => point.x));
+  const maxY = Math.max(...points.map((point) => point.y));
+
+  return { x: minX, y: minY, width: maxX - minX, height: maxY - minY };
+}
+
+function isWallOffsetReferenceLine(line: ReferenceLineLayout) {
+  return (
+    line.kind === "wall" && line.color === PIECE_STROKE && line.dash !== true
+  );
+}
+
+function matchingWallOffsetReferenceLine(
+  lines: ReferenceLineLayout[],
+  pieceId: string,
+  edge: ShapeEdge,
+) {
+  return (
+    lines.find(
+      (line) =>
+        line.pieceId === pieceId &&
+        isWallOffsetReferenceLine(line) &&
+        shapeEdgeMatchesLine(edge, line),
+    ) ?? null
+  );
+}
+
+function cornerForReferenceLinePair(
+  firstLine: ReferenceLineLayout,
+  secondLine: ReferenceLineLayout,
+  rects: ShapeRect[],
+): CornerKey | null {
+  if (
+    !isWallOffsetReferenceLine(firstLine) ||
+    !isWallOffsetReferenceLine(secondLine)
+  ) {
+    return null;
+  }
+
+  const firstHorizontal = valuesNear(firstLine.from[1], firstLine.to[1]);
+  const secondHorizontal = valuesNear(secondLine.from[1], secondLine.to[1]);
+  if (firstHorizontal === secondHorizontal) return null;
+
+  const horizontal = firstHorizontal ? firstLine : secondLine;
+  const vertical = firstHorizontal ? secondLine : firstLine;
+  const bounds = shapeBounds(rects);
+  const horizontalY = horizontal.from[1];
+  const verticalX = vertical.from[0];
+  const top = horizontalY < (bounds.minY + bounds.maxY) / 2;
+  const left = verticalX < (bounds.minX + bounds.maxX) / 2;
+
+  if (top && left) return "topLeft";
+  if (top) return "topRight";
+  if (left) return "bottomLeft";
+  return "bottomRight";
+}
+
+function squareJoinReferenceLinePair(
+  firstLine: ReferenceLineLayout,
+  secondLine: ReferenceLineLayout,
+): ReferenceLineLayout[] | null {
+  const firstHorizontal = valuesNear(firstLine.from[1], firstLine.to[1]);
+  const secondHorizontal = valuesNear(secondLine.from[1], secondLine.to[1]);
+  if (firstHorizontal === secondHorizontal) return null;
+
+  const horizontal = firstHorizontal ? firstLine : secondLine;
+  const vertical = firstHorizontal ? secondLine : firstLine;
+  const intersection: [number, number] = [vertical.from[0], horizontal.from[1]];
+  const horizontalFromNear =
+    Math.abs(horizontal.from[0] - intersection[0]) <=
+    Math.abs(horizontal.to[0] - intersection[0]);
+  const verticalFromNear =
+    Math.abs(vertical.from[1] - intersection[1]) <=
+    Math.abs(vertical.to[1] - intersection[1]);
+  const nextHorizontal = {
+    ...horizontal,
+    from: horizontalFromNear ? intersection : horizontal.from,
+    to: horizontalFromNear ? horizontal.to : intersection,
+  };
+  const nextVertical = {
+    ...vertical,
+    from: verticalFromNear ? intersection : vertical.from,
+    to: verticalFromNear ? vertical.to : intersection,
+  };
+
+  return firstHorizontal
+    ? [nextHorizontal, nextVertical]
+    : [nextVertical, nextHorizontal];
+}
+
+function buildWallToCabinetConnector(params: {
+  id: string;
+  pieceId: string;
+  wallLine: ReferenceLineLayout;
+  cabinetEdge: ShapeEdge;
+}): ReferenceLineLayout | null {
+  const wallHorizontal = valuesNear(
+    params.wallLine.from[1],
+    params.wallLine.to[1],
+  );
+  const cabinetHorizontal = valuesNear(
+    params.cabinetEdge.from[1],
+    params.cabinetEdge.to[1],
+  );
+  if (wallHorizontal === cabinetHorizontal) return null;
+
+  if (cabinetHorizontal) {
+    const y = params.cabinetEdge.from[1];
+    const wallX = params.wallLine.from[0];
+    const cabinetX =
+      Math.abs(params.cabinetEdge.from[0] - wallX) <=
+      Math.abs(params.cabinetEdge.to[0] - wallX)
+        ? params.cabinetEdge.from[0]
+        : params.cabinetEdge.to[0];
+    if (valuesNear(cabinetX, wallX)) return null;
+    return buildReferenceLine({
+      id: params.id,
+      pieceId: params.pieceId,
+      edge: {
+        from: [cabinetX, y],
+        to: [wallX, y],
+      },
+      kind: "wall",
+      color: PIECE_STROKE,
+      dash: false,
+    });
+  }
+
+  const x = params.cabinetEdge.from[0];
+  const wallY = params.wallLine.from[1];
+  const cabinetY =
+    Math.abs(params.cabinetEdge.from[1] - wallY) <=
+    Math.abs(params.cabinetEdge.to[1] - wallY)
+      ? params.cabinetEdge.from[1]
+      : params.cabinetEdge.to[1];
+  if (valuesNear(cabinetY, wallY)) return null;
+  return buildReferenceLine({
+    id: params.id,
+    pieceId: params.pieceId,
+    edge: {
+      from: [x, cabinetY],
+      to: [x, wallY],
+    },
+    kind: "wall",
+    color: PIECE_STROKE,
+    dash: false,
+  });
 }
 
 function boundaryEdgeKey(edge: ShapeEdge, rects: ShapeRect[]): EdgeKey {
@@ -1217,6 +1619,18 @@ function shapeEdgeMatchesLine(
   );
 }
 
+function findPaintedEdge(
+  paintedEdges: PaintedEdgeLayout[],
+  pieceId: string,
+  edge: ShapeEdge,
+) {
+  return paintedEdges.find(
+    (paintedEdge) =>
+      paintedEdge.pieceId === pieceId &&
+      shapeEdgeMatchesLine(edge, paintedEdge),
+  );
+}
+
 function addDeletedLineOnce(
   lines: DeletedLineLayout[],
   pieceId: string,
@@ -1280,6 +1694,68 @@ function canvasPointToPiecePoint(
     x: translated.x * cos - translated.y * sin,
     y: translated.x * sin + translated.y * cos,
   };
+}
+
+function pieceIdAtCanvasPoint(params: {
+  point: { x: number; y: number };
+  pieces: DrawingPiece[];
+  layouts: PieceLayout[];
+}) {
+  for (let index = params.layouts.length - 1; index >= 0; index -= 1) {
+    const pieceLayout = params.layouts[index];
+    if (!pieceLayout) continue;
+    const piece = params.pieces.find((item) => item.id === pieceLayout.pieceId);
+    if (!piece) continue;
+    const localPoint = canvasPointToPiecePoint(pieceLayout, params.point);
+    const rects = drawingRectsForPiece(piece, pieceLayout);
+    if (isPointInsideRects(rects, localPoint.x, localPoint.y)) {
+      return piece.id;
+    }
+  }
+
+  return null;
+}
+
+function nearestBacksplashCornerAtCanvasPoint(params: {
+  point: { x: number; y: number };
+  pieces: DrawingPiece[];
+  layouts: PieceLayout[];
+  tolerance?: number;
+}): BacksplashCornerSnap | null {
+  const tolerance = params.tolerance ?? 24;
+  let nearest: BacksplashCornerSnap | null = null;
+  let nearestDistance = Number.POSITIVE_INFINITY;
+
+  for (let index = params.layouts.length - 1; index >= 0; index -= 1) {
+    const pieceLayout = params.layouts[index];
+    if (!pieceLayout) continue;
+
+    const piece = params.pieces.find((item) => item.id === pieceLayout.pieceId);
+    if (!piece || piece.kind === "backsplash") continue;
+
+    const localPoint = canvasPointToPiecePoint(pieceLayout, params.point);
+    const corner = nearestBacksplashCorner({
+      pieceId: piece.id,
+      x: localPoint.x,
+      y: localPoint.y,
+      width: piece.lengthIn * SCALE,
+      height: piece.widthIn * SCALE,
+      tolerance,
+    });
+
+    if (!corner) continue;
+
+    const distance = Math.hypot(
+      localPoint.x - corner.x,
+      localPoint.y - corner.y,
+    );
+    if (distance < nearestDistance) {
+      nearest = corner;
+      nearestDistance = distance;
+    }
+  }
+
+  return nearest;
 }
 
 function chainSegmentAttachmentSide(
@@ -1681,11 +2157,31 @@ export function DrawingCanvasInner({
     mergeLayout(initialLayout, pieces, sinks),
   );
   const [selectedPieceId, setSelectedPieceId] = useState<string | null>(null);
+  const [selectedPieceIds, setSelectedPieceIds] = useState<string[]>([]);
   const [selectedSinkId, setSelectedSinkId] = useState<string | null>(null);
   const [sinkPaletteId, setSinkPaletteId] = useState<string | null>(null);
   const [sinkCreateOpen, setSinkCreateOpen] = useState(false);
   const [activeStep, setActiveStep] = useState<EditorStep>(1);
   const [tool, setTool] = useState<Tool>("draw");
+  const [paintColor, setPaintColor] = useState<string>(
+    DEFAULT_DRAWING_MARKUP_COLOR,
+  );
+  const [showLegend, setShowLegend] = useState<boolean>(false);
+  const [backsplashPopupOpen, setBacksplashPopupOpen] = useState(false);
+  const [backsplashHeightIn, setBacksplashHeightIn] = useState(
+    String(DEFAULT_BACKSPLASH_HEIGHT_IN),
+  );
+  const [selectedBacksplashCorner, setSelectedBacksplashCorner] =
+    useState<BacksplashCornerSnap | null>(null);
+  const [confirmedBacksplashSpan, setConfirmedBacksplashSpan] =
+    useState<BacksplashSpan | null>(null);
+  const [backsplashOffsetIn, setBacksplashOffsetIn] = useState(
+    String(DEFAULT_BACKSPLASH_OFFSET_IN),
+  );
+  const [hoveredPaintEdge, setHoveredPaintEdge] = useState<{
+    pieceId: string;
+    edge: string;
+  } | null>(null);
   const [roundSixteenth, setRoundSixteenth] = useState(true);
   const [zoom, setZoom] = useState(1);
   const [pan, setPan] = useState({ x: 0, y: 0 });
@@ -1696,6 +2192,10 @@ export function DrawingCanvasInner({
   );
   const [drawPath, setDrawPath] = useState<Array<{ x: number; y: number }>>([]);
   const [drawPreview, setDrawPreview] = useState<DrawPreview | null>(null);
+  const [marqueeSelection, setMarqueeSelection] =
+    useState<MarqueeSelection | null>(null);
+  const [selectionDrag, setSelectionDrag] =
+    useState<SelectionDragState | null>(null);
   const [panStart, setPanStart] = useState<{
     pointer: { x: number; y: number };
     pan: { x: number; y: number };
@@ -1708,6 +2208,13 @@ export function DrawingCanvasInner({
     y: number;
   } | null>(null);
   const [textDraft, setTextDraft] = useState("");
+  const [segmentStart, setSegmentStart] = useState<{
+    x: number;
+    y: number;
+  } | null>(null);
+  const [segmentPreview, setSegmentPreview] = useState<SegmentPreview | null>(
+    null,
+  );
   const [editDraft, setEditDraft] = useState<{
     pieceId: string;
     name: string;
@@ -1735,6 +2242,7 @@ export function DrawingCanvasInner({
     null,
   );
   const [offsetAmount, setOffsetAmount] = useState("1");
+  const [offsetEditorOpen, setOffsetEditorOpen] = useState(false);
   const [chainEdgeAction, setChainEdgeAction] =
     useState<ChainEdgeActionState | null>(null);
   const [hoveredChainEdgeId, setHoveredChainEdgeId] = useState<string | null>(
@@ -1844,6 +2352,20 @@ export function DrawingCanvasInner({
     () => new Map(pieces.map((p) => [p.id, p])),
     [pieces],
   );
+  const selectedPieceIdSet = useMemo(
+    () => new Set(selectedPieceIds),
+    [selectedPieceIds],
+  );
+  const selectedPieceIdsForAction = useMemo(() => {
+    if (
+      selectedPieceIds.length > 0 &&
+      (!selectedPieceId || selectedPieceIds.includes(selectedPieceId))
+    ) {
+      return selectedPieceIds;
+    }
+
+    return selectedPieceId ? [selectedPieceId] : [];
+  }, [selectedPieceId, selectedPieceIds]);
   const sinkMap = useMemo(() => new Map(sinks.map((s) => [s.id, s])), [sinks]);
   const getRenderedPiece = useCallback(
     (piece: DrawingPiece): DrawingPiece => {
@@ -1857,13 +2379,26 @@ export function DrawingCanvasInner({
     setIsDirty(true);
   }, []);
 
+  const beginOffsetEdgeAction = useCallback(
+    (action: Omit<ChainEdgeActionState, "mode">) => {
+      setSelectedPieceId(action.pieceId);
+      setChainEdgeAction({
+        ...action,
+        mode: "offset",
+      });
+    },
+    [],
+  );
+
   const resetTransientState = useCallback(() => {
     setSelectedPieceId(null);
+    setSelectedPieceIds([]);
     setSelectedSinkId(null);
     setSinkPaletteId(null);
     setContextMenu(null);
     setSinkContextMenu(null);
     setEdgeEditor(null);
+    setOffsetEditorOpen(false);
     setChainEdgeAction(null);
     setHoveredChainEdgeId(null);
     setCornerEditor(null);
@@ -1874,6 +2409,8 @@ export function DrawingCanvasInner({
     setDrawStart(null);
     setDrawPath([]);
     setDrawPreview(null);
+    setMarqueeSelection(null);
+    setSelectionDrag(null);
     setPanStart(null);
     setTool("draw");
     setActiveStep(1);
@@ -1897,6 +2434,173 @@ export function DrawingCanvasInner({
     const pointer = stageRef.current?.getStage().getPointerPosition();
     return pointer ? screenToCanvas(pointer) : null;
   }, [screenToCanvas]);
+
+  const pieceIdsInSelection = useCallback(
+    (selection: MarqueeSelection) => {
+      const selectionRect = selectionRectFromPoints(
+        selection.start,
+        selection.end,
+      );
+
+      return layoutRef.current.pieces
+        .filter((pieceLayout) => {
+          const piece = pieceMap.get(pieceLayout.pieceId);
+          if (!piece) return false;
+
+          return rectsOverlap(
+            selectionRect,
+            canvasBoundsForPiece(getRenderedPiece(piece), pieceLayout),
+          );
+        })
+        .map((pieceLayout) => pieceLayout.pieceId);
+    },
+    [getRenderedPiece, pieceMap],
+  );
+
+  const finishMarqueeSelection = useCallback(
+    (selection: MarqueeSelection) => {
+      const pieceIds = pieceIdsInSelection(selection);
+      setSelectedPieceIds(pieceIds);
+      setSelectedPieceId(pieceIds[0] ?? null);
+      setSelectedSinkId(null);
+      setContextMenu(null);
+      setSinkContextMenu(null);
+      setEditDraft(null);
+      setMarqueeSelection(null);
+      setSelectionDrag(null);
+    },
+    [pieceIdsInSelection],
+  );
+
+  const beginSelectionDrag = useCallback(
+    (pieceId: string, linkedPieceIds?: string[]) => {
+      if (!selectedPieceIdsForAction.includes(pieceId)) return false;
+
+      const pointer = getPointer();
+      if (!pointer) return false;
+
+      const dragPieceIds =
+        selectedPieceIdsForAction.length === 1 &&
+        linkedPieceIds?.includes(pieceId)
+          ? linkedPieceIds
+          : selectedPieceIdsForAction;
+      const pieceIdSet = new Set(dragPieceIds);
+      const dragPieces = layoutRef.current.pieces
+        .filter((piece) => pieceIdSet.has(piece.pieceId))
+        .map((piece) => ({
+          pieceId: piece.pieceId,
+          x: piece.x,
+          y: piece.y,
+        }));
+      if (dragPieces.length === 0) return false;
+
+      setSelectedPieceId(pieceId);
+      setSelectedPieceIds(dragPieces.map((piece) => piece.pieceId));
+      setSelectedSinkId(null);
+      setContextMenu(null);
+      setSinkContextMenu(null);
+      setEditDraft(null);
+      setMarqueeSelection(null);
+      setSelectionDrag({ start: pointer, pieces: dragPieces });
+      return true;
+    },
+    [getPointer, selectedPieceIdsForAction],
+  );
+
+  const updateSelectionDrag = useCallback(
+    (pointer: { x: number; y: number }) => {
+      if (!selectionDrag) return;
+
+      const dx = pointer.x - selectionDrag.start.x;
+      const dy = pointer.y - selectionDrag.start.y;
+      const dragPieces = new Map(
+        selectionDrag.pieces.map((piece) => [piece.pieceId, piece]),
+      );
+
+      setLayout((prev) => ({
+        ...prev,
+        pieces: prev.pieces.map((piece) => {
+          const dragPiece = dragPieces.get(piece.pieceId);
+          return dragPiece
+            ? { ...piece, x: dragPiece.x + dx, y: dragPiece.y + dy }
+            : piece;
+        }),
+      }));
+    },
+    [selectionDrag],
+  );
+
+  const finishSelectionDrag = useCallback(() => {
+    if (!selectionDrag) return;
+    setSelectionDrag(null);
+    markDirty();
+  }, [markDirty, selectionDrag]);
+
+  const openPieceContextMenu = useCallback(
+    (pieceId: string) => {
+      const pointer = stageRef.current?.getStage().getPointerPosition();
+      const nextPieceIds = selectedPieceIdsForAction.includes(pieceId)
+        ? selectedPieceIdsForAction
+        : [pieceId];
+
+      setSelectedPieceId(pieceId);
+      setSelectedPieceIds(nextPieceIds);
+      setSelectedSinkId(null);
+      setMarqueeSelection(null);
+      setSelectionDrag(null);
+      setEditDraft(null);
+      setSinkContextMenu(null);
+      setContextMenu(null);
+      if (pointer) {
+        setContextMenu({
+          pieceId,
+          x: pointer.x + 12,
+          y: pointer.y + 12,
+        });
+      }
+    },
+    [selectedPieceIdsForAction],
+  );
+
+  const paintPieceEdge = useCallback(
+    (pieceId: string, edge: EdgeKey) => {
+      setLayout((prev) => {
+        const existing = prev.edges.find(
+          (savedEdge) =>
+            savedEdge.pieceId === pieceId && savedEdge.edge === edge,
+        );
+        if (existing) {
+          return {
+            ...prev,
+            edges: prev.edges.map((savedEdge) =>
+              savedEdge.pieceId === pieceId && savedEdge.edge === edge
+                ? {
+                    ...savedEdge,
+                    color: paintColor,
+                  }
+                : savedEdge,
+            ),
+          };
+        }
+        return {
+          ...prev,
+          edges: [
+            ...prev.edges,
+            {
+              pieceId,
+              edge,
+              treatment: "finished",
+              splashHeightIn: null,
+              label: null,
+              color: paintColor,
+            },
+          ],
+        };
+      });
+      markDirty();
+    },
+    [markDirty, paintColor],
+  );
 
   const buildPreview = useCallback(
     (
@@ -2218,7 +2922,10 @@ export function DrawingCanvasInner({
 
   const selectPiece = useCallback((piece: DrawingPiece) => {
     setSelectedPieceId(piece.id);
+    setSelectedPieceIds([piece.id]);
     setSelectedSinkId(null);
+    setMarqueeSelection(null);
+    setSelectionDrag(null);
     setEditDraft({
       pieceId: piece.id,
       name: piece.name ?? "",
@@ -2241,6 +2948,9 @@ export function DrawingCanvasInner({
     ) => {
       const renderedPiece = getRenderedPiece(piece);
       setSelectedPieceId(piece.id);
+      setSelectedPieceIds([piece.id]);
+      setMarqueeSelection(null);
+      setSelectionDrag(null);
       setContextMenu(null);
       setCornerEditor(null);
       setTool("select");
@@ -2267,6 +2977,9 @@ export function DrawingCanvasInner({
       (item) => item.pieceId === pieceId && item.corner === corner,
     );
     setSelectedPieceId(pieceId);
+    setSelectedPieceIds([pieceId]);
+    setMarqueeSelection(null);
+    setSelectionDrag(null);
     setContextMenu(null);
     setEdgeEditor(null);
     setEdgeTreatmentEditor(null);
@@ -2288,6 +3001,9 @@ export function DrawingCanvasInner({
         (item) => item.pieceId === pieceId && item.edge === edge,
       );
       setSelectedPieceId(pieceId);
+      setSelectedPieceIds([pieceId]);
+      setMarqueeSelection(null);
+      setSelectionDrag(null);
       setContextMenu(null);
       setEdgeEditor(null);
       setCornerEditor(null);
@@ -2377,7 +3093,9 @@ export function DrawingCanvasInner({
           router.refresh();
         } catch (err) {
           setCanvasError(
-            err instanceof Error ? err.message : "Failed to delete sink. Please try again.",
+            err instanceof Error
+              ? err.message
+              : "Failed to delete sink. Please try again.",
           );
         }
       });
@@ -2407,7 +3125,9 @@ export function DrawingCanvasInner({
           router.refresh();
         } catch (err) {
           setCanvasError(
-            err instanceof Error ? err.message : "Failed to create sink. Please try again.",
+            err instanceof Error
+              ? err.message
+              : "Failed to create sink. Please try again.",
           );
         }
       });
@@ -2519,7 +3239,13 @@ export function DrawingCanvasInner({
           pieces: [...snapshot.pieces, ...createdLayouts],
         };
         setLayout(nextLayout);
-        const saveResult = await saveDrawingAction(customerId, quoteId, areaId, nextLayout, null);
+        const saveResult = await saveDrawingAction(
+          customerId,
+          quoteId,
+          areaId,
+          nextLayout,
+          null,
+        );
         if (!saveResult.ok) {
           setLayout(snapshot);
           setCanvasError(saveResult.error);
@@ -2530,6 +3256,116 @@ export function DrawingCanvasInner({
       });
     },
     [areaId, buildPieceFormData, customerId, pieces.length, quoteId, router],
+  );
+
+  const addBacksplashPiece = useCallback(
+    (span: BacksplashSpan, clickX: number, clickY: number) => {
+      startTransition(async () => {
+        const pieceLayout = layoutRef.current.pieces.find(
+          (p) => p.pieceId === span.dot1.pieceId,
+        );
+        if (!pieceLayout) return;
+
+        const rotationRadians = (pieceLayout.rotation * Math.PI) / 180;
+        const cos = Math.cos(rotationRadians);
+        const sin = Math.sin(rotationRadians);
+        const d1x = pieceLayout.x + span.dot1.x * cos - span.dot1.y * sin;
+        const d1y = pieceLayout.y + span.dot1.x * sin + span.dot1.y * cos;
+        const d2x = pieceLayout.x + span.dot2.x * cos - span.dot2.y * sin;
+        const d2y = pieceLayout.y + span.dot2.x * sin + span.dot2.y * cos;
+
+        const edgeDx = d2x - d1x;
+        const edgeDy = d2y - d1y;
+        const edgeLength = Math.sqrt(edgeDx * edgeDx + edgeDy * edgeDy);
+        const crossZ = edgeDx * (clickY - d1y) - edgeDy * (clickX - d1x);
+        const offsetPx = parseFloat(backsplashOffsetIn) * SCALE;
+        const edgeAngleDeg = (Math.atan2(edgeDy, edgeDx) * 180) / Math.PI;
+
+        let bx: number;
+        let by: number;
+        let rotation: number;
+
+        if (crossZ > 0) {
+          const nx = -edgeDy / edgeLength;
+          const ny = edgeDx / edgeLength;
+          bx = d1x + nx * offsetPx;
+          by = d1y + ny * offsetPx;
+          rotation = edgeAngleDeg;
+        } else {
+          const nx = edgeDy / edgeLength;
+          const ny = -edgeDx / edgeLength;
+          bx = d2x + nx * offsetPx;
+          by = d2y + ny * offsetPx;
+          rotation = edgeAngleDeg + 180;
+        }
+
+        const lengthIn = edgeLength / SCALE;
+        const heightIn = parseFloat(backsplashHeightIn);
+        const nextPieceIndex = Math.max(
+          pieces.length,
+          layoutRef.current.pieces.length,
+        );
+
+        const formData = new FormData();
+        formData.set("sortOrder", String(nextPieceIndex));
+        formData.set("name", `Backsplash ${nextPieceIndex + 1}`);
+        formData.set("lengthIn", String(lengthIn));
+        formData.set("widthIn", String(heightIn));
+        formData.set("quantity", "1");
+        formData.set("kind", "backsplash");
+
+        const createResult = await createCounterPieceForCanvasAction(
+          customerId,
+          quoteId,
+          areaId,
+          formData,
+        );
+
+        if (!createResult.ok) {
+          setCanvasError(createResult.error);
+          return;
+        }
+
+        const first = createResult.data;
+        if (!isCreatedCounterPiece(first)) return;
+
+        const snapshot = layoutRef.current;
+        const nextLayout = {
+          ...snapshot,
+          pieces: [
+            ...snapshot.pieces,
+            { pieceId: first.id, x: bx, y: by, rotation },
+          ],
+        };
+
+        setLayout(nextLayout);
+        setConfirmedBacksplashSpan(null);
+        setSelectedPieceId(first.id);
+        setSelectedPieceIds([first.id]);
+        setMarqueeSelection(null);
+        setSelectionDrag(null);
+
+        const saveResult = await saveDrawingAction(
+          customerId,
+          quoteId,
+          areaId,
+          nextLayout,
+          null,
+        );
+        if (!saveResult.ok) {
+          setLayout(snapshot);
+          setCanvasError(saveResult.error);
+        }
+      });
+    },
+    [
+      areaId,
+      backsplashHeightIn,
+      backsplashOffsetIn,
+      customerId,
+      pieces,
+      quoteId,
+    ],
   );
 
   const handleDragEnd = useCallback(
@@ -2598,7 +3434,9 @@ export function DrawingCanvasInner({
         router.refresh();
       } catch (err) {
         setCanvasError(
-          err instanceof Error ? err.message : "Failed to update piece. Please try again.",
+          err instanceof Error
+            ? err.message
+            : "Failed to update piece. Please try again.",
         );
       }
     });
@@ -2619,7 +3457,12 @@ export function DrawingCanvasInner({
 
     setAreaSaving(true);
     startTransition(async () => {
-      const result = await updateAreaAction(customerId, quoteId, areaId, formData);
+      const result = await updateAreaAction(
+        customerId,
+        quoteId,
+        areaId,
+        formData,
+      );
       setAreaSaving(false);
       if (!result.ok) {
         setCanvasError(result.error);
@@ -2659,7 +3502,9 @@ export function DrawingCanvasInner({
           router.refresh();
         } catch (err) {
           setCanvasError(
-            err instanceof Error ? err.message : "Failed to update piece dimensions. Please try again.",
+            err instanceof Error
+              ? err.message
+              : "Failed to update piece dimensions. Please try again.",
           );
         }
       });
@@ -2672,6 +3517,7 @@ export function DrawingCanvasInner({
       piece: DrawingPiece,
       nextSegments: ChainShapeSegment[],
       referenceLines: ReferenceLineLayout[] = [],
+      deletedLines: DeletedLineLayout[] = [],
     ) => {
       const currentLayout = layoutRef.current;
       const minX = Math.min(...nextSegments.map((segment) => segment.x));
@@ -2684,20 +3530,42 @@ export function DrawingCanvasInner({
       );
       const lengthIn = roundToSixteenth((maxX - minX) / SCALE, roundSixteenth);
       const widthIn = roundToSixteenth((maxY - minY) / SCALE, roundSixteenth);
+      const nextRects = nextSegments.map((segment) => ({
+        x: segment.x,
+        y: segment.y,
+        w: segment.w,
+        h: segment.h,
+      }));
+      const nextShape =
+        nextSegments.length < 2 || isRectangularUnion(nextRects)
+          ? null
+          : ({
+              type: "chain",
+              segments: nextSegments,
+            } as const);
       const nextLayout: CanvasLayout = {
         ...currentLayout,
         pieces: currentLayout.pieces.map((item) =>
           item.pieceId === piece.id
             ? {
                 ...item,
-                shape: {
-                  type: "chain",
-                  segments: nextSegments,
-                },
+                shape: nextShape,
               }
             : item,
         ),
-        referenceLines: [...currentLayout.referenceLines, ...referenceLines],
+        referenceLines: [
+          ...currentLayout.referenceLines.filter(
+            (line) =>
+              !referenceLines.some((nextLine) => nextLine.id === line.id),
+          ),
+          ...referenceLines,
+        ],
+        deletedLines: [
+          ...currentLayout.deletedLines.filter(
+            (line) => !deletedLines.some((nextLine) => nextLine.id === line.id),
+          ),
+          ...deletedLines,
+        ],
       };
       const formData = new FormData();
       formData.set("name", piece.name ?? "");
@@ -2723,7 +3591,13 @@ export function DrawingCanvasInner({
       markDirty();
 
       startTransition(async () => {
-        const saveResult = await saveDrawingAction(customerId, quoteId, areaId, nextLayout, null);
+        const saveResult = await saveDrawingAction(
+          customerId,
+          quoteId,
+          areaId,
+          nextLayout,
+          null,
+        );
         if (!saveResult.ok) {
           setLayout(snapshot);
           setCanvasError(saveResult.error);
@@ -2741,7 +3615,9 @@ export function DrawingCanvasInner({
         } catch (err) {
           setLayout(snapshot);
           setCanvasError(
-            err instanceof Error ? err.message : "Failed to save segment changes. Please try again.",
+            err instanceof Error
+              ? err.message
+              : "Failed to save segment changes. Please try again.",
           );
         }
       });
@@ -2755,6 +3631,7 @@ export function DrawingCanvasInner({
       edge: ShapeEdge,
       segmentIndex: number,
       deltaPx: number,
+      hideSourceEdge: boolean,
     ) => {
       const currentLayout = layoutRef.current;
       const pieceLayout = currentLayout.pieces.find(
@@ -2791,10 +3668,63 @@ export function DrawingCanvasInner({
         referenceLineId: lineId(pieceId),
         pieceId,
       });
+      const matchingReferenceLines = currentLayout.referenceLines.filter(
+        (line) =>
+          line.pieceId === pieceId &&
+          line.kind === "wall" &&
+          line.color === PIECE_STROKE &&
+          line.dash !== true &&
+          shapeEdgeMatchesLine(edge, line),
+      );
+      const referenceLines =
+        matchingReferenceLines.length > 0
+          ? [
+              ...currentLayout.referenceLines
+                .filter((line) =>
+                  matchingReferenceLines.some((match) => match.id === line.id),
+                )
+                .map((line) => ({ ...line, dash: true })),
+              ...matchingReferenceLines.map((line) =>
+                buildReferenceLine({
+                  id: lineId(pieceId),
+                  pieceId,
+                  edge: {
+                    from: [
+                      line.from[0] +
+                        (valuesNear(edge.from[1], edge.to[1]) ? 0 : deltaPx),
+                      line.from[1] +
+                        (valuesNear(edge.from[1], edge.to[1]) ? deltaPx : 0),
+                    ],
+                    to: [
+                      line.to[0] +
+                        (valuesNear(edge.from[1], edge.to[1]) ? 0 : deltaPx),
+                      line.to[1] +
+                        (valuesNear(edge.from[1], edge.to[1]) ? deltaPx : 0),
+                    ],
+                  },
+                  kind: line.kind,
+                  color: line.color,
+                  dash: false,
+                }),
+              ),
+            ]
+          : offsetResult.referenceLines;
       persistChainSegmentsUpdate(
         piece,
         offsetResult.segments,
-        offsetResult.referenceLines,
+        referenceLines,
+        hideSourceEdge
+          ? addDeletedLineOnce(
+              currentLayout.deletedLines,
+              pieceId,
+              edge,
+            ).filter(
+              (line) =>
+                !currentLayout.deletedLines.some(
+                  (currentLine) => currentLine.id === line.id,
+                ),
+            )
+          : [],
       );
       setSelectedPieceId(pieceId);
       setChainEdgeAction(null);
@@ -2817,6 +3747,7 @@ export function DrawingCanvasInner({
         chainEdgeAction.edge,
         chainEdgeAction.segmentIndex,
         deltaPx,
+        !chainEdgeAction.sourceLineId,
       );
     },
     [chainEdgeAction, createOffsetChainSegment, offsetAmount],
@@ -2835,97 +3766,139 @@ export function DrawingCanvasInner({
         return;
       }
 
-      const connection = connectEdgesToRectangle({
-        firstEdge: chainEdgeAction.edge,
-        secondEdge: targetEdge,
-        scale: SCALE,
-      });
-      if (!connection) return;
-
-      const nextLayout: CanvasLayout = {
-        ...currentLayout,
-        pieces: currentLayout.pieces.map((item) =>
-          item.pieceId === chainEdgeAction.pieceId
-            ? {
-                ...item,
-                shape: {
-                  type: "chain",
-                  segments: [connection.segment],
-                },
-              }
-            : item,
-        ),
-        deletedLines: currentLayout.deletedLines.filter(
-          (line) => line.pieceId !== chainEdgeAction.pieceId,
-        ),
-        referenceLines: currentLayout.referenceLines.filter(
-          (line) => line.pieceId !== chainEdgeAction.pieceId,
-        ),
-      };
-      const nextLengthIn = connection.lengthIn;
-      const nextWidthIn = connection.widthIn;
-      const formData = new FormData();
-      formData.set("name", piece.name ?? "");
-      formData.set("lengthIn", String(nextLengthIn));
-      formData.set("widthIn", String(nextWidthIn));
-      formData.set("quantity", "1");
-      formData.set(
-        "sortOrder",
-        String(
-          Math.max(
-            pieces.findIndex((candidate) => candidate.id === piece.id),
-            0,
-          ),
-        ),
+      const existingRects = drawingRectsForPiece(piece, pieceLayout);
+      const firstReferenceLine =
+        (chainEdgeAction.sourceLineId
+          ? currentLayout.referenceLines.find(
+              (line) =>
+                line.id === chainEdgeAction.sourceLineId &&
+                isWallOffsetReferenceLine(line),
+            )
+          : null) ??
+        matchingWallOffsetReferenceLine(
+          currentLayout.referenceLines,
+          chainEdgeAction.pieceId,
+          chainEdgeAction.edge,
+        );
+      const secondReferenceLine = matchingWallOffsetReferenceLine(
+        currentLayout.referenceLines,
+        chainEdgeAction.pieceId,
+        targetEdge,
       );
+      const filletCorner =
+        firstReferenceLine && secondReferenceLine
+          ? cornerForReferenceLinePair(
+              firstReferenceLine,
+              secondReferenceLine,
+              existingRects,
+            )
+          : null;
 
-      const snapshot = currentLayout;
-      setLayout(nextLayout);
-      setPieceOverrides((prev) => ({
-        ...prev,
-        [piece.id]: { lengthIn: nextLengthIn, widthIn: nextWidthIn },
-      }));
-      setSelectedPieceId(chainEdgeAction.pieceId);
-      setChainEdgeAction(null);
-      setHoveredChainEdgeId(null);
-      markDirty();
+      if (filletCorner && firstReferenceLine && secondReferenceLine) {
+        const joinedReferenceLines = squareJoinReferenceLinePair(
+          firstReferenceLine,
+          secondReferenceLine,
+        );
+        if (!joinedReferenceLines) return;
 
-      startTransition(async () => {
-        const saveResult = await saveDrawingAction(customerId, quoteId, areaId, nextLayout, null);
-        if (!saveResult.ok) {
-          setLayout(snapshot);
-          setCanvasError(saveResult.error);
-          return;
-        }
-        try {
-          await updateCounterPieceAction(
+        const nextLayout: CanvasLayout = {
+          ...currentLayout,
+          referenceLines: currentLayout.referenceLines.map((line) => {
+            const joinedLine = joinedReferenceLines.find(
+              (candidate) => candidate.id === line.id,
+            );
+            return joinedLine ?? line;
+          }),
+          corners: currentLayout.corners.filter(
+            (corner) =>
+              corner.pieceId !== chainEdgeAction.pieceId ||
+              corner.corner !== filletCorner,
+          ),
+        };
+        const snapshot = currentLayout;
+        setCanvasError(null);
+        setLayout(nextLayout);
+        setSelectedPieceId(chainEdgeAction.pieceId);
+        setChainEdgeAction(null);
+        setHoveredChainEdgeId(null);
+        markDirty();
+
+        startTransition(async () => {
+          const saveResult = await saveDrawingAction(
             customerId,
             quoteId,
             areaId,
-            piece.id,
-            formData,
+            nextLayout,
+            null,
           );
+          if (!saveResult.ok) {
+            setLayout(snapshot);
+            setCanvasError(saveResult.error);
+            return;
+          }
           setIsDirty(false);
           router.refresh();
-        } catch (err) {
-          setLayout(snapshot);
-          setCanvasError(
-            err instanceof Error ? err.message : "Failed to save connection. Please try again.",
-          );
+        });
+        return;
+      }
+
+      const singleWallLine = firstReferenceLine ?? secondReferenceLine;
+      if (singleWallLine) {
+        const cabinetEdge = firstReferenceLine
+          ? targetEdge
+          : chainEdgeAction.edge;
+        const connector = buildWallToCabinetConnector({
+          id: lineId(chainEdgeAction.pieceId),
+          pieceId: chainEdgeAction.pieceId,
+          wallLine: singleWallLine,
+          cabinetEdge,
+        });
+        if (connector) {
+          const nextLayout: CanvasLayout = {
+            ...currentLayout,
+            referenceLines: [
+              ...currentLayout.referenceLines.filter(
+                (line) => !shapeEdgeMatchesLine(connector, line),
+              ),
+              connector,
+            ],
+          };
+          const snapshot = currentLayout;
+          setCanvasError(null);
+          setLayout(nextLayout);
+          setSelectedPieceId(chainEdgeAction.pieceId);
+          setChainEdgeAction(null);
+          setHoveredChainEdgeId(null);
+          markDirty();
+
+          startTransition(async () => {
+            const saveResult = await saveDrawingAction(
+              customerId,
+              quoteId,
+              areaId,
+              nextLayout,
+              null,
+            );
+            if (!saveResult.ok) {
+              setLayout(snapshot);
+              setCanvasError(saveResult.error);
+              return;
+            }
+            setIsDirty(false);
+            router.refresh();
+          });
+          return;
         }
-      });
+      }
+
+      setChainEdgeAction(null);
+      setHoveredChainEdgeId(null);
+      setCanvasError(
+        "Fillet needs a green wall offset line plus a touching side or another green wall line.",
+      );
       return;
     },
-    [
-      areaId,
-      chainEdgeAction,
-      customerId,
-      markDirty,
-      pieces,
-      quoteId,
-      roundSixteenth,
-      router,
-    ],
+    [areaId, chainEdgeAction, customerId, markDirty, pieces, quoteId, router],
   );
 
   const applyChainEdgeClickDirection = useCallback(
@@ -3100,7 +4073,9 @@ export function DrawingCanvasInner({
             } catch (err) {
               setLayout(snapshot);
               setCanvasError(
-                err instanceof Error ? err.message : "Failed to save edge length. Please try again.",
+                err instanceof Error
+                  ? err.message
+                  : "Failed to save edge length. Please try again.",
               );
             }
           });
@@ -3265,7 +4240,9 @@ export function DrawingCanvasInner({
         } catch (err) {
           if (nextLayout) setLayout(currentLayout);
           setCanvasError(
-            err instanceof Error ? err.message : "Failed to save edge length. Please try again.",
+            err instanceof Error
+              ? err.message
+              : "Failed to save edge length. Please try again.",
           );
         }
       });
@@ -3402,7 +4379,9 @@ export function DrawingCanvasInner({
           } catch (err) {
             setLayout(snapshot);
             setCanvasError(
-              err instanceof Error ? err.message : "Failed to extend counter. Please try again.",
+              err instanceof Error
+                ? err.message
+                : "Failed to extend counter. Please try again.",
             );
           }
         });
@@ -3547,12 +4526,12 @@ export function DrawingCanvasInner({
       startTransition(async () => {
         try {
           await deleteCounterPieceAction(customerId, quoteId, areaId, pieceId);
-          setLayout((prev) => ({
-            ...prev,
-            pieces: prev.pieces.filter((piece) => piece.pieceId !== pieceId),
-          }));
+          setLayout((prev) => removePiecesFromLayout(prev, new Set([pieceId])));
           setSelectedPieceId(null);
+          setSelectedPieceIds([]);
           setContextMenu(null);
+          setMarqueeSelection(null);
+          setSelectionDrag(null);
           setEdgeEditor(null);
           setCornerEditor(null);
           setEdgeTreatmentEditor(null);
@@ -3566,13 +4545,67 @@ export function DrawingCanvasInner({
           router.refresh();
         } catch (err) {
           setCanvasError(
-            err instanceof Error ? err.message : "Failed to delete piece. Please try again.",
+            err instanceof Error
+              ? err.message
+              : "Failed to delete piece. Please try again.",
           );
         }
       });
     },
     [areaId, customerId, markDirty, quoteId, router],
   );
+
+  const deleteSelectedPieces = useCallback(() => {
+    const pieceIds = selectedPieceIdsForAction.filter((pieceId) =>
+      pieceMap.has(pieceId),
+    );
+    if (pieceIds.length === 0) return;
+
+    const pieceIdSet = new Set(pieceIds);
+    startTransition(async () => {
+      try {
+        await Promise.all(
+          pieceIds.map((pieceId) =>
+            deleteCounterPieceAction(customerId, quoteId, areaId, pieceId),
+          ),
+        );
+        setLayout((prev) => removePiecesFromLayout(prev, pieceIdSet));
+        setSelectedPieceId(null);
+        setSelectedPieceIds([]);
+        setContextMenu(null);
+        setMarqueeSelection(null);
+        setSelectionDrag(null);
+        setEdgeEditor(null);
+        setCornerEditor(null);
+        setEdgeTreatmentEditor(null);
+        setEditDraft(null);
+        setPieceOverrides((prev) => {
+          const next = { ...prev };
+          pieceIds.forEach((pieceId) => {
+            delete next[pieceId];
+          });
+          return next;
+        });
+        markDirty();
+        router.refresh();
+      } catch (err) {
+        setCanvasError(
+          err instanceof Error
+            ? err.message
+            : "Failed to delete selected pieces. Please try again.",
+        );
+        router.refresh();
+      }
+    });
+  }, [
+    areaId,
+    customerId,
+    markDirty,
+    pieceMap,
+    quoteId,
+    router,
+    selectedPieceIdsForAction,
+  ]);
 
   const erasePieceEdge = useCallback(
     (piece: DrawingPiece, pieceLayout: PieceLayout, edge: ShapeEdge) => {
@@ -3663,6 +4696,8 @@ export function DrawingCanvasInner({
               ],
             }));
             setSelectedPieceId(duplicated.id);
+            setSelectedPieceIds([duplicated.id]);
+            setMarqueeSelection(null);
             markDirty();
           }
 
@@ -3670,7 +4705,9 @@ export function DrawingCanvasInner({
           router.refresh();
         } catch (err) {
           setCanvasError(
-            err instanceof Error ? err.message : "Failed to duplicate piece. Please try again.",
+            err instanceof Error
+              ? err.message
+              : "Failed to duplicate piece. Please try again.",
           );
         }
       });
@@ -3696,13 +4733,62 @@ export function DrawingCanvasInner({
       setContextMenu(null);
       setSinkContextMenu(null);
 
+      if (tool === "backsplash" && confirmedBacksplashSpan) {
+        addBacksplashPiece(confirmedBacksplashSpan, pointer.x, pointer.y);
+        return;
+      }
+
+      if (tool === "backsplash") {
+        const corner = nearestBacksplashCornerAtCanvasPoint({
+          point: pointer,
+          pieces,
+          layouts: layoutRef.current.pieces,
+        });
+
+        if (!corner) {
+          return;
+        }
+
+        if (!selectedBacksplashCorner) {
+          setCanvasError(null);
+          setSelectedBacksplashCorner(corner);
+          return;
+        }
+
+        if (!areAdjacentBacksplashCorners(selectedBacksplashCorner, corner)) {
+          setCanvasError("Choose an adjacent corner.");
+          return;
+        }
+
+        setCanvasError(null);
+        setConfirmedBacksplashSpan({
+          dot1: selectedBacksplashCorner,
+          dot2: corner,
+        });
+        setSelectedBacksplashCorner(null);
+        return;
+      }
+
       if (tool === "pan") {
         setPanStart({ pointer: screenPointer, pan });
         return;
       }
 
+      if (tool === "select") {
+        setSelectedPieceId(null);
+        setSelectedPieceIds([]);
+        setSelectedSinkId(null);
+        setEditDraft(null);
+        setContextMenu(null);
+        setSinkContextMenu(null);
+        setSelectionDrag(null);
+        setMarqueeSelection({ start: pointer, end: pointer });
+        return;
+      }
+
       if (tool === "draw" && activeStep === 1) {
         setSelectedPieceId(null);
+        setSelectedPieceIds([]);
         setDrawStart(pointer);
         setDrawPath([pointer]);
         setDrawPreview(buildPreview(pointer, pointer, [pointer]));
@@ -3721,23 +4807,38 @@ export function DrawingCanvasInner({
         return;
       }
 
+      if (tool === "segment") {
+        setSelectedPieceId(null);
+        setSelectedPieceIds([]);
+        setSelectedSinkId(null);
+        setSegmentStart(pointer);
+        setSegmentPreview({ from: pointer, to: pointer });
+        return;
+      }
+
       if (e.target === stageRef.current?.getStage()) {
         if ((tool === "offset" || tool === "connect") && chainEdgeAction) {
           applyChainEdgeClickDirection(pointer);
           return;
         }
         setSelectedPieceId(null);
+        setSelectedPieceIds([]);
         setSelectedSinkId(null);
+        setSelectionDrag(null);
       }
     },
     [
       activeStep,
+      addBacksplashPiece,
       applyChainEdgeClickDirection,
       buildPreview,
       chainEdgeAction,
+      confirmedBacksplashSpan,
       getPointer,
       isDraft,
       pan,
+      pieces,
+      selectedBacksplashCorner,
       tool,
     ],
   );
@@ -3792,13 +4893,41 @@ export function DrawingCanvasInner({
 
     const screenPointer = stageRef.current?.getStage().getPointerPosition();
     if (!screenPointer) return;
+    if (selectionDrag) {
+      const pointer = getPointer();
+      if (pointer) updateSelectionDrag(pointer);
+      return;
+    }
+    if (tool === "select" && marqueeSelection) {
+      const pointer = getPointer();
+      if (pointer) {
+        setMarqueeSelection((prev) => (prev ? { ...prev, end: pointer } : prev));
+      }
+      return;
+    }
+    if (tool === "segment" && segmentStart) {
+      const pointer = getPointer();
+      if (pointer) {
+        setSegmentPreview({ from: segmentStart, to: pointer });
+      }
+      return;
+    }
     updateDrawFromScreenPoint(
       screenPointer.x +
         (stageContainerRef.current?.getBoundingClientRect().left ?? 0),
       screenPointer.y +
         (stageContainerRef.current?.getBoundingClientRect().top ?? 0),
     );
-  }, [panStart, tool, updateDrawFromScreenPoint]);
+  }, [
+    getPointer,
+    marqueeSelection,
+    panStart,
+    segmentStart,
+    selectionDrag,
+    tool,
+    updateSelectionDrag,
+    updateDrawFromScreenPoint,
+  ]);
 
   const resetDrawInteraction = useCallback(() => {
     setDrawStart(null);
@@ -3806,9 +4935,78 @@ export function DrawingCanvasInner({
     setDrawPreview(null);
   }, []);
 
+  const resetSegmentInteraction = useCallback(() => {
+    setSegmentStart(null);
+    setSegmentPreview(null);
+  }, []);
+
+  const addSegmentLine = useCallback(
+    (preview: SegmentPreview) => {
+      const length = Math.hypot(
+        preview.to.x - preview.from.x,
+        preview.to.y - preview.from.y,
+      );
+      if (length < 4) return;
+
+      const pieceId =
+        selectedPieceId ??
+        pieceIdAtCanvasPoint({
+          point: preview.from,
+          pieces,
+          layouts: layoutRef.current.pieces,
+        });
+      if (!pieceId) {
+        setCanvasError(
+          "Select a counter piece or start the segment on a piece.",
+        );
+        return;
+      }
+
+      setLayout((prev) => ({
+        ...prev,
+        referenceLines: [
+          ...prev.referenceLines,
+          buildReferenceLine({
+            id: lineId("segment"),
+            pieceId,
+            edge: {
+              from: [preview.from.x, preview.from.y],
+              to: [preview.to.x, preview.to.y],
+            },
+            kind: "cabinet",
+            color: PIECE_STROKE,
+          }),
+        ],
+      }));
+      markDirty();
+    },
+    [markDirty, pieces, selectedPieceId],
+  );
+
   const handleStageMouseUp = useCallback(() => {
     if (panStart) {
       setPanStart(null);
+      return;
+    }
+
+    if (tool === "segment") {
+      return;
+    }
+
+    if (selectionDrag) {
+      const pointer = getPointer();
+      if (pointer) updateSelectionDrag(pointer);
+      finishSelectionDrag();
+      return;
+    }
+
+    if (tool === "select") {
+      if (marqueeSelection) {
+        const pointer = getPointer();
+        finishMarqueeSelection(
+          pointer ? { ...marqueeSelection, end: pointer } : marqueeSelection,
+        );
+      }
       return;
     }
 
@@ -3819,7 +5017,20 @@ export function DrawingCanvasInner({
     const shouldCreate = drawPreview.lengthIn >= 4;
     if (shouldCreate) addCounterPiece(drawPreview);
     resetDrawInteraction();
-  }, [addCounterPiece, drawPreview, drawStart, panStart, resetDrawInteraction]);
+  }, [
+    addCounterPiece,
+    drawPreview,
+    drawStart,
+    finishMarqueeSelection,
+    finishSelectionDrag,
+    getPointer,
+    marqueeSelection,
+    panStart,
+    resetDrawInteraction,
+    selectionDrag,
+    tool,
+    updateSelectionDrag,
+  ]);
 
   const handleStageMouseLeave = useCallback(() => {
     if (panStart) {
@@ -3829,6 +5040,7 @@ export function DrawingCanvasInner({
   }, [panStart]);
 
   useEffect(() => {
+    if (tool === "segment") return;
     if (!drawStart || tool !== "draw") return;
 
     const handleWindowMouseMove = (event: MouseEvent) => {
@@ -3865,6 +5077,125 @@ export function DrawingCanvasInner({
     updateDrawFromScreenPoint,
   ]);
 
+  useEffect(() => {
+    if (!segmentStart || tool !== "segment") return;
+
+    const handleWindowMouseMove = (event: MouseEvent) => {
+      const containerRect = stageContainerRef.current?.getBoundingClientRect();
+      if (!containerRect) return;
+      const pointer = {
+        x: (event.clientX - containerRect.left - pan.x) / zoom,
+        y: (event.clientY - containerRect.top - pan.y) / zoom,
+      };
+      setSegmentPreview({ from: segmentStart, to: pointer });
+    };
+
+    const handleWindowMouseUp = () => {
+      if (segmentPreview) {
+        addSegmentLine(segmentPreview);
+      }
+      resetSegmentInteraction();
+    };
+
+    window.addEventListener("mousemove", handleWindowMouseMove);
+    window.addEventListener("mouseup", handleWindowMouseUp);
+    return () => {
+      window.removeEventListener("mousemove", handleWindowMouseMove);
+      window.removeEventListener("mouseup", handleWindowMouseUp);
+    };
+  }, [
+    addSegmentLine,
+    pan.x,
+    pan.y,
+    resetSegmentInteraction,
+    segmentPreview,
+    segmentStart,
+    tool,
+    zoom,
+  ]);
+
+  useEffect(() => {
+    if (!selectionDrag || tool !== "select") return;
+
+    const pointerFromMouseEvent = (event: MouseEvent) => {
+      const containerRect = stageContainerRef.current?.getBoundingClientRect();
+      if (!containerRect) return null;
+
+      return {
+        x: (event.clientX - containerRect.left - pan.x) / zoom,
+        y: (event.clientY - containerRect.top - pan.y) / zoom,
+      };
+    };
+
+    const handleWindowMouseMove = (event: MouseEvent) => {
+      const pointer = pointerFromMouseEvent(event);
+      if (pointer) updateSelectionDrag(pointer);
+    };
+
+    const handleWindowMouseUp = (event: MouseEvent) => {
+      const pointer = pointerFromMouseEvent(event);
+      if (pointer) updateSelectionDrag(pointer);
+      finishSelectionDrag();
+    };
+
+    window.addEventListener("mousemove", handleWindowMouseMove);
+    window.addEventListener("mouseup", handleWindowMouseUp);
+    return () => {
+      window.removeEventListener("mousemove", handleWindowMouseMove);
+      window.removeEventListener("mouseup", handleWindowMouseUp);
+    };
+  }, [
+    finishSelectionDrag,
+    pan.x,
+    pan.y,
+    selectionDrag,
+    tool,
+    updateSelectionDrag,
+    zoom,
+  ]);
+
+  useEffect(() => {
+    if (!marqueeSelection || tool !== "select") return;
+
+    const pointerFromMouseEvent = (event: MouseEvent) => {
+      const containerRect = stageContainerRef.current?.getBoundingClientRect();
+      if (!containerRect) return null;
+
+      return {
+        x: (event.clientX - containerRect.left - pan.x) / zoom,
+        y: (event.clientY - containerRect.top - pan.y) / zoom,
+      };
+    };
+
+    const handleWindowMouseMove = (event: MouseEvent) => {
+      const pointer = pointerFromMouseEvent(event);
+      if (!pointer) return;
+      setMarqueeSelection((prev) => (prev ? { ...prev, end: pointer } : prev));
+    };
+
+    const handleWindowMouseUp = (event: MouseEvent) => {
+      const pointer = pointerFromMouseEvent(event);
+      finishMarqueeSelection(
+        pointer ? { ...marqueeSelection, end: pointer } : marqueeSelection,
+      );
+    };
+
+    window.addEventListener("mousemove", handleWindowMouseMove);
+    window.addEventListener("mouseup", handleWindowMouseUp);
+    return () => {
+      window.removeEventListener("mousemove", handleWindowMouseMove);
+      window.removeEventListener("mouseup", handleWindowMouseUp);
+    };
+  }, [
+    finishMarqueeSelection,
+    marqueeSelection,
+    pan.x,
+    pan.y,
+    tool,
+    zoom,
+  ]);
+
+  const selectedPieceCount = selectedPieceIdsForAction.length;
   const toolbarItems: Array<{
     label: string;
     icon: string;
@@ -3883,10 +5214,21 @@ export function DrawingCanvasInner({
       draftOnly: true,
     },
     {
-      label: "Cursor",
-      icon: "·",
+      label: "Select",
+      icon: "S",
       action: () => setTool("select"),
       active: tool === "select",
+    },
+    {
+      label:
+        selectedPieceCount > 0
+          ? `Delete (${selectedPieceCount})`
+          : "Delete Selected",
+      icon: "x",
+      action: deleteSelectedPieces,
+      disabled: selectedPieceCount === 0 || isPending,
+      draftOnly: true,
+      tone: "red",
     },
     {
       label: "Erase",
@@ -3905,7 +5247,7 @@ export function DrawingCanvasInner({
       tone: "orange",
     },
     {
-      label: "Fill It",
+      label: "Fillet",
       icon: "⌜",
       action: () =>
         setTool((prev) => (prev === "connect" ? "draw" : "connect")),
@@ -3916,9 +5258,44 @@ export function DrawingCanvasInner({
     {
       label: "Offset",
       icon: "=",
-      action: () => setTool((prev) => (prev === "offset" ? "draw" : "offset")),
+      action: () => {
+        setTool("offset");
+        setOffsetEditorOpen(true);
+      },
       active: tool === "offset",
       draftOnly: true,
+    },
+    {
+      label: "Centerline",
+      icon: "⊕",
+      action: () => setTool("centerline"),
+      active: tool === "centerline",
+      draftOnly: true,
+    },
+    {
+      label: "Paint",
+      icon: "🎨",
+      action: () => setTool("paint"),
+      active: tool === "paint",
+      draftOnly: true,
+    },
+    {
+      label: "Back Splash",
+      icon: "▰",
+      action: () => {
+        setTool("backsplash");
+        setBacksplashPopupOpen(true);
+      },
+      active: tool === "backsplash",
+      draftOnly: true,
+      tone: "purple",
+    },
+    {
+      label: "Legend",
+      icon: "≡",
+      action: () => setShowLegend((prev) => !prev),
+      active: showLegend,
+      draftOnly: false,
     },
     {
       label: "Rotate",
@@ -3943,8 +5320,8 @@ export function DrawingCanvasInner({
       label: "Segment",
       icon: "/",
       action: () =>
-        setTool((prev) => (prev === "connect" ? "draw" : "connect")),
-      active: tool === "connect",
+        setTool((prev) => (prev === "segment" ? "draw" : "segment")),
+      active: tool === "segment",
       draftOnly: true,
     },
     {
@@ -4078,10 +5455,14 @@ export function DrawingCanvasInner({
         setTool((prev) => (prev === "pan" ? "draw" : "pan"));
       } else if (key === "o" && isDraft) {
         event.preventDefault();
-        setTool((prev) => (prev === "offset" ? "draw" : "offset"));
+        setTool("offset");
+        setOffsetEditorOpen(true);
       } else if (key === "c" && isDraft) {
         event.preventDefault();
         setTool((prev) => (prev === "connect" ? "draw" : "connect"));
+      } else if (key === "s" && isDraft) {
+        event.preventDefault();
+        setTool((prev) => (prev === "segment" ? "draw" : "segment"));
       } else if ((key === "d" || key === "delete") && isDraft) {
         event.preventDefault();
         setTool((prev) => (prev === "deleteLine" ? "draw" : "deleteLine"));
@@ -4094,8 +5475,15 @@ export function DrawingCanvasInner({
 
   useEffect(() => {
     if (tool === "offset" || tool === "connect") return;
+    setOffsetEditorOpen(false);
     setChainEdgeAction(null);
     setHoveredChainEdgeId(null);
+  }, [tool]);
+
+  useEffect(() => {
+    if (tool === "segment") return;
+    setSegmentStart(null);
+    setSegmentPreview(null);
   }, [tool]);
 
   useEffect(() => {
@@ -4519,6 +5907,20 @@ export function DrawingCanvasInner({
                         </Group>
                       ))}
 
+                      {segmentPreview ? (
+                        <Line
+                          points={[
+                            segmentPreview.from.x,
+                            segmentPreview.from.y,
+                            segmentPreview.to.x,
+                            segmentPreview.to.y,
+                          ]}
+                          stroke={PIECE_STROKE}
+                          strokeWidth={2}
+                          dash={[6, 4]}
+                        />
+                      ) : null}
+
                       {layout.pieces.map((pos) => {
                         const basePiece = pieceMap.get(pos.pieceId);
                         if (!basePiece) return null;
@@ -4539,6 +5941,7 @@ export function DrawingCanvasInner({
                           );
                           const isGroupSelected = groupItems.some(
                             (item) =>
+                              selectedPieceIdSet.has(item.pieceId) ||
                               selectedPieceId === item.pieceId ||
                               editDraft?.pieceId === item.pieceId,
                           );
@@ -4548,27 +5951,69 @@ export function DrawingCanvasInner({
                               key={pos.groupId}
                               x={originX}
                               y={originY}
-                              draggable={isDraft && tool !== "pan"}
+                              draggable={
+                                isDraft &&
+                                tool !== "select" &&
+                                tool !== "pan" &&
+                                tool !== "segment" &&
+                                tool !== "paint" &&
+                                tool !== "backsplash"
+                              }
                               onMouseDown={(event) => {
                                 event.cancelBubble = true;
+                                if (tool === "select") {
+                                  beginSelectionDrag(
+                                    basePiece.id,
+                                    groupItems.map((item) => item.pieceId),
+                                  );
+                                }
                               }}
                               onClick={(event) => {
                                 event.cancelBubble = true;
+                                if (tool === "select") {
+                                  if (
+                                    selectedPieceIdsForAction.includes(
+                                      basePiece.id,
+                                    )
+                                  ) {
+                                    return;
+                                  }
+                                  selectPiece(basePiece);
+                                  return;
+                                }
+                                if (tool === "paint") {
+                                  const pointer = getPointer();
+                                  if (!pointer) return;
+                                  for (const groupPos of groupItems) {
+                                    const groupPiece = pieceMap.get(
+                                      groupPos.pieceId,
+                                    );
+                                    if (!groupPiece) continue;
+                                    const renderedGroupPiece =
+                                      getRenderedPiece(groupPiece);
+                                    const groupW =
+                                      renderedGroupPiece.lengthIn * SCALE;
+                                    const groupH =
+                                      renderedGroupPiece.widthIn * SCALE;
+                                    const edge = nearestRectangleEdge(
+                                      pointer.x - groupPos.x,
+                                      pointer.y - groupPos.y,
+                                      groupW,
+                                      groupH,
+                                    );
+                                    if (edge) {
+                                      paintPieceEdge(groupPos.pieceId, edge);
+                                      return;
+                                    }
+                                  }
+                                  return;
+                                }
                                 selectPiece(basePiece);
                               }}
                               onContextMenu={(event) => {
                                 event.cancelBubble = true;
                                 event.evt.preventDefault();
-                                const pointer = stageRef.current
-                                  ?.getStage()
-                                  .getPointerPosition();
-                                setSelectedPieceId(basePiece.id);
-                                if (pointer)
-                                  setContextMenu({
-                                    pieceId: basePiece.id,
-                                    x: pointer.x + 12,
-                                    y: pointer.y + 12,
-                                  });
+                                openPieceContextMenu(basePiece.id);
                               }}
                               onDragEnd={(event) =>
                                 handleGroupDragEnd(
@@ -4593,6 +6038,45 @@ export function DrawingCanvasInner({
                                   renderedGroupPiece.widthIn * SCALE;
                                 const localX = groupPos.x - originX;
                                 const localY = groupPos.y - originY;
+                                const groupEdgeTreatments = new Map(
+                                  layout.edges
+                                    .filter(
+                                      (edge) =>
+                                        edge.pieceId === groupPos.pieceId,
+                                    )
+                                    .map((edge) => [edge.edge, edge] as const),
+                                );
+                                const groupEdges: Array<[EdgeKey, ShapeEdge]> =
+                                  [
+                                    [
+                                      "top",
+                                      rectangleShapeEdge(groupW, groupH, "top"),
+                                    ],
+                                    [
+                                      "right",
+                                      rectangleShapeEdge(
+                                        groupW,
+                                        groupH,
+                                        "right",
+                                      ),
+                                    ],
+                                    [
+                                      "bottom",
+                                      rectangleShapeEdge(
+                                        groupW,
+                                        groupH,
+                                        "bottom",
+                                      ),
+                                    ],
+                                    [
+                                      "left",
+                                      rectangleShapeEdge(
+                                        groupW,
+                                        groupH,
+                                        "left",
+                                      ),
+                                    ],
+                                  ];
 
                                 return (
                                   <Group
@@ -4607,14 +6091,98 @@ export function DrawingCanvasInner({
                                       fill={
                                         isGroupSelected ? PIECE_FILL : "#ffffff"
                                       }
-                                      stroke={
-                                        isGroupSelected
-                                          ? SELECT_STROKE
-                                          : PIECE_STROKE
-                                      }
-                                      strokeWidth={isGroupSelected ? 2 : 1}
+                                      stroke="transparent"
+                                      strokeWidth={0}
                                       cornerRadius={2}
                                     />
+                                    {groupEdges.map(([edgeKey, edge]) => {
+                                      const edgeLayout =
+                                        groupEdgeTreatments.get(edgeKey);
+                                      const points = [
+                                        edge.from[0],
+                                        edge.from[1],
+                                        edge.to[0],
+                                        edge.to[1],
+                                      ];
+                                      return (
+                                        <Group
+                                          key={`group-edge-${groupPos.pieceId}-${edgeKey}`}
+                                        >
+                                          <Line
+                                            points={points}
+                                            stroke={
+                                              edgeLayout?.color ??
+                                              (isGroupSelected
+                                                ? SELECT_STROKE
+                                                : PIECE_STROKE)
+                                            }
+                                            strokeWidth={
+                                              edgeLayout?.color
+                                                ? PAINTED_EDGE_STROKE_WIDTH
+                                                : isGroupSelected
+                                                  ? 2
+                                                  : 1
+                                            }
+                                          />
+                                          {tool === "paint" ? (
+                                            <Line
+                                              points={points}
+                                              stroke="transparent"
+                                              strokeWidth={16}
+                                              onMouseDown={(event) => {
+                                                event.cancelBubble = true;
+                                              }}
+                                              onClick={(event) => {
+                                                event.cancelBubble = true;
+                                                setLayout((prev) => {
+                                                  const existing =
+                                                    prev.edges.find(
+                                                      (savedEdge) =>
+                                                        savedEdge.pieceId ===
+                                                          groupPos.pieceId &&
+                                                        savedEdge.edge ===
+                                                          edgeKey,
+                                                    );
+                                                  if (existing) {
+                                                    return {
+                                                      ...prev,
+                                                      edges: prev.edges.map(
+                                                        (savedEdge) =>
+                                                          savedEdge.pieceId ===
+                                                            groupPos.pieceId &&
+                                                          savedEdge.edge ===
+                                                            edgeKey
+                                                            ? {
+                                                                ...savedEdge,
+                                                                color:
+                                                                  paintColor,
+                                                              }
+                                                            : savedEdge,
+                                                      ),
+                                                    };
+                                                  }
+                                                  return {
+                                                    ...prev,
+                                                    edges: [
+                                                      ...prev.edges,
+                                                      {
+                                                        pieceId:
+                                                          groupPos.pieceId,
+                                                        edge: edgeKey,
+                                                        treatment: "finished",
+                                                        splashHeightIn: null,
+                                                        label: null,
+                                                        color: paintColor,
+                                                      },
+                                                    ],
+                                                  };
+                                                });
+                                              }}
+                                            />
+                                          ) : null}
+                                        </Group>
+                                      );
+                                    })}
                                     <Text
                                       text={
                                         index === 0
@@ -4664,6 +6232,7 @@ export function DrawingCanvasInner({
                           ? chainShapeGeometry(pos.shape)
                           : null;
                         const isSelected =
+                          selectedPieceIdSet.has(pos.pieceId) ||
                           selectedPieceId === pos.pieceId ||
                           editDraft?.pieceId === pos.pieceId;
                         const pieceSinks = layout.sinks.filter(
@@ -4677,8 +6246,21 @@ export function DrawingCanvasInner({
                         const deletedLines = layout.deletedLines.filter(
                           (line) => line.pieceId === pos.pieceId,
                         );
+                        const effectiveDeletedLines = [
+                          ...deletedLines,
+                          ...referenceLines
+                            .filter(
+                              (line) => line.dash && line.kind !== "centerline",
+                            )
+                            .map((line) => ({
+                              id: line.id,
+                              pieceId: line.pieceId,
+                              from: line.from,
+                              to: line.to,
+                            })),
+                        ];
                         const hasDeletedBoundaryLines =
-                          deletedLines.length > 0;
+                          effectiveDeletedLines.length > 0;
                         const pieceFill = hasDeletedBoundaryLines
                           ? "rgba(255,255,255,0)"
                           : isSelected
@@ -4711,25 +6293,45 @@ export function DrawingCanvasInner({
                                   rects: lShape.rects,
                                 }
                               : null;
+                        const pieceRects = compoundEdges?.rects ?? [
+                          {
+                            x: 0,
+                            y: 0,
+                            w,
+                            h,
+                          },
+                        ];
+                        const referenceLineVisuals =
+                          buildReferenceLineCornerVisuals({
+                            referenceLines: referenceLines.filter(
+                              (line) =>
+                                line.kind === "cabinet" || line.kind === "wall",
+                            ),
+                            rects: pieceRects,
+                            corners: Array.from(cornerTreatments.values()),
+                            scale: SCALE,
+                          });
                         const visibleCompoundEdges = compoundEdges
                           ? visibleBoundaryEdges({
                               rects: compoundEdges.rects,
-                              deletedLines,
+                              deletedLines: effectiveDeletedLines,
                             })
                           : [];
                         const visibleRectangleDimensionEdges =
                           !chainShape && !zShape && !lShape
-                            ? ([
-                                ["top", rectangleShapeEdge(w, h, "top")],
+                            ? (
                                 [
-                                  "bottom",
-                                  rectangleShapeEdge(w, h, "bottom"),
-                                ],
-                                ["left", rectangleShapeEdge(w, h, "left")],
-                                ["right", rectangleShapeEdge(w, h, "right")],
-                              ] as Array<[EdgeKey, ShapeEdge]>).filter(
+                                  ["top", rectangleShapeEdge(w, h, "top")],
+                                  [
+                                    "bottom",
+                                    rectangleShapeEdge(w, h, "bottom"),
+                                  ],
+                                  ["left", rectangleShapeEdge(w, h, "left")],
+                                  ["right", rectangleShapeEdge(w, h, "right")],
+                                ] as Array<[EdgeKey, ShapeEdge]>
+                              ).filter(
                                 ([, edge]) =>
-                                  !deletedLines.some((line) =>
+                                  !effectiveDeletedLines.some((line) =>
                                     shapeEdgeMatchesLine(edge, line),
                                   ),
                               )
@@ -4754,17 +6356,88 @@ export function DrawingCanvasInner({
                             draggable={
                               isDraft &&
                               tool !== "pan" &&
+                              tool !== "select" &&
+                              tool !== "segment" &&
                               tool !== "offset" &&
-                              tool !== "connect"
+                              tool !== "connect" &&
+                              tool !== "centerline" &&
+                              tool !== "paint" &&
+                              tool !== "backsplash"
                             }
                             onMouseDown={(event) => {
+                              if (tool === "backsplash") {
+                                return;
+                              }
                               event.cancelBubble = true;
+                              if (tool === "select") {
+                                beginSelectionDrag(basePiece.id);
+                                return;
+                              }
                               if (activeStep === 4 && sinkPaletteId) {
                                 placeSinkOnPiece(basePiece.id, sinkPaletteId);
                               }
                             }}
                             onClick={(event) => {
                               event.cancelBubble = true;
+                              if (tool === "select") {
+                                if (
+                                  selectedPieceIdsForAction.includes(
+                                    basePiece.id,
+                                  )
+                                ) {
+                                  return;
+                                }
+                                selectPiece(basePiece);
+                                return;
+                              }
+                              if (tool === "paint") {
+                                const pointer = getPointer();
+                                if (!pointer) return;
+                                const edge = nearestRectangleEdge(
+                                  pointer.x - pos.x,
+                                  pointer.y - pos.y,
+                                  w,
+                                  h,
+                                );
+                                if (edge) {
+                                  paintPieceEdge(pos.pieceId, edge);
+                                }
+                                return;
+                              }
+                              if (tool === "centerline") {
+                                const pointer = getPointer();
+                                if (pointer) {
+                                  const localX = pointer.x - pos.x;
+                                  const snapPoints = [0, w / 2, w];
+                                  const snapX = snapPoints.reduce(
+                                    (nearest, point) =>
+                                      Math.abs(point - localX) <
+                                      Math.abs(nearest - localX)
+                                        ? point
+                                        : nearest,
+                                  );
+                                  setLayout((prev) => ({
+                                    ...prev,
+                                    referenceLines: [
+                                      ...prev.referenceLines.filter(
+                                        (l) =>
+                                          l.id !==
+                                          `centerline-${pos.pieceId}-${snapX}`,
+                                      ),
+                                      {
+                                        id: `centerline-${pos.pieceId}-${snapX}`,
+                                        pieceId: pos.pieceId,
+                                        from: [snapX, 0] as [number, number],
+                                        to: [snapX, h] as [number, number],
+                                        kind: "centerline" as const,
+                                        color: "#000000",
+                                        dash: true,
+                                      },
+                                    ],
+                                  }));
+                                }
+                                return;
+                              }
                               if (
                                 (tool === "offset" || tool === "connect") &&
                                 chainEdgeAction
@@ -4779,21 +6452,15 @@ export function DrawingCanvasInner({
                                 placeSinkOnPiece(basePiece.id, sinkPaletteId);
                                 return;
                               }
+                              if (tool === "backsplash") {
+                                return;
+                              }
                               selectPiece(basePiece);
                             }}
                             onContextMenu={(event) => {
                               event.cancelBubble = true;
                               event.evt.preventDefault();
-                              const pointer = stageRef.current
-                                ?.getStage()
-                                .getPointerPosition();
-                              setSelectedPieceId(basePiece.id);
-                              if (pointer)
-                                setContextMenu({
-                                  pieceId: basePiece.id,
-                                  x: pointer.x + 12,
-                                  y: pointer.y + 12,
-                                });
+                              openPieceContextMenu(basePiece.id);
                             }}
                             onDragEnd={(event) =>
                               handleDragEnd(
@@ -4830,7 +6497,14 @@ export function DrawingCanvasInner({
                                     const selectable =
                                       tool === "offset" ||
                                       tool === "connect" ||
-                                      tool === "deleteLine";
+                                      tool === "deleteLine" ||
+                                      tool === "paint";
+                                    const edgeKey = boundaryEdgeKey(
+                                      edge,
+                                      chainShape.rects,
+                                    );
+                                    const edgeLayout =
+                                      edgeTreatments.get(edgeKey);
 
                                     return (
                                       <Group key={`chain-edge-${index}`}>
@@ -4843,17 +6517,27 @@ export function DrawingCanvasInner({
                                           ]}
                                           stroke={
                                             isActionSelected || isActionHovered
-                                              ? GUIDE_COLOR
-                                              : isSelected
-                                                ? SELECT_STROKE
-                                                : PIECE_STROKE
+                                              ? tool === "paint"
+                                                ? paintColor
+                                                : GUIDE_COLOR
+                                              : edgeLayout?.color
+                                                ? edgeLayout.color
+                                                : isSelected
+                                                  ? SELECT_STROKE
+                                                  : PIECE_STROKE
                                           }
                                           strokeWidth={
-                                            isActionSelected || isActionHovered
-                                              ? 4
-                                              : isSelected
-                                                ? 2
-                                                : 1
+                                            edgeLayout?.color ||
+                                            (tool === "paint" &&
+                                              (isActionSelected ||
+                                                isActionHovered))
+                                              ? PAINTED_EDGE_STROKE_WIDTH
+                                              : isActionSelected ||
+                                                  isActionHovered
+                                                ? 4
+                                                : isSelected
+                                                  ? 2
+                                                  : 1
                                           }
                                         />
                                         {selectable ? (
@@ -4879,6 +6563,51 @@ export function DrawingCanvasInner({
                                             }}
                                             onClick={(event) => {
                                               event.cancelBubble = true;
+                                              if (tool === "paint") {
+                                                setLayout((prev) => {
+                                                  const existing =
+                                                    prev.edges.find(
+                                                      (savedEdge) =>
+                                                        savedEdge.pieceId ===
+                                                          pos.pieceId &&
+                                                        savedEdge.edge ===
+                                                          edgeKey,
+                                                    );
+                                                  if (existing) {
+                                                    return {
+                                                      ...prev,
+                                                      edges: prev.edges.map(
+                                                        (savedEdge) =>
+                                                          savedEdge.pieceId ===
+                                                            pos.pieceId &&
+                                                          savedEdge.edge ===
+                                                            edgeKey
+                                                            ? {
+                                                                ...savedEdge,
+                                                                color:
+                                                                  paintColor,
+                                                              }
+                                                            : savedEdge,
+                                                      ),
+                                                    };
+                                                  }
+                                                  return {
+                                                    ...prev,
+                                                    edges: [
+                                                      ...prev.edges,
+                                                      {
+                                                        pieceId: pos.pieceId,
+                                                        edge: edgeKey,
+                                                        treatment: "finished",
+                                                        splashHeightIn: null,
+                                                        label: null,
+                                                        color: paintColor,
+                                                      },
+                                                    ],
+                                                  };
+                                                });
+                                                return;
+                                              }
                                               if (tool === "deleteLine") {
                                                 erasePieceEdge(
                                                   basePiece,
@@ -4887,7 +6616,8 @@ export function DrawingCanvasInner({
                                                 );
                                                 return;
                                               }
-                                              if (!isChainShape(pos.shape)) return;
+                                              if (!isChainShape(pos.shape))
+                                                return;
                                               const segmentIndex =
                                                 chainSegmentIndexForEdge(
                                                   pos.shape,
@@ -4904,15 +6634,20 @@ export function DrawingCanvasInner({
                                                 connectChainEdges(edge);
                                                 return;
                                               }
+                                              if (tool === "offset") {
+                                                beginOffsetEdgeAction({
+                                                  pieceId: basePiece.id,
+                                                  edge,
+                                                  segmentIndex,
+                                                });
+                                                return;
+                                              }
                                               setSelectedPieceId(basePiece.id);
                                               setChainEdgeAction({
                                                 pieceId: basePiece.id,
                                                 edge,
                                                 segmentIndex,
-                                                mode:
-                                                  tool === "connect"
-                                                    ? "connect"
-                                                    : "offset",
+                                                mode: "connect",
                                               });
                                             }}
                                           />
@@ -4963,10 +6698,14 @@ export function DrawingCanvasInner({
                                     h,
                                     edgeKey,
                                   );
-                                  const isDeleted = deletedLines.some((line) =>
-                                    shapeEdgeMatchesLine(edge, line),
+                                  const edgeLayout =
+                                    edgeTreatments.get(edgeKey);
+                                  const isDeleted = effectiveDeletedLines.some(
+                                    (line) => shapeEdgeMatchesLine(edge, line),
                                   );
-                                  if (isDeleted) return null;
+                                  if (isDeleted && !edgeLayout?.color) {
+                                    return null;
+                                  }
                                   const edgeActionId = `${pos.pieceId}:rect:${edgeKey}`;
                                   const isActionSelected =
                                     chainEdgeAction?.pieceId === pos.pieceId &&
@@ -4985,22 +6724,33 @@ export function DrawingCanvasInner({
                                         ]}
                                         stroke={
                                           isActionSelected || isActionHovered
-                                            ? GUIDE_COLOR
-                                            : isSelected
-                                              ? SELECT_STROKE
-                                              : PIECE_STROKE
+                                            ? tool === "paint"
+                                              ? paintColor
+                                              : GUIDE_COLOR
+                                            : edgeLayout?.color
+                                              ? edgeLayout.color
+                                              : isSelected
+                                                ? SELECT_STROKE
+                                                : PIECE_STROKE
                                         }
                                         strokeWidth={
-                                          isActionSelected || isActionHovered
-                                            ? 4
-                                            : isSelected
-                                              ? 2
-                                              : 1
+                                          edgeLayout?.color ||
+                                          (tool === "paint" &&
+                                            (isActionSelected ||
+                                              isActionHovered))
+                                            ? PAINTED_EDGE_STROKE_WIDTH
+                                            : isActionSelected ||
+                                                isActionHovered
+                                              ? 4
+                                              : isSelected
+                                                ? 2
+                                                : 1
                                         }
                                       />
                                       {tool === "offset" ||
                                       tool === "connect" ||
-                                      tool === "deleteLine" ? (
+                                      tool === "deleteLine" ||
+                                      tool === "paint" ? (
                                         <Line
                                           points={[
                                             edge.from[0],
@@ -5021,6 +6771,50 @@ export function DrawingCanvasInner({
                                           }}
                                           onClick={(event) => {
                                             event.cancelBubble = true;
+                                            if (tool === "paint") {
+                                              setLayout((prev) => {
+                                                const existing =
+                                                  prev.edges.find(
+                                                    (savedEdge) =>
+                                                      savedEdge.pieceId ===
+                                                        pos.pieceId &&
+                                                      savedEdge.edge ===
+                                                        edgeKey,
+                                                  );
+                                                if (existing) {
+                                                  return {
+                                                    ...prev,
+                                                    edges: prev.edges.map(
+                                                      (savedEdge) =>
+                                                        savedEdge.pieceId ===
+                                                          pos.pieceId &&
+                                                        savedEdge.edge ===
+                                                          edgeKey
+                                                          ? {
+                                                              ...savedEdge,
+                                                              color: paintColor,
+                                                            }
+                                                          : savedEdge,
+                                                    ),
+                                                  };
+                                                }
+                                                return {
+                                                  ...prev,
+                                                  edges: [
+                                                    ...prev.edges,
+                                                    {
+                                                      pieceId: pos.pieceId,
+                                                      edge: edgeKey as EdgeKey,
+                                                      treatment: "finished",
+                                                      splashHeightIn: null,
+                                                      label: null,
+                                                      color: paintColor,
+                                                    },
+                                                  ],
+                                                };
+                                              });
+                                              return;
+                                            }
                                             setSelectedPieceId(basePiece.id);
                                             if (tool === "deleteLine") {
                                               erasePieceEdge(
@@ -5040,14 +6834,19 @@ export function DrawingCanvasInner({
                                               connectChainEdges(edge);
                                               return;
                                             }
+                                            if (tool === "offset") {
+                                              beginOffsetEdgeAction({
+                                                pieceId: basePiece.id,
+                                                edge,
+                                                segmentIndex: 0,
+                                              });
+                                              return;
+                                            }
                                             setChainEdgeAction({
                                               pieceId: basePiece.id,
                                               edge,
                                               segmentIndex: 0,
-                                              mode:
-                                                tool === "connect"
-                                                  ? "connect"
-                                                  : "offset",
+                                              mode: "connect",
                                             });
                                           }}
                                         />
@@ -5070,6 +6869,12 @@ export function DrawingCanvasInner({
                                     compoundEdges.rects,
                                     edge,
                                   );
+                                  const edgeKey = boundaryEdgeKey(
+                                    edge,
+                                    compoundEdges.rects,
+                                  );
+                                  const edgeLayout =
+                                    edgeTreatments.get(edgeKey);
 
                                   return (
                                     <Group key={edgeActionId}>
@@ -5082,22 +6887,33 @@ export function DrawingCanvasInner({
                                         ]}
                                         stroke={
                                           isActionSelected || isActionHovered
-                                            ? GUIDE_COLOR
-                                            : isSelected
-                                              ? SELECT_STROKE
-                                              : PIECE_STROKE
+                                            ? tool === "paint"
+                                              ? paintColor
+                                              : GUIDE_COLOR
+                                            : edgeLayout?.color
+                                              ? edgeLayout.color
+                                              : isSelected
+                                                ? SELECT_STROKE
+                                                : PIECE_STROKE
                                         }
                                         strokeWidth={
-                                          isActionSelected || isActionHovered
-                                            ? 4
-                                            : isSelected
-                                              ? 2
-                                              : 1
+                                          edgeLayout?.color ||
+                                          (tool === "paint" &&
+                                            (isActionSelected ||
+                                              isActionHovered))
+                                            ? PAINTED_EDGE_STROKE_WIDTH
+                                            : isActionSelected ||
+                                                isActionHovered
+                                              ? 4
+                                              : isSelected
+                                                ? 2
+                                                : 1
                                         }
                                       />
                                       {tool === "offset" ||
                                       tool === "connect" ||
-                                      tool === "deleteLine" ? (
+                                      tool === "deleteLine" ||
+                                      tool === "paint" ? (
                                         <Line
                                           points={[
                                             edge.from[0],
@@ -5118,6 +6934,50 @@ export function DrawingCanvasInner({
                                           }}
                                           onClick={(event) => {
                                             event.cancelBubble = true;
+                                            if (tool === "paint") {
+                                              setLayout((prev) => {
+                                                const existing =
+                                                  prev.edges.find(
+                                                    (savedEdge) =>
+                                                      savedEdge.pieceId ===
+                                                        pos.pieceId &&
+                                                      savedEdge.edge ===
+                                                        edgeKey,
+                                                  );
+                                                if (existing) {
+                                                  return {
+                                                    ...prev,
+                                                    edges: prev.edges.map(
+                                                      (savedEdge) =>
+                                                        savedEdge.pieceId ===
+                                                          pos.pieceId &&
+                                                        savedEdge.edge ===
+                                                          edgeKey
+                                                          ? {
+                                                              ...savedEdge,
+                                                              color: paintColor,
+                                                            }
+                                                          : savedEdge,
+                                                    ),
+                                                  };
+                                                }
+                                                return {
+                                                  ...prev,
+                                                  edges: [
+                                                    ...prev.edges,
+                                                    {
+                                                      pieceId: pos.pieceId,
+                                                      edge: edgeKey,
+                                                      treatment: "finished",
+                                                      splashHeightIn: null,
+                                                      label: null,
+                                                      color: paintColor,
+                                                    },
+                                                  ],
+                                                };
+                                              });
+                                              return;
+                                            }
                                             setSelectedPieceId(basePiece.id);
                                             if (tool === "deleteLine") {
                                               erasePieceEdge(
@@ -5155,9 +7015,112 @@ export function DrawingCanvasInner({
                                 })}
                               </>
                             ) : null}
-                            {referenceLines.map((line) => {
+                            {referenceLines
+                              .filter((line) => line.kind === "centerline")
+                              .map((line) => {
+                                const midY = (line.from[1] + line.to[1]) / 2;
+                                const gap = 8;
+                                const isHovered =
+                                  hoveredChainEdgeId === `reference:${line.id}`;
+                                return (
+                                  <Group key={line.id}>
+                                    <Line
+                                      points={[
+                                        line.from[0],
+                                        line.from[1],
+                                        line.to[0],
+                                        midY - gap,
+                                      ]}
+                                      stroke={
+                                        isHovered ? GUIDE_COLOR : line.color
+                                      }
+                                      strokeWidth={1}
+                                      dash={[6, 5]}
+                                    />
+                                    <Text
+                                      text="CL"
+                                      x={line.from[0]}
+                                      y={midY}
+                                      offsetX={5}
+                                      offsetY={4}
+                                      fontSize={10}
+                                      fill={
+                                        isHovered ? GUIDE_COLOR : line.color
+                                      }
+                                    />
+                                    <Line
+                                      points={[
+                                        line.from[0],
+                                        midY + gap,
+                                        line.to[0],
+                                        line.to[1],
+                                      ]}
+                                      stroke={
+                                        isHovered ? GUIDE_COLOR : line.color
+                                      }
+                                      strokeWidth={1}
+                                      dash={[6, 5]}
+                                    />
+                                    {tool === "deleteLine" ||
+                                    tool === "paint" ? (
+                                      <Line
+                                        points={[
+                                          line.from[0],
+                                          line.from[1],
+                                          line.to[0],
+                                          line.to[1],
+                                        ]}
+                                        stroke="transparent"
+                                        strokeWidth={16}
+                                        onMouseEnter={() =>
+                                          setHoveredChainEdgeId(
+                                            `reference:${line.id}`,
+                                          )
+                                        }
+                                        onMouseLeave={() =>
+                                          setHoveredChainEdgeId(null)
+                                        }
+                                        onClick={(event) => {
+                                          event.cancelBubble = true;
+                                          if (tool === "paint") {
+                                            setLayout((prev) => ({
+                                              ...prev,
+                                              referenceLines:
+                                                prev.referenceLines.map((l) =>
+                                                  l.id === line.id
+                                                    ? {
+                                                        ...l,
+                                                        color: paintColor,
+                                                      }
+                                                    : l,
+                                                ),
+                                            }));
+                                            return;
+                                          }
+                                          setLayout((prev) => ({
+                                            ...prev,
+                                            referenceLines:
+                                              prev.referenceLines.filter(
+                                                (l) => l.id !== line.id,
+                                              ),
+                                          }));
+                                        }}
+                                      />
+                                    ) : null}
+                                  </Group>
+                                );
+                              })}
+                            {referenceLineVisuals.segments.map((line) => {
+                              const lineEdge = {
+                                from: line.from,
+                                to: line.to,
+                              };
+                              const isActionSelected =
+                                chainEdgeAction?.pieceId === pos.pieceId &&
+                                shapeEdgesEqual(chainEdgeAction.edge, lineEdge);
                               const isHovered =
-                                hoveredChainEdgeId === `reference:${line.id}`;
+                                hoveredChainEdgeId ===
+                                `reference:${line.sourceLineId}`;
                               return (
                                 <Group key={line.id}>
                                   <Line
@@ -5168,23 +7131,29 @@ export function DrawingCanvasInner({
                                       line.to[1],
                                     ]}
                                     stroke={
-                                      isHovered ? GUIDE_COLOR : line.color
+                                      isActionSelected || isHovered
+                                        ? tool === "paint"
+                                          ? paintColor
+                                          : GUIDE_COLOR
+                                        : line.color
                                     }
                                     strokeWidth={
-                                      isHovered || line.color === PIECE_STROKE
-                                        ? 2
-                                        : 1
+                                      tool === "paint" &&
+                                      (isActionSelected || isHovered)
+                                        ? PAINTED_EDGE_STROKE_WIDTH
+                                        : isActionSelected
+                                          ? 4
+                                          : isHovered ||
+                                              line.color === PIECE_STROKE
+                                            ? 2
+                                            : 1
                                     }
-                                    dash={
-                                      line.color === PIECE_STROKE ? [] : [6, 5]
-                                    }
+                                    dash={line.dash ? [6, 5] : []}
                                   />
                                   {tool === "deleteLine" ||
-                                  (tool === "connect" &&
-                                    line.color === PIECE_STROKE &&
-                                    chainEdgeAction?.mode === "connect" &&
-                                    chainEdgeAction.pieceId ===
-                                      basePiece.id) ? (
+                                  tool === "offset" ||
+                                  tool === "connect" ||
+                                  tool === "paint" ? (
                                     <Line
                                       points={[
                                         line.from[0],
@@ -5207,10 +7176,48 @@ export function DrawingCanvasInner({
                                       }}
                                       onClick={(event) => {
                                         event.cancelBubble = true;
+                                        setSelectedPieceId(basePiece.id);
+                                        if (tool === "paint") {
+                                          setLayout((prev) => ({
+                                            ...prev,
+                                            referenceLines:
+                                              prev.referenceLines.map((l) =>
+                                                l.id === line.sourceLineId
+                                                  ? { ...l, color: paintColor }
+                                                  : l,
+                                              ),
+                                          }));
+                                          markDirty();
+                                          return;
+                                        }
+                                        if (tool === "offset") {
+                                          beginOffsetEdgeAction({
+                                            pieceId: basePiece.id,
+                                            edge: lineEdge,
+                                            segmentIndex: 0,
+                                            sourceLineId: line.id,
+                                          });
+                                          return;
+                                        }
                                         if (tool === "connect") {
-                                          connectChainEdges({
-                                            from: line.from,
-                                            to: line.to,
+                                          if (
+                                            chainEdgeAction?.mode ===
+                                              "connect" &&
+                                            chainEdgeAction.pieceId ===
+                                              basePiece.id
+                                          ) {
+                                            connectChainEdges({
+                                              from: line.from,
+                                              to: line.to,
+                                            });
+                                            return;
+                                          }
+
+                                          setChainEdgeAction({
+                                            pieceId: basePiece.id,
+                                            edge: lineEdge,
+                                            segmentIndex: 0,
+                                            mode: "connect",
                                           });
                                           return;
                                         }
@@ -5230,151 +7237,191 @@ export function DrawingCanvasInner({
                                 </Group>
                               );
                             })}
+                            {referenceLineVisuals.arcs.map((arc) => {
+                              const isHovered = arc.sourceLineIds.some(
+                                (lineId) =>
+                                  hoveredChainEdgeId === `reference:${lineId}`,
+                              );
+                              return (
+                                <Shape
+                                  key={arc.id}
+                                  listening={false}
+                                  sceneFunc={(context, shape) => {
+                                    context.beginPath();
+                                    context.arc(
+                                      arc.center[0],
+                                      arc.center[1],
+                                      arc.radius,
+                                      arc.startAngle,
+                                      arc.endAngle,
+                                      false,
+                                    );
+                                    context.strokeShape(shape);
+                                  }}
+                                  stroke={isHovered ? GUIDE_COLOR : arc.color}
+                                  strokeWidth={isHovered ? 2 : 1}
+                                />
+                              );
+                            })}
                             {!chainShape ? (
                               <>
                                 {rectangleLengthDimension?.[0] === "top" ? (
-                                <Group
-                                  onClick={(event) => {
-                                    event.cancelBubble = true;
-                                    if (tool === "offset") {
-                                      setSelectedPieceId(basePiece.id);
-                                      setChainEdgeAction({
-                                        pieceId: basePiece.id,
-                                        edge: rectangleShapeEdge(w, h, "top"),
-                                        segmentIndex: 0,
-                                        mode: "offset",
-                                      });
-                                      return;
+                                  <Group
+                                    onClick={(event) => {
+                                      event.cancelBubble = true;
+                                      if (tool === "offset") {
+                                        beginOffsetEdgeAction({
+                                          pieceId: basePiece.id,
+                                          edge: rectangleShapeEdge(w, h, "top"),
+                                          segmentIndex: 0,
+                                        });
+                                        return;
+                                      }
+                                      openEdgeEditor(basePiece, "top");
+                                    }}
+                                    onMouseDown={(event) => {
+                                      event.cancelBubble = true;
+                                    }}
+                                    onMouseEnter={() =>
+                                      setHoveredDimension(`${pos.pieceId}:top`)
                                     }
-                                    openEdgeEditor(basePiece, "top");
-                                  }}
-                                  onMouseDown={(event) => {
-                                    event.cancelBubble = true;
-                                  }}
-                                  onMouseEnter={() =>
-                                    setHoveredDimension(`${pos.pieceId}:top`)
-                                  }
-                                  onMouseLeave={() => setHoveredDimension(null)}
-                                >
-                                  <DimensionLabel
-                                    text={formatInches(piece.lengthIn)}
-                                    x={w / 2}
-                                    y={-18}
-                                    hovered={
-                                      hoveredDimension === `${pos.pieceId}:top`
+                                    onMouseLeave={() =>
+                                      setHoveredDimension(null)
                                     }
-                                  />
-                                </Group>
+                                  >
+                                    <DimensionLabel
+                                      text={formatInches(piece.lengthIn)}
+                                      x={w / 2}
+                                      y={-18}
+                                      hovered={
+                                        hoveredDimension ===
+                                        `${pos.pieceId}:top`
+                                      }
+                                    />
+                                  </Group>
                                 ) : null}
                                 {rectangleLengthDimension?.[0] === "bottom" ? (
-                                <Group
-                                  onClick={(event) => {
-                                    event.cancelBubble = true;
-                                    if (tool === "offset") {
-                                      setSelectedPieceId(basePiece.id);
-                                      setChainEdgeAction({
-                                        pieceId: basePiece.id,
-                                        edge: rectangleShapeEdge(
-                                          w,
-                                          h,
-                                          "bottom",
-                                        ),
-                                        segmentIndex: 0,
-                                        mode: "offset",
-                                      });
-                                      return;
+                                  <Group
+                                    onClick={(event) => {
+                                      event.cancelBubble = true;
+                                      if (tool === "offset") {
+                                        beginOffsetEdgeAction({
+                                          pieceId: basePiece.id,
+                                          edge: rectangleShapeEdge(
+                                            w,
+                                            h,
+                                            "bottom",
+                                          ),
+                                          segmentIndex: 0,
+                                        });
+                                        return;
+                                      }
+                                      openEdgeEditor(basePiece, "bottom");
+                                    }}
+                                    onMouseDown={(event) => {
+                                      event.cancelBubble = true;
+                                    }}
+                                    onMouseEnter={() =>
+                                      setHoveredDimension(
+                                        `${pos.pieceId}:bottom`,
+                                      )
                                     }
-                                    openEdgeEditor(basePiece, "bottom");
-                                  }}
-                                  onMouseDown={(event) => {
-                                    event.cancelBubble = true;
-                                  }}
-                                  onMouseEnter={() =>
-                                    setHoveredDimension(`${pos.pieceId}:bottom`)
-                                  }
-                                  onMouseLeave={() => setHoveredDimension(null)}
-                                >
-                                  <DimensionLabel
-                                    text={formatInches(piece.lengthIn)}
-                                    x={w / 2}
-                                    y={h + 14}
-                                    hovered={
-                                      hoveredDimension ===
-                                      `${pos.pieceId}:bottom`
+                                    onMouseLeave={() =>
+                                      setHoveredDimension(null)
                                     }
-                                  />
-                                </Group>
+                                  >
+                                    <DimensionLabel
+                                      text={formatInches(piece.lengthIn)}
+                                      x={w / 2}
+                                      y={h + 14}
+                                      hovered={
+                                        hoveredDimension ===
+                                        `${pos.pieceId}:bottom`
+                                      }
+                                    />
+                                  </Group>
                                 ) : null}
                                 {rectangleDepthDimension?.[0] === "left" ? (
-                                <Group
-                                  onClick={(event) => {
-                                    event.cancelBubble = true;
-                                    if (tool === "offset") {
-                                      setSelectedPieceId(basePiece.id);
-                                      setChainEdgeAction({
-                                        pieceId: basePiece.id,
-                                        edge: rectangleShapeEdge(w, h, "left"),
-                                        segmentIndex: 0,
-                                        mode: "offset",
-                                      });
-                                      return;
+                                  <Group
+                                    onClick={(event) => {
+                                      event.cancelBubble = true;
+                                      if (tool === "offset") {
+                                        beginOffsetEdgeAction({
+                                          pieceId: basePiece.id,
+                                          edge: rectangleShapeEdge(
+                                            w,
+                                            h,
+                                            "left",
+                                          ),
+                                          segmentIndex: 0,
+                                        });
+                                        return;
+                                      }
+                                      openEdgeEditor(basePiece, "left");
+                                    }}
+                                    onMouseDown={(event) => {
+                                      event.cancelBubble = true;
+                                    }}
+                                    onMouseEnter={() =>
+                                      setHoveredDimension(`${pos.pieceId}:left`)
                                     }
-                                    openEdgeEditor(basePiece, "left");
-                                  }}
-                                  onMouseDown={(event) => {
-                                    event.cancelBubble = true;
-                                  }}
-                                  onMouseEnter={() =>
-                                    setHoveredDimension(`${pos.pieceId}:left`)
-                                  }
-                                  onMouseLeave={() => setHoveredDimension(null)}
-                                >
-                                  <DimensionLabel
-                                    text={formatInches(piece.widthIn)}
-                                    x={-34}
-                                    y={h / 2}
-                                    orientation="vertical"
-                                    hovered={
-                                      hoveredDimension === `${pos.pieceId}:left`
+                                    onMouseLeave={() =>
+                                      setHoveredDimension(null)
                                     }
-                                  />
-                                </Group>
+                                  >
+                                    <DimensionLabel
+                                      text={formatInches(piece.widthIn)}
+                                      x={-34}
+                                      y={h / 2}
+                                      orientation="vertical"
+                                      hovered={
+                                        hoveredDimension ===
+                                        `${pos.pieceId}:left`
+                                      }
+                                    />
+                                  </Group>
                                 ) : null}
                                 {rectangleDepthDimension?.[0] === "right" ? (
-                                <Group
-                                  onClick={(event) => {
-                                    event.cancelBubble = true;
-                                    if (tool === "offset") {
-                                      setSelectedPieceId(basePiece.id);
-                                      setChainEdgeAction({
-                                        pieceId: basePiece.id,
-                                        edge: rectangleShapeEdge(w, h, "right"),
-                                        segmentIndex: 0,
-                                        mode: "offset",
-                                      });
-                                      return;
+                                  <Group
+                                    onClick={(event) => {
+                                      event.cancelBubble = true;
+                                      if (tool === "offset") {
+                                        beginOffsetEdgeAction({
+                                          pieceId: basePiece.id,
+                                          edge: rectangleShapeEdge(
+                                            w,
+                                            h,
+                                            "right",
+                                          ),
+                                          segmentIndex: 0,
+                                        });
+                                        return;
+                                      }
+                                      openEdgeEditor(basePiece, "right");
+                                    }}
+                                    onMouseDown={(event) => {
+                                      event.cancelBubble = true;
+                                    }}
+                                    onMouseEnter={() =>
+                                      setHoveredDimension(
+                                        `${pos.pieceId}:right`,
+                                      )
                                     }
-                                    openEdgeEditor(basePiece, "right");
-                                  }}
-                                  onMouseDown={(event) => {
-                                    event.cancelBubble = true;
-                                  }}
-                                  onMouseEnter={() =>
-                                    setHoveredDimension(`${pos.pieceId}:right`)
-                                  }
-                                  onMouseLeave={() => setHoveredDimension(null)}
-                                >
-                                  <DimensionLabel
-                                    text={formatInches(piece.widthIn)}
-                                    x={w + 34}
-                                    y={h / 2}
-                                    orientation="vertical"
-                                    hovered={
-                                      hoveredDimension ===
-                                      `${pos.pieceId}:right`
+                                    onMouseLeave={() =>
+                                      setHoveredDimension(null)
                                     }
-                                  />
-                                </Group>
+                                  >
+                                    <DimensionLabel
+                                      text={formatInches(piece.widthIn)}
+                                      x={w + 34}
+                                      y={h / 2}
+                                      orientation="vertical"
+                                      hovered={
+                                        hoveredDimension ===
+                                        `${pos.pieceId}:right`
+                                      }
+                                    />
+                                  </Group>
                                 ) : null}
                               </>
                             ) : null}
@@ -5424,12 +7471,10 @@ export function DrawingCanvasInner({
                                             tool === "offset" &&
                                             segmentIndex >= 0
                                           ) {
-                                            setSelectedPieceId(basePiece.id);
-                                            setChainEdgeAction({
+                                            beginOffsetEdgeAction({
                                               pieceId: basePiece.id,
                                               edge,
                                               segmentIndex,
-                                              mode: "offset",
                                             });
                                           }
                                           if (
@@ -5454,6 +7499,112 @@ export function DrawingCanvasInner({
                                             });
                                           }
                                           return;
+                                        }
+                                        {
+                                          [
+                                            "top",
+                                            "right",
+                                            "bottom",
+                                            "left",
+                                          ].map((edgeKey) => {
+                                            const edgeLayout =
+                                              edgeTreatments.get(
+                                                edgeKey as EdgeKey,
+                                              );
+                                            if (!edgeLayout?.color) return null;
+                                            const pts: Record<
+                                              string,
+                                              number[]
+                                            > = {
+                                              top: [0, 0, w, 0],
+                                              right: [w, 0, w, h],
+                                              bottom: [0, h, w, h],
+                                              left: [0, 0, 0, h],
+                                            };
+                                            return (
+                                              <Line
+                                                key={edgeKey}
+                                                points={pts[edgeKey]}
+                                                stroke={edgeLayout.color}
+                                                strokeWidth={
+                                                  PAINTED_EDGE_STROKE_WIDTH
+                                                }
+                                              />
+                                            );
+                                          });
+                                        }
+                                        {
+                                          tool === "paint" && !compoundEdges
+                                            ? [
+                                                "top",
+                                                "right",
+                                                "bottom",
+                                                "left",
+                                              ].map((edgeKey) => {
+                                                const pts: Record<
+                                                  string,
+                                                  number[]
+                                                > = {
+                                                  top: [0, 0, w, 0],
+                                                  right: [w, 0, w, h],
+                                                  bottom: [0, h, w, h],
+                                                  left: [0, 0, 0, h],
+                                                };
+                                                return (
+                                                  <Line
+                                                    key={edgeKey}
+                                                    points={pts[edgeKey]}
+                                                    stroke="transparent"
+                                                    strokeWidth={12}
+                                                    onClick={(event) => {
+                                                      event.cancelBubble = true;
+                                                      const existing =
+                                                        layout.edges.find(
+                                                          (e) =>
+                                                            e.pieceId ===
+                                                              pos.pieceId &&
+                                                            e.edge === edgeKey,
+                                                        );
+                                                      if (existing) {
+                                                        setLayout((prev) => ({
+                                                          ...prev,
+                                                          edges: prev.edges.map(
+                                                            (e) =>
+                                                              e.pieceId ===
+                                                                pos.pieceId &&
+                                                              e.edge === edgeKey
+                                                                ? {
+                                                                    ...e,
+                                                                    color:
+                                                                      paintColor,
+                                                                  }
+                                                                : e,
+                                                          ),
+                                                        }));
+                                                      } else {
+                                                        setLayout((prev) => ({
+                                                          ...prev,
+                                                          edges: [
+                                                            ...prev.edges,
+                                                            {
+                                                              pieceId:
+                                                                pos.pieceId,
+                                                              edge: edgeKey as EdgeKey,
+                                                              treatment:
+                                                                "finished",
+                                                              splashHeightIn:
+                                                                null,
+                                                              label: null,
+                                                              color: paintColor,
+                                                            },
+                                                          ],
+                                                        }));
+                                                      }
+                                                    }}
+                                                  />
+                                                );
+                                              })
+                                            : null;
                                         }
                                         if (activeStep === 3) {
                                           openEdgeTreatmentEditor(
@@ -5802,6 +7953,148 @@ export function DrawingCanvasInner({
                                 })}
                               </>
                             ) : null}
+                            {["top", "right", "bottom", "left"].map(
+                              (edgeKey) => {
+                                const edgeLayout = edgeTreatments.get(
+                                  edgeKey as EdgeKey,
+                                );
+                                const isEdgeHovered =
+                                  hoveredPaintEdge?.pieceId === pos.pieceId &&
+                                  hoveredPaintEdge?.edge === edgeKey;
+                                const pts: Record<string, number[]> = {
+                                  top: [0, 0, w, 0],
+                                  right: [w, 0, w, h],
+                                  bottom: [0, h, w, h],
+                                  left: [0, 0, 0, h],
+                                };
+                                if (!edgeLayout?.color && !isEdgeHovered)
+                                  return null;
+                                return (
+                                  <Line
+                                    key={edgeKey}
+                                    points={pts[edgeKey]}
+                                    stroke={
+                                      isEdgeHovered
+                                        ? paintColor
+                                        : edgeLayout!.color
+                                    }
+                                    strokeWidth={PAINTED_EDGE_STROKE_WIDTH}
+                                    opacity={1}
+                                  />
+                                );
+                              },
+                            )}
+                            {tool === "paint"
+                              ? ["top", "right", "bottom", "left"].map(
+                                  (edgeKey) => {
+                                    const pts: Record<string, number[]> = {
+                                      top: [0, 0, w, 0],
+                                      right: [w, 0, w, h],
+                                      bottom: [0, h, w, h],
+                                      left: [0, 0, 0, h],
+                                    };
+                                    return (
+                                      <Line
+                                        key={edgeKey}
+                                        points={pts[edgeKey]}
+                                        stroke="transparent"
+                                        strokeWidth={16}
+                                        onMouseEnter={() =>
+                                          setHoveredPaintEdge({
+                                            pieceId: pos.pieceId,
+                                            edge: edgeKey,
+                                          })
+                                        }
+                                        onMouseLeave={() =>
+                                          setHoveredPaintEdge(null)
+                                        }
+                                        onClick={(event) => {
+                                          event.cancelBubble = true;
+                                          setHoveredPaintEdge(null);
+                                          const existing = layout.edges.find(
+                                            (edge) =>
+                                              edge.pieceId === pos.pieceId &&
+                                              edge.edge === edgeKey,
+                                          );
+                                          if (existing) {
+                                            setLayout((prev) => ({
+                                              ...prev,
+                                              edges: prev.edges.map((edge) =>
+                                                edge.pieceId === pos.pieceId &&
+                                                edge.edge === edgeKey
+                                                  ? {
+                                                      ...edge,
+                                                      color: paintColor,
+                                                    }
+                                                  : edge,
+                                              ),
+                                            }));
+                                          } else {
+                                            setLayout((prev) => ({
+                                              ...prev,
+                                              edges: [
+                                                ...prev.edges,
+                                                {
+                                                  pieceId: pos.pieceId,
+                                                  edge: edgeKey as EdgeKey,
+                                                  treatment: "finished",
+                                                  splashHeightIn: null,
+                                                  label: null,
+                                                  color: paintColor,
+                                                },
+                                              ],
+                                            }));
+                                          }
+                                        }}
+                                      />
+                                    );
+                                  },
+                                )
+                              : null}
+                            {tool === "backsplash" &&
+                            basePiece.kind !== "backsplash" &&
+                            !basePiece.name
+                              ?.toLowerCase()
+                              .startsWith("backsplash")
+                              ? visibleRectangleDimensionEdges.flatMap(
+                                  ([edgeKey, edge]) => (
+                                    <Line
+                                      key={`backsplash-hover-${pos.pieceId}-${edgeKey}`}
+                                      points={[
+                                        edge.from[0],
+                                        edge.from[1],
+                                        edge.to[0],
+                                        edge.to[1],
+                                      ]}
+                                      stroke="transparent"
+                                      strokeWidth={18}
+                                    />
+                                  ),
+                                )
+                              : null}
+                            {selectedBacksplashCorner?.pieceId ===
+                            pos.pieceId ? (
+                              <Circle
+                                x={selectedBacksplashCorner.x}
+                                y={selectedBacksplashCorner.y}
+                                radius={3}
+                                fill="#000000"
+                              />
+                            ) : null}
+                            {confirmedBacksplashSpan?.dot1.pieceId ===
+                            pos.pieceId ? (
+                              <Line
+                                points={[
+                                  confirmedBacksplashSpan.dot1.x,
+                                  confirmedBacksplashSpan.dot1.y,
+                                  confirmedBacksplashSpan.dot2.x,
+                                  confirmedBacksplashSpan.dot2.y,
+                                ]}
+                                stroke="#a21caf"
+                                strokeWidth={2}
+                                dash={[6, 4]}
+                              />
+                            ) : null}
                             {pieceSinks.map((sinkPos) => {
                               const sink = sinkMap.get(sinkPos.sinkId);
                               if (!sink) return null;
@@ -5826,6 +8119,9 @@ export function DrawingCanvasInner({
                                       .getPointerPosition();
                                     setSelectedSinkId(sinkPos.sinkId);
                                     setSelectedPieceId(pos.pieceId);
+                                    setSelectedPieceIds([pos.pieceId]);
+                                    setMarqueeSelection(null);
+                                    setSelectionDrag(null);
                                     setSinkPaletteId(null);
                                     setContextMenu(null);
                                     if (pointer) {
@@ -5843,6 +8139,9 @@ export function DrawingCanvasInner({
                                       .getPointerPosition();
                                     setSelectedSinkId(sinkPos.sinkId);
                                     setSelectedPieceId(pos.pieceId);
+                                    setSelectedPieceIds([pos.pieceId]);
+                                    setMarqueeSelection(null);
+                                    setSelectionDrag(null);
                                     setSinkPaletteId(null);
                                     setContextMenu(null);
                                     if (pointer) {
@@ -5879,12 +8178,53 @@ export function DrawingCanvasInner({
                                     fontSize={9}
                                     fill="#1e3a8a"
                                   />
+                                  {sink.centerline !== "none" && (
+                                    <>
+                                      <Line
+                                        points={[sw / 2, 0, sw / 2, sh]}
+                                        stroke="black"
+                                        strokeWidth={1}
+                                        dash={[4, 4]}
+                                      />
+                                      <Text
+                                        text="CL"
+                                        x={sw / 2}
+                                        y={sh / 2}
+                                        offsetX={5}
+                                        offsetY={4}
+                                        fontSize={8}
+                                        fill="black"
+                                      />
+                                    </>
+                                  )}
                                 </Group>
                               );
                             })}
                           </Group>
                         );
                       })}
+
+                      {marqueeSelection
+                        ? (() => {
+                            const selectionRect = selectionRectFromPoints(
+                              marqueeSelection.start,
+                              marqueeSelection.end,
+                            );
+                            return (
+                              <Rect
+                                x={selectionRect.x}
+                                y={selectionRect.y}
+                                width={selectionRect.width}
+                                height={selectionRect.height}
+                                fill={MARQUEE_FILL}
+                                stroke={MARQUEE_STROKE}
+                                strokeWidth={1}
+                                dash={[6, 4]}
+                                listening={false}
+                              />
+                            );
+                          })()
+                        : null}
 
                       {drawPreview ? (
                         <Group x={drawPreview.x} y={drawPreview.y}>
@@ -6037,7 +8377,36 @@ export function DrawingCanvasInner({
                     </Group>
                   </Layer>
                 </Stage>
-
+                {showLegend &&
+                  (() => {
+                    const usedColors = DRAWING_MARKUP_COLORS.filter((swatch) =>
+                      layout.referenceLines.some(
+                        (l) => l.color === swatch.color,
+                      ),
+                    );
+                    if (usedColors.length === 0) return null;
+                    return (
+                      <div className="absolute top-4 left-4 bg-white border border-gray-300 rounded shadow-sm p-2 pointer-events-none">
+                        <p className="text-[9px] font-bold text-gray-500 mb-1">
+                          Legend
+                        </p>
+                        {usedColors.map((swatch) => (
+                          <div
+                            key={swatch.id}
+                            className="flex items-center gap-1 mb-1"
+                          >
+                            <div
+                              className="w-3 h-3 rounded-sm"
+                              style={{ backgroundColor: swatch.color }}
+                            />
+                            <span className="text-[10px] text-gray-700">
+                              {swatch.name}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    );
+                  })()}
                 {contextMenu && selectedPiece && isDraft ? (
                   <div
                     className="absolute z-20 min-w-44 rounded-md border border-[#c8dec3] bg-white p-2 shadow-xl"
@@ -6067,9 +8436,17 @@ export function DrawingCanvasInner({
                     <button
                       type="button"
                       className="block w-full rounded px-3 py-2 text-left text-sm text-red-600 hover:bg-red-50"
-                      onClick={() => deletePiece(contextMenu.pieceId)}
+                      onClick={() =>
+                        selectedPieceIdsForAction.length > 1 &&
+                        selectedPieceIdsForAction.includes(contextMenu.pieceId)
+                          ? deleteSelectedPieces()
+                          : deletePiece(contextMenu.pieceId)
+                      }
                     >
-                      Delete Counter
+                      {selectedPieceIdsForAction.length > 1 &&
+                      selectedPieceIdsForAction.includes(contextMenu.pieceId)
+                        ? `Delete Selected (${selectedPieceIdsForAction.length})`
+                        : "Delete Counter"}
                     </button>
                   </div>
                 ) : null}
@@ -6115,9 +8492,7 @@ export function DrawingCanvasInner({
                 <button
                   type="button"
                   className={`flex h-7 w-full items-center gap-3 px-4 text-left transition ${
-                    item.active
-                      ? "bg-[#d8d5d0]"
-                      : "hover:bg-[#e1ded9]"
+                    item.active ? "bg-[#d8d5d0]" : "hover:bg-[#e1ded9]"
                   } ${
                     item.tone === "orange"
                       ? "text-[#ea580c]"
@@ -6169,12 +8544,12 @@ export function DrawingCanvasInner({
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div>
               <p className="font-semibold text-[#2f6b2c]">
-                {tool === "offset" ? "Offset Edge" : "Connect Edge"}
+                {tool === "offset" ? "Offset Edge" : "Fillet"}
               </p>
               <p className="mt-1 text-sm text-muted-foreground">
                 {tool === "offset"
                   ? "Select the cabinet/reference edge, then click the side where the new parallel counter edge should appear. The old line stays as a dashed reference."
-                  : "Click the first edge, then click the second edge to connect between them."}
+                  : "Click a green wall offset line and the side or green line you want it to meet."}
               </p>
             </div>
             <Button
@@ -6188,29 +8563,105 @@ export function DrawingCanvasInner({
               Done
             </Button>
           </div>
-          {tool === "offset" ? (
-            <div className="mt-4 flex flex-wrap items-end gap-3">
-              <label className="text-sm font-medium">
-                Offset Inches
-                <input
-                  className="mt-1 flex h-9 w-28 rounded-md border px-3 text-sm"
-                  type="number"
-                  min="0.0625"
-                  step="0.0625"
-                  value={offsetAmount}
-                  onChange={(event) => setOffsetAmount(event.target.value)}
-                />
-              </label>
-            </div>
-          ) : null}
           <p className="mt-3 text-xs text-muted-foreground">
             {selectedPieceId
               ? "Offset clicks can be inside the piece; selection is ignored while offset is active."
-              : "Select a counter piece first, then click the edge you want to adjust."}
+              : tool === "offset"
+                ? "Select a counter piece first, then click the edge you want to adjust."
+                : "Select a counter piece first, then click a green wall line and a side."}
           </p>
         </div>
       ) : null}
-
+      {tool === "paint" && (
+        <div className="flex gap-2 px-3 py-2 border-b border-[#d4d0ca]">
+          {DRAWING_MARKUP_COLORS.map((swatch) => (
+            <button
+              key={swatch.id}
+              title={swatch.name}
+              onClick={() => setPaintColor(swatch.color)}
+              className="flex flex-col items-center gap-1"
+            >
+              <div
+                style={{ backgroundColor: swatch.color }}
+                className={`w-6 h-6 rounded border-2 ${
+                  paintColor === swatch.color
+                    ? "ring-2 ring-offset-1 ring-gray-600 border-transparent"
+                    : "border-transparent"
+                }`}
+              />
+              <span className="text-[9px]">{swatch.name}</span>
+            </button>
+          ))}
+        </div>
+      )}
+      {tool === "segment" ? (
+        <div className="rounded-md border border-[#c8dec3] bg-white p-4 shadow-sm">
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div>
+              <p className="font-semibold text-[#2f6b2c]">Segment</p>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Click and drag from one point to another to draw one straight
+                line.
+              </p>
+            </div>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => {
+                setTool("draw");
+                setSegmentStart(null);
+                setSegmentPreview(null);
+              }}
+            >
+              Done
+            </Button>
+          </div>
+        </div>
+      ) : null}
+      {showLegend &&
+        (() => {
+          const usedColors = DRAWING_MARKUP_COLORS.filter((swatch) =>
+            layout.referenceLines.some((l) => l.color === swatch.color),
+          );
+          if (usedColors.length === 0) return null;
+          return (
+            <Group x={20} y={20}>
+              <Rect
+                width={90}
+                height={16 + usedColors.length * 18}
+                fill="white"
+                stroke="#999"
+                strokeWidth={1}
+                cornerRadius={3}
+              />
+              <Text
+                text="Legend"
+                x={6}
+                y={5}
+                fontSize={8}
+                fontStyle="bold"
+                fill="#333"
+              />
+              {usedColors.map((swatch, i) => (
+                <Group key={swatch.id} x={6} y={16 + i * 18}>
+                  <Rect
+                    width={10}
+                    height={10}
+                    fill={swatch.color}
+                    cornerRadius={2}
+                  />
+                  <Text
+                    text={swatch.name}
+                    x={14}
+                    y={1}
+                    fontSize={9}
+                    fill="#333"
+                  />
+                </Group>
+              ))}
+            </Group>
+          );
+        })()}
       {tool === "deleteLine" ? (
         <div className="rounded-md border border-[#c8dec3] bg-white p-4 shadow-sm">
           <div className="flex flex-wrap items-start justify-between gap-4">
@@ -6289,6 +8740,7 @@ export function DrawingCanvasInner({
               onClick={() => {
                 setEditDraft(null);
                 setSelectedPieceId(null);
+                setSelectedPieceIds([]);
                 setContextMenu(null);
                 setEdgeEditor(null);
                 setTool("draw");
@@ -6418,7 +8870,10 @@ export function DrawingCanvasInner({
           onClick={() => {
             setLayout(mergeLayout(null, pieces, sinks));
             setSelectedPieceId(null);
+            setSelectedPieceIds([]);
             setContextMenu(null);
+            setMarqueeSelection(null);
+            setSelectionDrag(null);
             setEdgeEditor(null);
             setCornerEditor(null);
             setEdgeTreatmentEditor(null);
@@ -6433,9 +8888,13 @@ export function DrawingCanvasInner({
             ? "Updating drawing..."
             : tool === "offset"
               ? "Offset mode: enter inches, click the real chain edge, then click white space on the side where you want the new parallel run."
-              : tool === "connect"
-                ? "Connect mode: click the first edge, then click the second edge to connect between them."
-                : 'Drag with the pencil to create a 25 1/2" deep counter. Use on-piece controls for rotate, duplicate, and delete.'}
+              : tool === "segment"
+                ? "Segment mode: click and drag to draw one straight line from point to point."
+                : tool === "select"
+                  ? "Select mode: drag a box around pieces, then delete the selected pieces from the side panel."
+                  : tool === "connect"
+                    ? "Fillet mode: click a green wall offset line and the side or green line it should meet."
+                  : 'Drag with the pencil to create a 25 1/2" deep counter. Use on-piece controls for rotate, duplicate, and delete.'}
         </p>
       </div>
 
@@ -6674,6 +9133,131 @@ export function DrawingCanvasInner({
         ) : null}
       </Modal>
 
+      <Modal
+        open={offsetEditorOpen && tool === "offset"}
+        title="Offset Edge"
+        onClose={() => setOffsetEditorOpen(false)}
+        panelClassName="w-full max-w-[285px] overflow-hidden rounded-sm border border-[#5f9659] bg-[#f3f8ef] shadow-2xl"
+        headerClassName="flex items-center justify-between bg-[#6aa464] px-3 py-3 text-white"
+        bodyClassName="px-8 py-4"
+        closeLabel="X"
+      >
+        <div className="space-y-4">
+          <div className="flex items-center gap-2 text-xs">
+            <Label
+              htmlFor={`offset-inches-${areaId}`}
+              className="font-semibold text-[#1f3f1d]"
+            >
+              Offset:
+            </Label>
+            <Input
+              id={`offset-inches-${areaId}`}
+              type="number"
+              min="0.0625"
+              step="0.0625"
+              value={offsetAmount}
+              autoFocus
+              className="h-7 w-28 border-[#5f9659] bg-white px-2 text-xs shadow-inner focus-visible:ring-[#5f9659]"
+              onChange={(event) => setOffsetAmount(event.target.value)}
+            />
+            <span className="text-xs text-[#5f9659]">&quot;</span>
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            <Button
+              variant="outline"
+              onClick={() => setOffsetEditorOpen(false)}
+              className="h-8 border-[#5f9659] bg-[#f8fcf6] text-xs text-[#2f6b2c] hover:bg-white"
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={() => {
+                const numericValue = Number(offsetAmount);
+                if (!Number.isFinite(numericValue) || numericValue <= 0) {
+                  setCanvasError("Enter a positive offset.");
+                  return;
+                }
+                setCanvasError(null);
+                setOffsetEditorOpen(false);
+              }}
+              disabled={!isDraft}
+              className="h-8 bg-[#5f9659] text-xs text-white hover:bg-[#4f8549]"
+            >
+              Save
+            </Button>
+          </div>
+        </div>
+      </Modal>
+      <Modal
+        open={backsplashPopupOpen && tool === "backsplash"}
+        title="Back Splash"
+        onClose={() => setBacksplashPopupOpen(false)}
+        panelClassName="w-full max-w-[285px] overflow-hidden rounded-sm border border-[#d946ef] bg-[#fdf4ff] shadow-2xl"
+        headerClassName="flex items-center justify-between bg-[#d946ef] px-3 py-3 text-white"
+        bodyClassName="px-8 py-4"
+        closeLabel="X"
+      >
+        <div className="space-y-4">
+          <div className="flex items-center gap-2 text-xs">
+            <Label
+              htmlFor={`backsplash-height-${areaId}`}
+              className="font-semibold text-[#701a75]"
+            >
+              Height:
+            </Label>
+            <Input
+              id={`backsplash-height-${areaId}`}
+              type="number"
+              min="0.0625"
+              step="0.0625"
+              value={backsplashHeightIn}
+              autoFocus
+              className="h-7 w-28 border-[#d946ef] bg-white px-2 text-xs shadow-inner focus-visible:ring-[#d946ef]"
+              onChange={(event) => setBacksplashHeightIn(event.target.value)}
+            />
+            <span className="text-xs text-[#a21caf]">&quot;</span>
+          </div>
+
+          <div className="flex items-center gap-2 text-xs">
+            <Label
+              htmlFor={`backsplash-offset-${areaId}`}
+              className="font-semibold text-[#701a75]"
+            >
+              Offset:
+            </Label>
+            <Input
+              id={`backsplash-offset-${areaId}`}
+              type="number"
+              min="0"
+              step="0.0625"
+              value={backsplashOffsetIn}
+              className="h-7 w-28 border-[#d946ef] bg-white px-2 text-xs shadow-inner focus-visible:ring-[#d946ef]"
+              onChange={(event) => setBacksplashOffsetIn(event.target.value)}
+            />
+            <span className="text-xs text-[#a21caf]">&quot;</span>
+          </div>
+
+          <div className="grid grid-cols-2 gap-2">
+            <Button
+              variant="outline"
+              onClick={() => setBacksplashPopupOpen(false)}
+              className="h-8 border-[#d946ef] bg-[#fdf4ff] text-xs text-[#86198f] hover:bg-white"
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={() => {
+                setCanvasError(null);
+                setBacksplashPopupOpen(false);
+              }}
+              disabled={!isDraft}
+              className="h-8 bg-[#d946ef] text-xs text-white hover:bg-[#c026d3]"
+            >
+              Start
+            </Button>
+          </div>
+        </div>
+      </Modal>
       <Modal
         open={edgeEditor !== null}
         title="Edge Length"

@@ -41,14 +41,19 @@ export class CustomerNotesService {
     return note;
   }
 
-  async update(customerId: string, noteId: string, input: UpdateCustomerNoteInput): Promise<CustomerNote> {
+  async update(
+    customerId: string,
+    noteId: string,
+    input: UpdateCustomerNoteInput,
+    actorUserId: string
+  ): Promise<CustomerNote> {
     const previousNote = await this.customerNotesRepository.findById(customerId, noteId);
 
     if (previousNote === null) {
       throw new NotFoundException({ code: 'NOT_FOUND', message: 'Customer note not found' });
     }
 
-    const note = await this.customerNotesRepository.update(customerId, noteId, input);
+    const note = await this.customerNotesRepository.update(customerId, noteId, input.body);
 
     if (note === null) {
       throw new NotFoundException({ code: 'NOT_FOUND', message: 'Customer note not found' });
@@ -56,7 +61,7 @@ export class CustomerNotesService {
 
     this.eventBus.emit(
       'customer.note_updated',
-      buildCustomerNoteUpdatedPayload(customerId, noteId, input.actorUserId, ['body'])
+      buildCustomerNoteUpdatedPayload(customerId, noteId, actorUserId, ['body'])
     );
 
     return note;

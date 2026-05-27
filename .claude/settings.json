@@ -1,12 +1,29 @@
 {
+  "permissions": {
+    "allow": [
+      "Bash(gh api *)",
+      "Bash(ls \"C:\\\\Users\\\\Lenovo 02\\\\.claude\\\\plugins\\\\cache\\\\\" 2>&1)",
+      "Read(//c/Users/Lenovo 02/.claude/plugins/**)",
+      "Read(//c/Users/Lenovo 02/.claude/**)",
+      "PowerShell(git clone --depth 1 https://github.com/multica-ai/andrej-karpathy-skills \"C:\\\\Users\\\\Lenovo 02\\\\.claude\\\\plugins\\\\marketplaces\\\\multica-ai\" 2>&1)",
+      "Bash(pnpm typecheck *)",
+      "Bash(node 'C:/Users/Lenovo 02/.claude/plugins/marketplaces/openai-codex/plugins/codex/scripts/codex-companion.mjs' task '<task> *)",
+      "Bash(pnpm --filter @stoneboyz/api typecheck)",
+      "Bash(pnpm --filter @stoneboyz/web typecheck)"
+    ],
+    "additionalDirectories": [
+      "C:\\Users\\Lenovo 02\\.claude\\plugins\\marketplaces\\multica-ai",
+      "C:\\Users\\Lenovo 02\\.claude"
+    ]
+  },
   "hooks": {
     "UserPromptSubmit": [
       {
         "hooks": [
           {
             "type": "command",
-            "shell": "powershell",
-            "command": "Write-Output '[model-gate] BEFORE work print: Model: <Sonnet|Opus> -- effort: <low|medium|high|xhigh>; Mode: <Plan|Execution|Review>; Why: <one short reason>. Stay Plan until user approves implementation.'"
+            "command": "Write-Output '[model-gate] BEFORE work print: Model: <Sonnet|Opus> -- effort: <low|medium|high|xhigh>; Mode: <Plan|Execution|Review>; Why: <one short reason>. Stay Plan until user approves implementation.'",
+            "shell": "powershell"
           }
         ]
       }

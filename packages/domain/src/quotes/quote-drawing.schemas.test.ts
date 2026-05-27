@@ -132,7 +132,8 @@ describe('canvasLayoutSchema', () => {
           from: [0, 0],
           to: [120, 0],
           kind: 'cabinet',
-          color: '#6b7280'
+          color: '#6b7280',
+          dash: true
         }
       ],
       deletedLines: [
@@ -152,7 +153,8 @@ describe('canvasLayoutSchema', () => {
         from: [0, 0],
         to: [120, 0],
         kind: 'cabinet',
-        color: '#6b7280'
+        color: '#6b7280',
+        dash: true
       }
     ]);
     expect(parsed.deletedLines).toEqual([

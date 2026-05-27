@@ -45,6 +45,7 @@ export interface CounterPiece {
   lengthIn: number;
   widthIn: number;
   quantity: number;
+  kind: "countertop" | "backsplash";
   createdAt: string;
   updatedAt: string;
 }
@@ -52,6 +53,7 @@ export interface CounterPiece {
 export interface CreateCounterPieceInput extends CounterPieceInput {
   actorUserId: string;
   sortOrder?: number | undefined;
+  kind?: "countertop" | "backsplash" | undefined;
 }
 
 export interface UpdateCounterPieceInput {

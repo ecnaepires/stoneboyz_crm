@@ -1,9 +1,18 @@
 import { notFound } from 'next/navigation';
 import { getApiClient } from '@/lib/api';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { acceptPortalQuoteAction, rejectPortalQuoteAction } from './_actions';
 
 function formatDollars(cents: number) {
   return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(cents / 100);
+}
+
+function formatPortalDate(date: string) {
+  return new Date(date).toLocaleDateString('en-US', {
+    month: 'long',
+    day: 'numeric',
+    year: 'numeric',
+  });
 }
 
 export default async function PortalQuotePage({
@@ -50,6 +59,29 @@ export default async function PortalQuotePage({
           <div className="mb-4 rounded bg-yellow-50 p-4 text-yellow-800 text-sm">
             This quote is still being prepared.
           </div>
+        )}
+
+        {quote.pipelineStage && (
+          <Card className="mb-6">
+            <CardHeader className="p-4 pb-2">
+              <CardTitle className="text-base">Your Job Status</CardTitle>
+            </CardHeader>
+            <CardContent className="p-4 pt-0">
+              <div
+                className={
+                  quote.pipelineStatus === 'in_progress'
+                    ? 'inline-flex rounded-full bg-green-100 px-3 py-1 text-sm font-medium text-green-800'
+                    : 'inline-flex rounded-full bg-blue-100 px-3 py-1 text-sm font-medium text-blue-800'
+                }
+              >
+                {quote.pipelineStatus === 'in_progress' ? 'Currently' : 'Upcoming'}: {quote.pipelineStage}
+              </div>
+              {quote.nextActivityDate && (
+                <p className="mt-2 text-sm text-gray-600">Scheduled for: {formatPortalDate(quote.nextActivityDate)}</p>
+              )}
+              {quote.phaseName && <p className="mt-1 text-xs text-gray-500">Phase: {quote.phaseName}</p>}
+            </CardContent>
+          </Card>
         )}
 
         <div className="mb-6 overflow-hidden rounded-lg bg-white shadow-sm">

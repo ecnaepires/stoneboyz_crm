@@ -34,11 +34,11 @@ const QUOTE_SELECT = `
 const UPDATE_COLUMNS = {
   title: 'title',
   projectId: 'project_id',
+  phaseId: 'phase_id',
   priceListId: 'price_list_id',
   validUntil: 'valid_until',
   discountCents: 'discount_cents',
   taxRateBps: 'tax_rate_bps',
-  notes: 'notes',
   termsAndConditions: 'terms_and_conditions'
 } satisfies Record<Exclude<keyof UpdateQuoteInput, 'actorUserId'>, string>;
 
@@ -186,6 +186,9 @@ export class QuotesRepository {
 
   async createHeaderWithClient(client: PoolClient, customerId: string, input: CreateQuoteInput): Promise<Quote> {
     const quoteNumber = await this.nextQuoteNumber(client);
+    const priceListId = Object.hasOwn(input, 'priceListId')
+      ? input.priceListId ?? null
+      : await this.findCustomerPriceListId(client, customerId);
     const result = await client.query<QuoteRow>(
       `
         INSERT INTO quotes (
@@ -197,22 +200,20 @@ export class QuotesRepository {
           valid_until,
           discount_cents,
           tax_rate_bps,
-          notes,
           terms_and_conditions
         )
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
         RETURNING *, 0::integer AS subtotal_cents
       `,
       [
         customerId,
         input.projectId ?? null,
-        input.priceListId ?? null,
+        priceListId,
         quoteNumber,
         input.title,
         input.validUntil ?? null,
         input.discountCents ?? 0,
         input.taxRateBps ?? 0,
-        input.notes ?? null,
         input.termsAndConditions ?? null
       ]
     );
@@ -256,8 +257,8 @@ export class QuotesRepository {
         SELECT uq.*, COALESCE(SUM(FLOOR(qli.qty * (qli.unit_price_cents + qli.labor_price_cents))), 0)::integer AS subtotal_cents
         FROM updated_quote uq
         LEFT JOIN quote_line_items qli ON qli.quote_id = uq.id
-        GROUP BY uq.id, uq.customer_id, uq.project_id, uq.price_list_id, uq.quote_number, uq.title, uq.status, uq.valid_until, uq.discount_cents,
-          uq.tax_rate_bps, uq.share_token, uq.notes, uq.terms_and_conditions, uq.sent_at, uq.accepted_at, uq.rejected_at,
+        GROUP BY uq.id, uq.customer_id, uq.project_id, uq.phase_id, uq.price_list_id, uq.quote_number, uq.title, uq.status, uq.valid_until, uq.discount_cents,
+          uq.tax_rate_bps, uq.share_token, uq.terms_and_conditions, uq.sent_at, uq.accepted_at, uq.rejected_at,
           uq.deleted_at, uq.deleted_by_user_id, uq.created_at, uq.updated_at
       `,
       values
@@ -278,6 +279,10 @@ export class QuotesRepository {
 
   async reject(customerId: string, quoteId: string): Promise<Quote | null> {
     return this.transition(customerId, quoteId, 'rejected', 'rejected_at');
+  }
+
+  async expire(customerId: string, quoteId: string): Promise<Quote | null> {
+    return this.transition(customerId, quoteId, 'expired', null);
   }
 
   async rejectWithClient(client: PoolClient, customerId: string, quoteId: string): Promise<Quote | null> {
@@ -468,7 +473,7 @@ export class QuotesRepository {
     return row === undefined ? null : mapQuoteRow(row);
   }
 
-  private async transition(customerId: string, quoteId: string, status: Quote['status'], timestampColumn: string): Promise<Quote | null> {
+  private async transition(customerId: string, quoteId: string, status: Quote['status'], timestampColumn: string | null): Promise<Quote | null> {
     return this.transitionWithClient(this.pool, customerId, quoteId, status, timestampColumn);
   }
 
@@ -477,21 +482,22 @@ export class QuotesRepository {
     customerId: string,
     quoteId: string,
     status: Quote['status'],
-    timestampColumn: string
+    timestampColumn: string | null
   ): Promise<Quote | null> {
+    const timestampAssignment = timestampColumn === null ? '' : `, ${timestampColumn} = now()`;
     const result = await client.query<QuoteRow>(
       `
         WITH updated_quote AS (
           UPDATE quotes
-          SET status = $3, ${timestampColumn} = now(), updated_at = now()
+          SET status = $3${timestampAssignment}, updated_at = now()
           WHERE customer_id = $1 AND id = $2 AND deleted_at IS NULL
           RETURNING *
         )
         SELECT uq.*, COALESCE(SUM(FLOOR(qli.qty * (qli.unit_price_cents + qli.labor_price_cents))), 0)::integer AS subtotal_cents
         FROM updated_quote uq
         LEFT JOIN quote_line_items qli ON qli.quote_id = uq.id
-        GROUP BY uq.id, uq.customer_id, uq.project_id, uq.price_list_id, uq.quote_number, uq.title, uq.status, uq.valid_until, uq.discount_cents,
-          uq.tax_rate_bps, uq.share_token, uq.notes, uq.terms_and_conditions, uq.sent_at, uq.accepted_at, uq.rejected_at,
+        GROUP BY uq.id, uq.customer_id, uq.project_id, uq.phase_id, uq.price_list_id, uq.quote_number, uq.title, uq.status, uq.valid_until, uq.discount_cents,
+          uq.tax_rate_bps, uq.share_token, uq.terms_and_conditions, uq.sent_at, uq.accepted_at, uq.rejected_at,
           uq.deleted_at, uq.deleted_by_user_id, uq.created_at, uq.updated_at
       `,
       [customerId, quoteId, status]
@@ -520,5 +526,18 @@ export class QuotesRepository {
     const nextNumber = result.rows[0]?.next_number ?? 1;
 
     return `${prefix}${String(nextNumber).padStart(3, '0')}`;
+  }
+
+  private async findCustomerPriceListId(client: PoolClient, customerId: string): Promise<string | null> {
+    const result = await client.query<{ price_list_id: string | null }>(
+      `
+        SELECT price_list_id
+        FROM customers
+        WHERE id = $1
+      `,
+      [customerId]
+    );
+
+    return result.rows[0]?.price_list_id ?? null;
   }
 }

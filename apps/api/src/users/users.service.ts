@@ -1,8 +1,9 @@
 import { BadRequestException, Inject, Injectable, NotFoundException } from '@nestjs/common';
 import type { Pool } from 'pg';
+import { ROLE_VALUES, type Role } from '../auth/roles.decorator.js';
 import { DATABASE_POOL } from '../database.provider.js';
 
-type UserRole = 'admin' | 'estimator' | 'installer';
+type UserRole = Role;
 
 type UserRow = {
   id: string;
@@ -12,7 +13,7 @@ type UserRow = {
   created_at: Date;
 };
 
-const validRoles = new Set<UserRole>(['admin', 'estimator', 'installer']);
+const validRoles = new Set<UserRole>(ROLE_VALUES);
 
 @Injectable()
 export class UsersService {
@@ -33,7 +34,7 @@ export class UsersService {
       throw new BadRequestException({
         code: 'VALIDATION_ERROR',
         message: 'Request validation failed',
-        details: { role: ['Role must be one of admin, estimator, installer'] }
+        details: { role: [`Role must be one of ${ROLE_VALUES.join(', ')}`] }
       });
     }
 

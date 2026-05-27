@@ -43,7 +43,7 @@ describe("PostgreSQL test database", () => {
         id: "11111111-1111-4111-8111-111111111111",
         name: "Acme Stone Works",
         status: "lead",
-        type: "prospect",
+        type: "customer",
       });
     } finally {
       await client.end();

@@ -11,9 +11,11 @@ import { CustomerContactsService } from './customers/customer-contacts.service.j
 import { CustomerNotesController } from './customers/customer-notes.controller.js';
 import { CustomerNotesRepository } from './customers/customer-notes.repository.js';
 import { CustomerNotesService } from './customers/customer-notes.service.js';
+import { ActivityNotesModule } from './activity-notes/activity-notes.module.js';
 import { CustomersController } from './customers/customers.controller.js';
 import { CustomersRepository } from './customers/customers.repository.js';
 import { CustomersService } from './customers/customers.service.js';
+import { JobNotesModule } from './job-notes/job-notes.module.js';
 import { DashboardModule } from './dashboard/dashboard.module.js';
 import { PortalModule } from './portal/portal.module.js';
 import { databaseProvider } from './database.provider.js';
@@ -44,11 +46,24 @@ import { QuoteDrawingService } from './quotes/quote-drawing.service.js';
 import { QuotesController } from './quotes/quotes.controller.js';
 import { QuotesRepository } from './quotes/quotes.repository.js';
 import { QuotesService } from './quotes/quotes.service.js';
+import { QuoteNotesModule } from './quote-notes/quote-notes.module.js';
 import { ScheduledEventsModule } from './scheduling/scheduled-events.module.js';
 import { UsersModule } from './users/users.module.js';
 
 @Module({
-  imports: [DashboardModule, EmailModule, EventsModule, InventoryModule, PortalModule, PriceListsModule, ScheduledEventsModule, UsersModule],
+  imports: [
+    ActivityNotesModule,
+    DashboardModule,
+    EmailModule,
+    EventsModule,
+    InventoryModule,
+    JobNotesModule,
+    PortalModule,
+    PriceListsModule,
+    QuoteNotesModule,
+    ScheduledEventsModule,
+    UsersModule
+  ],
   controllers: [
     HealthController,
     CustomersController,

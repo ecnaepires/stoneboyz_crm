@@ -121,9 +121,9 @@ export class ScheduledEventsController {
     return this.scheduledEventsService.start(parsedCustomerId, parsedEventId, { ...parsedBody.data, actorUserId });
   }
 
-  @Post(':eventId/complete')
+  @Post(':eventId/finish')
   @HttpCode(200)
-  async complete(@Param('customerId') customerId: string, @Param('eventId') eventId: string, @Body() body: unknown, @CurrentUser() actorUserId: string) {
+  async finish(@Param('customerId') customerId: string, @Param('eventId') eventId: string, @Body() body: unknown, @CurrentUser() actorUserId: string) {
     const { parsedCustomerId, parsedEventId } = this.parseCustomerEventIds(customerId, eventId);
     const parsedBody = transitionScheduledEventSchema.safeParse(body);
 
@@ -131,7 +131,13 @@ export class ScheduledEventsController {
       throw badRequest(formatZodError(parsedBody.error));
     }
 
-    return this.scheduledEventsService.complete(parsedCustomerId, parsedEventId, { ...parsedBody.data, actorUserId });
+    return this.scheduledEventsService.finish(parsedCustomerId, parsedEventId, { ...parsedBody.data, actorUserId });
+  }
+
+  @Post(':eventId/complete')
+  @HttpCode(200)
+  async complete(@Param('customerId') customerId: string, @Param('eventId') eventId: string, @Body() body: unknown, @CurrentUser() actorUserId: string) {
+    return this.finish(customerId, eventId, body, actorUserId);
   }
 
   @Post(':eventId/cancel')

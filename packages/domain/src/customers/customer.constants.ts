@@ -11,12 +11,23 @@ export const CUSTOMER_STATUS_VALUES = [
 export type CustomerStatus = (typeof CUSTOMER_STATUS_VALUES)[number];
 
 export const CUSTOMER_TYPE_VALUES = [
-  'prospect',
   'customer',
   'partner',
   'vendor'
 ] as const;
 export type CustomerType = (typeof CUSTOMER_TYPE_VALUES)[number];
+
+export const CUSTOMER_SOURCE_VALUES = [
+  'referral_contractor',
+  'referral_customer',
+  'web_search',
+  'walk_in',
+  'review_site',
+  'social_media',
+  'home_show',
+  'other'
+] as const;
+export type CustomerSource = (typeof CUSTOMER_SOURCE_VALUES)[number];
 
 export const CONTACT_CHANNEL_VALUES = [
   'email',

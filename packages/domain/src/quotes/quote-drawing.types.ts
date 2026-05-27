@@ -6,6 +6,22 @@ export interface CanvasLShapeLayout {
   legLengthIn: number;
 }
 
+export interface CanvasEdgeLayout {
+  pieceId: string;
+  edge: 'top' | 'right' | 'bottom' | 'left';
+  treatment: CanvasEdgeTreatment;
+  splashHeightIn: number | null;
+  label: string | null;
+}
+
+export interface CanvasPaintedEdgeLayout {
+  id: string;
+  pieceId: string;
+  from: [number, number];
+  to: [number, number];
+  color: string;
+}
+
 export interface CanvasZShapeLayout {
   type: 'z';
   legX: number;
@@ -70,14 +86,6 @@ export interface CanvasCornerLayout {
   valueIn: number | null;
 }
 
-export interface CanvasEdgeLayout {
-  pieceId: string;
-  edge: 'top' | 'right' | 'bottom' | 'left';
-  treatment: CanvasEdgeTreatment;
-  splashHeightIn: number | null;
-  label: string | null;
-}
-
 export interface CanvasReferenceLineLayout {
   id: string;
   pieceId: string;
@@ -85,6 +93,7 @@ export interface CanvasReferenceLineLayout {
   to: [number, number];
   kind: 'cabinet' | 'wall';
   color: string;
+  dash?: boolean | undefined;
 }
 
 export interface CanvasDeletedLineLayout {
@@ -99,6 +108,7 @@ export interface CanvasLayout {
   sinks: CanvasSinkLayout[];
   corners: CanvasCornerLayout[];
   edges: CanvasEdgeLayout[];
+  paintedEdges: CanvasPaintedEdgeLayout[];
   referenceLines: CanvasReferenceLineLayout[];
   deletedLines: CanvasDeletedLineLayout[];
 }

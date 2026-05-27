@@ -25,6 +25,7 @@ import {
   sendQuoteEmailAction,
   sendQuoteAction,
 } from '../_actions';
+import { addQuoteNoteAction, deleteQuoteNoteAction } from './_actions';
 import { convertQuoteToOrderAction } from '../../orders/_actions';
 import { CopyLinkButton } from './CopyLinkButton';
 import { DrawingCard } from './DrawingCard';
@@ -39,6 +40,21 @@ type QuoteLineItem = components['schemas']['QuoteLineItem'] & {
   sqFt?: number | null;
 };
 type QuoteArea = components['schemas']['QuoteArea'];
+
+interface QuoteNote {
+  id: string;
+  authorUserId: string;
+  body: string;
+  isPublic: boolean;
+  createdAt: string;
+}
+
+type NotesQueryClient = {
+  GET: (
+    path: '/customers/{customerId}/quotes/{quoteId}/notes',
+    options: { params: { path: { customerId: string; quoteId: string } } }
+  ) => Promise<{ data?: QuoteNote[]; error?: unknown }>;
+};
 
 const money = (cents: number) => `$${(cents / 100).toFixed(2)}`;
 
@@ -60,11 +76,15 @@ export default async function QuoteDetailPage({
   const { id: customerId, quoteId } = await params;
   const client = await getApiClientWithAuth();
 
-  const [{ data: quote, error }, { data: customer }] = await Promise.all([
+  const [{ data: quote, error }, { data: customer }, { data: notesRes }, { data: usersRes }] = await Promise.all([
     client.GET('/customers/{customerId}/quotes/{quoteId}', {
       params: { path: { customerId, quoteId } },
     }),
     client.GET('/customers/{customerId}', { params: { path: { customerId } } }),
+    (client as unknown as NotesQueryClient).GET('/customers/{customerId}/quotes/{quoteId}/notes', {
+      params: { path: { customerId, quoteId } },
+    }),
+    client.GET('/users', {}),
   ]);
 
   if (error || !quote) {
@@ -90,8 +110,11 @@ export default async function QuoteDetailPage({
   const addLineItemWithIds = addLineItemAction.bind(null, customerId, quoteId);
   const createAreaWithIds = createAreaAction.bind(null, customerId, quoteId);
   const convertToOrderWithIds = convertQuoteToOrderAction.bind(null, customerId, quoteId);
+  const addNoteWithIds = addQuoteNoteAction.bind(null, customerId, quoteId);
   const areas = (quote.areas ?? []) as QuoteAreaWithMeasurementTotals[];
   const areaById = new Map(areas.map((area) => [area.id, area.name]));
+  const notes = notesRes ?? [];
+  const authorById = new Map<string, string>((usersRes ?? []).map((user) => [user.id, user.name]));
   const today = new Date().toISOString().slice(0, 10);
 
   return (
@@ -442,6 +465,56 @@ export default async function QuoteDetailPage({
           </CardHeader>
           <CardContent>
             <p className="whitespace-pre-wrap text-sm">{quote.notes ?? '-'}</p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Quote Notes ({notes.length})</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              {notes.length === 0 ? (
+                <p className="text-sm text-muted-foreground">No notes.</p>
+              ) : (
+                <ul className="space-y-3">
+                  {notes.map((note) => (
+                    <li key={note.id} className="rounded-md border p-3 text-sm">
+                      <div className="flex items-start justify-between gap-3">
+                        <div>
+                          <div className="mb-2 flex items-center gap-2">
+                            <span className={note.isPublic ? 'rounded-full bg-blue-100 px-2 py-0.5 text-xs text-blue-700' : 'rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-700'}>
+                              {note.isPublic ? 'Public' : 'Internal'}
+                            </span>
+                          </div>
+                          <p className="whitespace-pre-wrap">{note.body}</p>
+                          <p className="mt-1 text-xs text-muted-foreground">
+                            {(authorById.get(note.authorUserId) ?? note.authorUserId)} - {new Date(note.createdAt).toLocaleString()}
+                          </p>
+                        </div>
+                        <form action={deleteQuoteNoteAction.bind(null, customerId, quoteId, note.id)}>
+                          <Button type="submit" variant="ghost" size="sm">Delete</Button>
+                        </form>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              )}
+              <form action={addNoteWithIds} className="space-y-3">
+                <textarea
+                  name="body"
+                  rows={3}
+                  placeholder="Add a note..."
+                  required
+                  className="flex min-h-20 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                />
+                <label className="flex items-center gap-2 text-sm">
+                  <input name="isPublic" type="checkbox" className="h-4 w-4 rounded border-input" />
+                  Visible to customer
+                </label>
+                <Button type="submit">Add Note</Button>
+              </form>
+            </div>
           </CardContent>
         </Card>
       </div>

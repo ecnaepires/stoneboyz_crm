@@ -23,7 +23,8 @@ export const counterPieceInputSchema = z.object({
 });
 
 export const createCounterPieceSchema = counterPieceInputSchema.extend({
-  sortOrder: z.number().int().default(0)
+  sortOrder: z.number().int().default(0),
+  kind: z.enum(["countertop", "backsplash"]).default("countertop"),
 });
 
 export const updateCounterPieceSchema = z.object({

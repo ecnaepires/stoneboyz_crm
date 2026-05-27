@@ -224,6 +224,19 @@ export class QuotesController {
     return this.quotesService.reject(parsedCustomerId, parsedQuoteId, { ...parsedBody.data, actorUserId });
   }
 
+  @Post(':quoteId/expire')
+  @HttpCode(200)
+  async expire(@Param('customerId') customerId: string, @Param('quoteId') quoteId: string, @Body() body: unknown, @CurrentUser() actorUserId: string) {
+    const { parsedCustomerId, parsedQuoteId } = this.parseCustomerQuoteIds(customerId, quoteId);
+    const parsedBody = transitionQuoteSchema.safeParse(body);
+
+    if (!parsedBody.success) {
+      throw badRequest(formatZodError(parsedBody.error));
+    }
+
+    return this.quotesService.expire(parsedCustomerId, parsedQuoteId, { ...parsedBody.data, actorUserId });
+  }
+
   @Post(':quoteId/convert')
   @HttpCode(201)
   async convertToOrder(@Param('customerId') customerId: string, @Param('quoteId') quoteId: string, @Body() body: unknown, @CurrentUser() actorUserId: string) {

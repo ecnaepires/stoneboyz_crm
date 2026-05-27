@@ -71,7 +71,7 @@ describe('customer API', () => {
       name: 'Acme Stone Works',
       customerKind: 'company',
       status: 'lead',
-      type: 'prospect'
+      type: 'customer'
     });
     expect(body.hasMore).toBe(false);
     expect(body.nextCursor).toBeNull();
@@ -353,7 +353,7 @@ describe('customer API', () => {
         name: 'Valid Status Transition Co',
         companyName: 'Valid Status Transition Co',
         status: 'lead',
-        type: 'prospect',
+        type: 'customer',
         ownerUserId: '22222222-2222-4222-8222-222222222222'
       })
     });
@@ -393,7 +393,7 @@ describe('customer API', () => {
         name: 'Invalid Status Transition Co',
         companyName: 'Invalid Status Transition Co',
         status: 'lead',
-        type: 'prospect',
+        type: 'customer',
         ownerUserId: '22222222-2222-4222-8222-222222222222'
       })
     });
@@ -505,7 +505,7 @@ describe('customer API', () => {
         customerKind: 'person',
         name: 'Missing First Name LLC',
         status: 'lead',
-        type: 'prospect',
+        type: 'customer',
         ownerUserId: '22222222-2222-4222-8222-222222222222'
       })
     });
@@ -550,7 +550,7 @@ describe('customer API', () => {
         name: 'Archive Test Co',
         companyName: 'Archive Test Co',
         status: 'lead',
-        type: 'prospect',
+        type: 'customer',
         ownerUserId: '22222222-2222-4222-8222-222222222222'
       })
     });
@@ -593,7 +593,7 @@ describe('customer API', () => {
         name: 'Restore Test Co',
         companyName: 'Restore Test Co',
         status: 'lead',
-        type: 'prospect',
+        type: 'customer',
         ownerUserId: '22222222-2222-4222-8222-222222222222'
       })
     });

@@ -324,11 +324,6 @@ export function QuotePdf({ quote, customerName }: QuotePdfProps) {
         </View>
 
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Notes</Text>
-          <Text style={quote.notes ? styles.bodyText : styles.emptyText}>{quote.notes ?? 'No notes provided.'}</Text>
-        </View>
-
-        <View style={styles.section}>
           <Text style={styles.sectionTitle}>Terms</Text>
           <Text style={quote.termsAndConditions ? styles.bodyText : styles.emptyText}>
             {quote.termsAndConditions ?? 'No terms provided.'}

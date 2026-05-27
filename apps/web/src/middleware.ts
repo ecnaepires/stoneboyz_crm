@@ -7,9 +7,6 @@ export function middleware(request: NextRequest) {
   if (!sessionCookie && !isAuthPage) {
     return NextResponse.redirect(new URL('/sign-in', request.url));
   }
-  if (sessionCookie && isAuthPage) {
-    return NextResponse.redirect(new URL('/customers', request.url));
-  }
   return NextResponse.next();
 }
 

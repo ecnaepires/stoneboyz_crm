@@ -445,3 +445,169 @@ Every `codex:codex-rescue` task prompt must end with:
 - 2026-05-18 [codex]: Fixed Step 1 chained drawing lower-run parity. `DrawingCanvasInner.tsx` now anchors the lower tail at the first vertical turn and measures continuation in the original horizontal direction, matching the observed Moraware right/down/right flow. Appended live gap notes to `docs/moraware-live-gap-analysis-2026-05-16.md`. Result: `pnpm typecheck:web` passed.
 
 - 2026-05-18 [codex]: Added generic chained counter shape for repeated Moraware stair-step drawing. Preview and saved chain shapes now render as one union outline instead of separate stroked rectangles, removing internal orange split lines. Domain drawing schema now accepts `chain` shape segments and tests cover persistence. Result: `pnpm typecheck:web`, `pnpm typecheck`, and quote-drawing schema test passed.
+
+[2026-05-20] Moraware recording parity pass. Imported user recordings into `output/moraware-recordings`, extracted frame contact sheet, reviewed finished CounterGo drawings. Updated `DrawingCanvasInner.tsx` with compound-shape perimeter dimension labels for L/Z/chain outlines and CounterGo-style right-rail shortcut hints plus keyboard bindings (`N/Y/E/Z/J/K/L/M`). Verification: `pnpm typecheck:web` passed; local `/sign-in` returns 200 and `/customers` redirects unauthenticated.
+
+[2026-05-20] Moraware video 01:04 review follow-up. No geometry rewrite. Adjusted drawing visual state so inactive counters render as clean white outlines and selected counters get pale green fill, matching CounterGo's selected-piece behavior from the user recording. Verification: `pnpm typecheck:web` passed.
+
+[2026-05-20] Added first direct dimension edit behavior for chain drawings. Clicking a compound measurement opens Edge Length with that measurement value, and saving updates the corresponding chain segment width/height in drawing layout and saves the layout. Verification: `pnpm typecheck:web` passed.
+
+- 2026-05-20 [codex]: Fixed chained counter resize parity from user Moraware recording. `DrawingCanvasInner.tsx` now detects chain segment attachments and moves downstream connected runs with the edited dimension so L/Z pieces stay joined instead of separating. Appended parity note to `docs/moraware-live-gap-analysis-2026-05-16.md`. Verification: `pnpm -C apps/web typecheck` passed.
+
+- 2026-05-20 [codex]: Reviewed latest CRM/Moraware resize video. Fixed chain edge length math so inner perimeter labels use the clicked boundary length as the delta baseline instead of the whole outer segment length, preventing inside edits from shrinking only the outside. Converted quote drawing route to viewport full-page overlay with top-right Exit and expanded canvas height. Verification: `pnpm -C apps/web typecheck` passed; browser metrics showed full viewport overlay 1600x900 and canvas 1440x674.
+
+- 2026-05-20 [codex]: Matched Moraware Edge Length dialog styling in the CRM drawing workspace. Edge length modal is now compact with green header, X close, focused length input, inch marker, Save & Next Edge/Save buttons, and a mini counter preview highlighting the selected edge with orange arrows. Verification: `pnpm -C apps/web typecheck` passed.
+
+- 2026-05-20 [codex]: Began Moraware continuation-arrow parity from user screenshots. Added hover highlight for compound dimension labels and selected-piece continuation arrows on chained counters; clicking an arrow appends a new 36-inch run from the selected free end and persists the drawing revision/piece bounds. Angle-degree transforms were identified as next slice because current drawing schema only persists axis-aligned chain rectangles. Verification: `pnpm -C apps/web typecheck` passed.
+
+- 2026-05-20 [codex]: Adjusted compound dimension hover to match user preference: only the dimension number changes color on hover; guide line, ticks, and arrows stay gray while invisible hit area remains for easy clicking. Verification: `pnpm -C apps/web typecheck` passed.
+
+- 2026-05-20 [codex]: Fixed tiny compound edge dimension labels. Lowered hidden-edge threshold from 4 inches to 1 inch so Moraware-style short notch segments, e.g. 3 inches, display on the drawing. Verification: `pnpm -C apps/web typecheck` passed.
+
+- 2026-05-20 [codex]: Added Moraware-style internal depth dimensions for chained vertical legs. CRM now draws a clickable inner 25 1/2-inch-style guide on vertical chain runs, with text-only hover highlight and Edge Length editor wiring for that depth. Verification: `pnpm -C apps/web typecheck` passed.
+
+- 2026-05-20 [codex]: Tuned internal depth dimension styling. Centered the chain inner-depth 25 1/2-inch label in the vertical leg, darkened default dimension text, restored hover to orange, and added a small orange-tinted hover rectangle behind the inner-depth label while keeping guide lines gray. Verification: `pnpm -C apps/web typecheck` passed.
+
+- 2026-05-20 [codex]: Centered dimension label boxes and standardized label rendering. Added shared `DimensionLabel` renderer with white backing gap over measurement lines, orange hover rectangle/text, centered text, and applied it to simple, compound, and internal chain dimensions. Verification: `pnpm -C apps/web typecheck` passed.
+
+- 2026-05-20 [codex]: Moved internal chain depth dimension labels outside the green countertop outline so label backing does not cut piece/edge lines. Rule preserved: label backing can interrupt dimension guide lines, not countertop edge lines. Verification: `pnpm -C apps/web typecheck` passed.
+
+- 2026-05-20 [codex]: Corrected dimension label placement after screenshot review. Boundary dimension labels now sit farther away from green countertop outlines so their white backing does not gray/cut piece corners, and internal 25 1/2-inch labels are centered on their gray measurement guide line again. Verification: `pnpm -C apps/web typecheck` passed.
+
+- 2026-05-20 [codex]: Added tiny-edge-only label offset in `boundaryGuide`. Horizontal perimeter dimensions 6 inches or shorter now place their label farther away from the edge, preventing a 3-inch label from sitting on top of the green countertop outline. Verification: `pnpm -C apps/web typecheck` passed.
+
+- 2026-05-20 [codex]: Moved tiny horizontal perimeter dimension labels sideways off the green edge line. For labels 6 inches or shorter, `boundaryGuide` now positions the label outside the short segment horizontally as well as away from the guide, so a 3-inch label cannot sit on top of a countertop edge. Verification: `pnpm -C apps/web typecheck` passed.
+
+- 2026-05-20 [codex]: Tuned tiny edge label distance. Reduced short horizontal label side offset from 24px to 12px so 3-inch labels stay close enough to read as connected to the short segment while still off the green countertop line. Verification: `pnpm -C apps/web typecheck` passed.
+
+- 2026-05-20 [codex]: Refined tiny dimension label treatment. Short perimeter labels now float without default white backing, get a small gray leader line to the measured edge, and retain orange hover box. `DimensionLabel` now has optional backing so labels that cross gray dimension guides still get a white gap, while tiny labels near green edges do not cover the countertop outline. Verification: `pnpm -C apps/web typecheck` passed.
+
+- 2026-05-20 [codex]: Removed tiny-dimension leader line and default label backing. Dimension numbers now float centered on their guide line; gray guide lines split into two segments around the text so they do not strike through labels. Hover box remains orange and unchanged. Verification: `pnpm -C apps/web typecheck` passed.
+
+## 2026-05-20 14:09 [codex] Connect rectangle edges
+- what: allow Connect tool on simple rectangle counters
+- why: tablet measure flow needs two-edge rectangle close
+- files: DrawingCanvasInner.tsx
+- result: web typecheck pass; drawingGeometry 9/9 pass
+
+## 2026-05-20 14:16 [codex] Harden connect taps
+- what: allow Connect on L/Z edges; ignore same-edge double tap
+- why: tablet measure connect should not no-op or make slivers
+- files: DrawingCanvasInner.tsx
+- result: web typecheck pass; drawingGeometry 9/9 pass
+
+## 2026-05-20 14:21 [codex] Drawing tools harden
+- what: reject zero-area connect; edit L/Z edge segments as chain
+- why: Laser tablet flow needs solid edge/offset/connect/delete
+- files: DrawingCanvasInner.tsx, drawingGeometry.*
+- result: web/domain typecheck pass; drawingGeometry 10/10 pass
+
+## 2026-05-20 14:34 [codex] Offset no-grow
+- what: Offset creates cabinet + green guide lines, no filled strip
+- why: user wants offset guide first, connect later; piece not bigger
+- files: DrawingCanvasInner.tsx, drawingGeometry.*
+- result: web/domain typecheck pass; drawing/schema tests pass
+
+## 2026-05-20 14:37 [codex] Laser-style menu
+- what: right rail now shows Erase/Distance/Fillet/Offset/etc
+- why: match Laser drawing edit command menu
+- files: DrawingCanvasInner.tsx
+- result: web typecheck pass; drawing/schema tests pass
+
+## 2026-05-20 14:48 [codex] Erase removes surface
+- what: erased-edge pieces hide old fill until Segment reconnects
+- why: deleted line means old surface gone, then rebuilt as new piece
+- files: DrawingCanvasInner.tsx
+- result: web typecheck pass; drawing/schema tests pass
+
+## 2026-05-20 14:50 [codex] Erase whole piece
+- what: deleting final visible boundary edge deletes counter piece
+- why: all four sides erased means piece is gone
+- files: DrawingCanvasInner.tsx
+- result: web typecheck pass; drawing/schema tests pass
+## 2026-05-20 14:59 [codex] Drawing menu and dimensions cleanup
+- what: add Pen/Cursor return tools; make Fill It use connect; hide deleted-edge dimensions; remove Std/90 labels
+- why: Laser tablet workflow needs clear mode switching and no stale/duplicate measurements
+- files: DrawingCanvasInner.tsx
+- result: web typecheck pass; drawing/schema tests pass
+
+## 2026-05-21 [claude] Plan V2 drawing workspace architecture
+- what: strategic reset — scrapped incremental edits to DrawingCanvasInner; designed V2 with Konva + pure domain package
+- why: 7,328-line monolith untestable; chain model already proven, just needs porting
+- files: docs/specs/drawing/{_template,glossary,slice-0-foundation,tools/draw-shape}.md
+- result: specs approved; Slice 0 delegated to Codex
+
+## 2026-05-22 [codex] Slice 0 — domain port + Konva shell
+- what: ported chain-shape model to packages/domain/src/drawing/; built ?v2=1 Konva workspace shell
+- why: unlock pure-testable geometry; all later V2 slices depend on this
+- files: packages/domain/src/drawing/{types,geometry,topology,index,geometry.test,topology.test}.ts, apps/web/.../drawing-v2/{DrawingWorkspace,canvas/Stage,canvas/PieceLayer}.tsx, apps/web/.../drawingGeometry.ts (re-export), edit/page.tsx (?v2=1 guard), apps/web/package.json (+konva,react-konva)
+- open-q answers: func at :1391 = resizeChainSegments; domain pkg = @stoneboyz/domain; grid = Konva <Line> per quarter-inch
+- result: domain typecheck 0; 5/5 parity tests pass; web typecheck 0; no framework imports in domain; gates 8/9/12 browser-verified
+
+## 2026-05-22 [codex] Slice 1 - Draw Shape tool
+- files touched: packages/domain/src/drawing/constants.ts; packages/domain/src/drawing/geometry.ts; packages/domain/src/drawing/index.ts; packages/domain/src/index.ts; packages/domain/src/drawing/geometry.test.ts; apps/web/src/app/customers/[id]/quotes/[quoteId]/drawing-v2/state/workspace-store.ts; apps/web/src/app/customers/[id]/quotes/[quoteId]/drawing-v2/tools/DrawShapeTool.tsx; apps/web/src/app/customers/[id]/quotes/[quoteId]/drawing-v2/canvas/PreviewLayer.tsx; apps/web/src/app/customers/[id]/quotes/[quoteId]/drawing-v2/DrawingWorkspace.tsx; COLLAB_LOG.md
+- gate results: domain tests 1-5 pass 5/5, fail 0/5; geometry.test.ts overall 10/10 pass; browser gates 6-12 handler-wired, not live-tested
+- verification: domain tsc pass via `pnpm --filter @stoneboyz/domain exec tsc -p tsconfig.json --noEmit`; web tsc pass via `pnpm --filter @stoneboyz/web exec tsc -p tsconfig.json --noEmit`; domain React-import grep returned zero hits
+- (a) buildChainFromClicks as standalone pure function confirmed Y
+- (b) DEFAULT_COUNTER_DEPTH_IN source = hardcoded constant (option a)
+- assumption: `apps/web/package.json` does not include zustand and package edits were outside the allowed file list, so workspace-store uses a dependency-free React external-store implementation with zustand-like selector/actions.
+
+## 2026-05-25 [codex] Realign issue and attachment enums
+- what: added migrations 049/050; updated domain issue type, attachment category, and attachable type values
+- why: DB constraints and domain schemas need current Issue/Attachment taxonomy
+- files: db/migrations/049_realign_issue_types.sql, db/migrations/050_realign_attachment_categories.sql, packages/domain/src/issues/issue.types.ts, packages/domain/src/attachments/attachment.types.ts
+- result: `npx tsc -p packages/domain/tsconfig.json --noEmit` pass, 0 errors
+
+## 2026-05-25 [codex] Customer note edit endpoint
+- what: wired CustomerNote PATCH body edit through controller, service, repository, domain input, DB edited_at column, regenerated API client
+- why: customer notes had list/create/archive coverage but edit path needed body update support
+- files: apps/api/src/customers/customer-notes.controller.ts, apps/api/src/customers/customer-notes.service.ts, apps/api/src/customers/customer-notes.repository.ts, packages/domain/src/customers/customer.types.ts, db/migrations/051_add_edited_at_to_customer_notes.sql, packages/api-client/src/schema.ts
+- result: `pnpm test 2>&1 | tail -5` pass, 301 tests
+
+## 2026-05-25 [codex] Job, quote, and activity note UI
+- what: added CRUD note sections to job, quote, and activity detail pages with server actions for add/delete
+- why: note APIs existed, web pages needed CustomerNote-style forms/lists; quote notes expose public/internal state
+- files: apps/web/src/app/projects/[id]/page.tsx, apps/web/src/app/projects/[id]/_actions.ts, apps/web/src/app/customers/[id]/quotes/[quoteId]/page.tsx, apps/web/src/app/customers/[id]/quotes/[quoteId]/_actions.ts, apps/web/src/app/customers/[id]/events/[eventId]/page.tsx, apps/web/src/app/customers/[id]/events/[eventId]/_actions.ts
+- result: `pnpm typecheck:web 2>&1 | tail -10` pass, 0 errors
+
+## 2026-05-25 [codex] Job checklist toggles
+- what: added first active phase checklist fetch, checkbox toggle UI, and PATCH server action
+- why: checklist API existed per phase; project detail page needed editable job checklist state
+- files: apps/web/src/app/projects/[id]/page.tsx, apps/web/src/app/projects/[id]/_actions.ts, apps/web/src/app/projects/[id]/checklist-toggle.tsx
+- result: `pnpm typecheck:web 2>&1 | tail -5` pass, 0 errors
+
+## 2026-05-25 10:47 [codex] Portal job status
+- what: add phase/activity fields to portal quote + status card
+- why: customer portal needs current/upcoming job progress
+- files: portal.service.ts, openapi.yaml, schema.ts, portal page
+- result: web typecheck pass, 0 errors
+
+## 2026-05-25 11:15 [codex] Drawing V2 depth edit
+- what: added Slice 2 depth edit for selected chain segments; horizontal depth updates `h`, vertical depth updates `w`, simple downstream attachment moves with the depth delta
+- why: per-segment `widthIn` override was the narrow next step after Draw Shape; length/reflow edit remains separate
+- files: packages/domain/src/drawing/topology.ts, packages/domain/src/drawing/topology.test.ts, packages/domain/src/index.ts, apps/web/.../drawing-v2/state/workspace-store.ts, apps/web/.../drawing-v2/tools/EditDepthTool.tsx, apps/web/.../drawing-v2/DrawingWorkspace.tsx, docs/specs/drawing/{glossary,tools/edit-edge}.md
+- result: domain typecheck pass; topology tests 3/3 pass via repo-root vitest; domain build pass; web typecheck pass
+
+## 2026-05-25 11:35 [codex] Drawing V2 drag gesture
+- what: changed V2 Draw so mouse down + drag + release creates a piece; cornered drag paths build chain segments for L/Z/U-style shapes
+- why: V1 Pen workflow is drag-first; V2 click-click-doubleclick felt wrong against Moraware muscle memory
+- files: packages/domain/src/drawing/geometry.ts, packages/domain/src/drawing/geometry.test.ts, packages/domain/src/drawing/topology.ts, packages/domain/src/drawing/topology.test.ts, packages/domain/src/index.ts, apps/web/.../drawing-v2/tools/DrawShapeTool.tsx, apps/web/.../drawing-v2/DrawingWorkspace.tsx, docs/specs/drawing/tools/{draw-shape,edit-edge}.md
+- result: geometry/topology tests 16/16 pass; domain typecheck/build pass; web typecheck pass; browser drag-create rectangle and L-shape pass with no console errors
+
+## 2026-05-25 11:50 [codex] V1/V2 drawing comparison patch
+- what: made V2 default to Draw mode and preview full drag-path chains while dragging
+- why: V1 feels better because it previews the actual path continuously; V2 only applied drag-path logic after release
+- files: apps/web/.../drawing-v2/state/workspace-store.ts, apps/web/.../drawing-v2/canvas/PreviewLayer.tsx, apps/web/.../drawing-v2/tools/DrawShapeTool.tsx, apps/web/.../drawing-v2/DrawingWorkspace.tsx
+- result: geometry/topology tests 16/16 pass; domain build pass; web typecheck pass; browser drag-created L-shape from default Draw mode with no console errors
+
+## 2026-05-25 12:25 [codex] V2 persistence parity
+- what: V2 `?v2=1` now loads first area drawing layout, creates real counter-piece records, saves canvas layout after drag-create, and reloads persisted pieces
+- why: V1 drawing was better partly because new pieces immediately round-tripped through quote drawing persistence; V2 was local-only
+- files: edit/page.tsx, apps/web/.../drawing-v2/DrawingWorkspace.tsx, apps/web/.../drawing-v2/state/workspace-store.ts, apps/web/.../drawing-v2/tools/DrawShapeTool.tsx
+- result: geometry/topology tests 16/16 pass; domain build pass; web typecheck pass; browser draw/save/reload preserved V2 piece with no console errors
+
+## 2026-05-25 12:35 [codex] V2 piece controls
+- what: added select/move/delete controls for V2 pieces with manual pointer hit-testing and save-on-move/delete
+- why: V1 supports direct piece management; V2 needed first parity controls beyond drawing
+- files: apps/web/.../drawing-v2/DrawingWorkspace.tsx, apps/web/.../drawing-v2/canvas/PieceLayer.tsx, apps/web/.../drawing-v2/state/workspace-store.ts, apps/web/.../drawing-v2/tools/{SelectPieceTool,EditDepthTool}.tsx
+- result: geometry/topology tests 16/16 pass; web typecheck pass; browser select, move/save, delete/reload pass with no console errors
