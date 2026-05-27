@@ -49,20 +49,34 @@ import { QuotesService } from './quotes/quotes.service.js';
 import { QuoteNotesModule } from './quote-notes/quote-notes.module.js';
 import { ScheduledEventsModule } from './scheduling/scheduled-events.module.js';
 import { UsersModule } from './users/users.module.js';
+import { AttachmentsModule } from "./attachments/attachments.module.js";
+import { IssuesModule } from "./issues/issues.module.js";
+import { JobTemplatesModule } from "./job-templates/job-templates.module.js";
+import { PhasesModule } from "./phases/phases.module.js";
+import { TagsModule } from "./tags/tags.module.js";
+
 
 @Module({
   imports: [
+      imports: [
     ActivityNotesModule,
+    AttachmentsModule,
     DashboardModule,
     EmailModule,
     EventsModule,
     InventoryModule,
+    IssuesModule,
     JobNotesModule,
+    JobTemplatesModule,
+    PhasesModule,
     PortalModule,
     PriceListsModule,
     QuoteNotesModule,
     ScheduledEventsModule,
+    TagsModule,
     UsersModule
+  ],
+
   ],
   controllers: [
     HealthController,
