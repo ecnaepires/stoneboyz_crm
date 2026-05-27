@@ -12,22 +12,28 @@ import {
   Query,
   UploadedFile,
   UseInterceptors,
-} from '@nestjs/common';
-import { FileInterceptor } from '@nestjs/platform-express';
-import { archiveSlabSchema, createSlabSchema, cutSlabSchema, listSlabsSchema, updateSlabSchema } from '@stoneboyz/domain';
-import * as multer from 'multer';
-import * as path from 'path';
-import { z } from 'zod';
-import { CurrentUser } from '../auth/current-user.decorator.js';
-import { StorageService } from '../storage/storage.service.js';
-import { SlabsService } from './slabs.service.js';
+} from "@nestjs/common";
+import { FileInterceptor } from "@nestjs/platform-express";
+import {
+  archiveSlabSchema,
+  createSlabSchema,
+  cutSlabSchema,
+  listSlabsSchema,
+  updateSlabSchema,
+} from "@stoneboyz/domain";
+import * as multer from "multer";
+import * as path from "path";
+import { z } from "zod";
+import { CurrentUser } from "../auth/current-user.decorator.js";
+import { StorageService } from "../storage/storage.service.js";
+import { SlabsService } from "./slabs.service.js";
 
 const memStorage = multer.memoryStorage();
 
 const slabIdSchema = z.string().uuid();
 
 const parseLimit = (value: unknown): unknown => {
-  if (typeof value !== 'string') {
+  if (typeof value !== "string") {
     return value;
   }
 
@@ -35,28 +41,29 @@ const parseLimit = (value: unknown): unknown => {
   return Number.isNaN(parsed) ? value : parsed;
 };
 
-const formatZodError = (error: z.ZodError): Record<string, string[]> => z.flattenError(error).fieldErrors;
+const formatZodError = (error: z.ZodError): Record<string, string[]> =>
+  z.flattenError(error).fieldErrors;
 
 const badRequest = (details: Record<string, string[]>): BadRequestException => {
   return new BadRequestException({
-    code: 'VALIDATION_ERROR',
-    message: 'Request validation failed',
-    details
+    code: "VALIDATION_ERROR",
+    message: "Request validation failed",
+    details,
   });
 };
 
-@Controller('inventory/slabs')
+@Controller("inventory/slabs")
 export class SlabsController {
   constructor(
     private readonly slabsService: SlabsService,
-    private readonly storageService: StorageService
+    private readonly storageService: StorageService,
   ) {}
 
   @Get()
   async list(@Query() query: Record<string, unknown>) {
     const parsedQuery = listSlabsSchema.safeParse({
       ...query,
-      limit: parseLimit(query['limit'])
+      limit: parseLimit(query["limit"]),
     });
 
     if (!parsedQuery.success) {
@@ -77,37 +84,55 @@ export class SlabsController {
     return this.slabsService.create({ ...parsedBody.data, actorUserId });
   }
 
-  @Get(':slabId')
-  async getById(@Param('slabId') slabId: string) {
+  @Get(":slabId")
+  async getById(@Param("slabId") slabId: string) {
     return this.slabsService.getById(this.parseSlabId(slabId));
   }
 
-  @Patch(':slabId')
-  async update(@Param('slabId') slabId: string, @Body() body: unknown, @CurrentUser() actorUserId: string) {
+  @Patch(":slabId")
+  async update(
+    @Param("slabId") slabId: string,
+    @Body() body: unknown,
+    @CurrentUser() actorUserId: string,
+  ) {
     const parsedBody = updateSlabSchema.safeParse(body);
 
     if (!parsedBody.success) {
       throw badRequest(formatZodError(parsedBody.error));
     }
 
-    return this.slabsService.update(this.parseSlabId(slabId), { ...parsedBody.data, actorUserId });
+    return this.slabsService.update(this.parseSlabId(slabId), {
+      ...parsedBody.data,
+      actorUserId,
+    });
   }
 
-  @Delete(':slabId')
+  @Delete(":slabId")
   @HttpCode(200)
-  async archive(@Param('slabId') slabId: string, @Body() body: unknown, @CurrentUser() actorUserId: string) {
+  async archive(
+    @Param("slabId") slabId: string,
+    @Body() body: unknown,
+    @CurrentUser() actorUserId: string,
+  ) {
     const parsedBody = archiveSlabSchema.safeParse(body);
 
     if (!parsedBody.success) {
       throw badRequest(formatZodError(parsedBody.error));
     }
 
-    return this.slabsService.archive(this.parseSlabId(slabId), { ...parsedBody.data, actorUserId });
+    return this.slabsService.archive(this.parseSlabId(slabId), {
+      ...parsedBody.data,
+      actorUserId,
+    });
   }
 
-  @Post(':slabId/cut')
+  @Post(":slabId/cut")
   @HttpCode(200)
-  async cut(@Param('slabId') slabId: string, @Body() body: unknown, @CurrentUser() actorUserId: string) {
+  async cut(
+    @Param("slabId") slabId: string,
+    @Body() body: unknown,
+    @CurrentUser() actorUserId: string,
+  ) {
     const parsedBody = cutSlabSchema.safeParse(body);
 
     if (!parsedBody.success) {
@@ -117,36 +142,73 @@ export class SlabsController {
     return this.slabsService.cut(this.parseSlabId(slabId), {
       ...parsedBody.data,
       actorUserId,
-      remnants: parsedBody.data.remnants?.map((remnant) => ({ ...remnant, actorUserId }))
+      remnants: parsedBody.data.remnants?.map((remnant) => ({
+        ...remnant,
+        actorUserId,
+      })),
     });
   }
 
-  @Post(':slabId/images')
-  @UseInterceptors(FileInterceptor('image', { storage: memStorage, limits: { fileSize: 20 * 1024 * 1024 } }))
+  @Post(":slabId/images")
+  @UseInterceptors(
+    FileInterceptor("image", {
+      storage: memStorage,
+      limits: { fileSize: 20 * 1024 * 1024 },
+    }),
+  )
   async uploadImage(
-    @Param('slabId') slabId: string,
+    @Param("slabId") slabId: string,
     @UploadedFile() file: Express.Multer.File,
-    @CurrentUser() _actorUserId: string
+    @CurrentUser() _actorUserId: string,
   ) {
-    if (!file) throw new BadRequestException({ code: 'VALIDATION_ERROR', message: 'No image file provided', details: {} });
-    const ext = path.extname(file.originalname);
+    if (!file)
+      throw new BadRequestException({
+        code: "VALIDATION_ERROR",
+        message: "No image file provided",
+        details: {},
+      });
+
+    const ext = path.extname(file.originalname).toLowerCase();
+    const allowedExtensions = [".jpg", ".jpeg", ".png", ".webp"];
+    if (!allowedExtensions.includes(ext)) {
+      throw new BadRequestException({
+        code: "VALIDATION_ERROR",
+        message: "Only jpg, jpeg, png, and webp images are allowed",
+        details: {},
+      });
+    }
     const filename = `${Date.now()}-${Math.random().toString(36).slice(2)}${ext}`;
-    const url = await this.storageService.uploadFile(filename, file.buffer, file.mimetype);
-    const slab = await this.slabsService.addImageUrl(this.parseSlabId(slabId), url);
-    if (!slab) throw new NotFoundException('Slab not found');
+    const url = await this.storageService.uploadFile(
+      filename,
+      file.buffer,
+      file.mimetype,
+    );
+    const slab = await this.slabsService.addImageUrl(
+      this.parseSlabId(slabId),
+      url,
+    );
+    if (!slab) throw new NotFoundException("Slab not found");
     return slab;
   }
 
-  @Delete(':slabId/images')
+  @Delete(":slabId/images")
   @HttpCode(200)
   async deleteImage(
-    @Param('slabId') slabId: string,
-    @Body('url') url: string,
-    @CurrentUser() _actorUserId: string
+    @Param("slabId") slabId: string,
+    @Body("url") url: string,
+    @CurrentUser() _actorUserId: string,
   ) {
-    if (!url) throw new BadRequestException({ code: 'VALIDATION_ERROR', message: 'url is required', details: {} });
-    const slab = await this.slabsService.removeImageUrl(this.parseSlabId(slabId), url);
-    if (!slab) throw new NotFoundException('Slab not found');
+    if (!url)
+      throw new BadRequestException({
+        code: "VALIDATION_ERROR",
+        message: "url is required",
+        details: {},
+      });
+    const slab = await this.slabsService.removeImageUrl(
+      this.parseSlabId(slabId),
+      url,
+    );
+    if (!slab) throw new NotFoundException("Slab not found");
     return slab;
   }
 
@@ -154,7 +216,7 @@ export class SlabsController {
     const parsedSlabId = slabIdSchema.safeParse(slabId);
 
     if (!parsedSlabId.success) {
-      throw badRequest({ slabId: ['Invalid UUID'] });
+      throw badRequest({ slabId: ["Invalid UUID"] });
     }
 
     return parsedSlabId.data;

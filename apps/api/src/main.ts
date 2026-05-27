@@ -1,9 +1,10 @@
-import 'reflect-metadata';
-import { NestFactory } from '@nestjs/core';
-import { AppModule } from './app.module.js';
-import * as express from 'express';
-import * as path from 'path';
-import { fileURLToPath } from 'url';
+import "./env.js";
+import "reflect-metadata";
+import { NestFactory } from "@nestjs/core";
+import { AppModule } from "./app.module.js";
+import * as express from "express";
+import * as path from "path";
+import { fileURLToPath } from "url";
 
 const DEFAULT_PORT = 3001;
 
@@ -25,14 +26,18 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 async function bootstrap(): Promise<void> {
   const app = await NestFactory.create(AppModule);
-  const uploadsDir = path.join(__dirname, '..', 'uploads');
-  app.use('/uploads', express.static(uploadsDir));
+  const uploadsDir = path.join(__dirname, "..", "uploads");
+  app.use("/uploads", express.static(uploadsDir));
 
-  app.setGlobalPrefix('api/v1');
+  app.setGlobalPrefix("api/v1");
+  const corsOrigins = process.env.CORS_ORIGINS
+    ? process.env.CORS_ORIGINS.split(",").map((o) => o.trim())
+    : ["http://localhost:3000", "http://localhost:3001"];
+
   app.enableCors({
-    origin: ['http://localhost:3000', 'http://localhost:3001'],
-    methods: ['GET', 'POST', 'PATCH', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization'],
+    origin: corsOrigins,
+    methods: ["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"],
   });
 
   await app.listen(parsePort(process.env.PORT));

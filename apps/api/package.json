@@ -15,6 +15,7 @@
     "@nestjs/core": "^11.1.19",
     "@nestjs/event-emitter": "^3.1.0",
     "@nestjs/platform-express": "^11.1.19",
+    "@nestjs/throttler": "^6.5.0",
     "@react-pdf/renderer": "^4.5.1",
     "@stoneboyz/domain": "workspace:*",
     "express": "^5.0.0",
