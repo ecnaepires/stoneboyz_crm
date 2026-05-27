@@ -9,3 +9,4 @@ dist/
 coverage/
 .turbo/
 .env.test
+output/moraware-recordings/
