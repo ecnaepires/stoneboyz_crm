@@ -3,6 +3,7 @@ import type {
   ChainShapeSegment,
   DrawingChainShapeSegment,
   DrawingCornerKey,
+  DrawingEdgeKey,
   DrawingCornerTreatment,
   DrawingDeletedLine,
   DrawingReferenceLine,
@@ -10,7 +11,9 @@ import type {
   DrawingReferenceLineVisualSegment,
   DrawingShapeEdge,
   DrawingShapeRect,
+  LShapeLayout,
   PieceShape,
+  ZShapeLayout,
 } from "./types.js";
 import {
   AUTO_CLOSE_THRESHOLD_IN,
@@ -782,6 +785,272 @@ export function visibleBoundaryEdges(params: {
   );
 }
 
+export interface DrawingBacksplashReferenceLine {
+  id?: string;
+  pieceId: string;
+  from: [number, number];
+  to: [number, number];
+  kind: string;
+  color: string;
+  dash?: boolean;
+}
+
+export interface DrawingBacksplashCornerSnap {
+  pieceId: string;
+  edge: DrawingEdgeKey;
+  corner: DrawingCornerKey;
+  x: number;
+  y: number;
+  edgeFrom: [number, number];
+  edgeTo: [number, number];
+}
+
+function drawingRangesOverlap(
+  startA: number,
+  endA: number,
+  startB: number,
+  endB: number,
+) {
+  return Math.max(startA, startB) <= Math.min(endA, endB) + 0.001;
+}
+
+function boundaryEdgeKeyForBacksplash(
+  edge: DrawingShapeEdge,
+  rects: DrawingShapeRect[],
+): DrawingEdgeKey {
+  const horizontal = drawingValuesNear(edge.from[1], edge.to[1]);
+  const outside = boundaryOutsideSide(edge, rects);
+
+  if (horizontal) {
+    return outside === "above" ? "top" : "bottom";
+  }
+
+  return outside === "left" ? "left" : "right";
+}
+
+function referenceLineEdgeKeyForBacksplash(
+  line: DrawingBacksplashReferenceLine,
+  rects: DrawingShapeRect[],
+): DrawingEdgeKey {
+  const bounds = shapeBounds(rects);
+  const horizontal = drawingValuesNear(line.from[1], line.to[1]);
+
+  if (horizontal) {
+    const midY = (line.from[1] + line.to[1]) / 2;
+    const centerY = (bounds.minY + bounds.maxY) / 2;
+    return midY <= centerY ? "top" : "bottom";
+  }
+
+  const midX = (line.from[0] + line.to[0]) / 2;
+  const centerX = (bounds.minX + bounds.maxX) / 2;
+  return midX <= centerX ? "left" : "right";
+}
+
+function backsplashCornerForEndpoint(
+  edge: DrawingEdgeKey,
+  point: "from" | "to",
+): DrawingCornerKey {
+  if (edge === "top") return point === "from" ? "topLeft" : "topRight";
+  if (edge === "right") return point === "from" ? "topRight" : "bottomRight";
+  if (edge === "bottom") return point === "from" ? "bottomRight" : "bottomLeft";
+  return point === "from" ? "bottomLeft" : "topLeft";
+}
+
+export function backsplashCornerCandidatesForEdges(params: {
+  pieceId: string;
+  rects: DrawingShapeRect[];
+  boundaryEdges: DrawingShapeEdge[];
+  referenceLines: DrawingBacksplashReferenceLine[];
+  wallColor?: string;
+}): DrawingBacksplashCornerSnap[] {
+  const wallColor = params.wallColor ?? "#78aa72";
+  const boundaryCandidates = params.boundaryEdges.flatMap((edge) => {
+    const edgeKey = boundaryEdgeKeyForBacksplash(edge, params.rects);
+    return [
+      {
+        pieceId: params.pieceId,
+        edge: edgeKey,
+        corner: backsplashCornerForEndpoint(edgeKey, "from"),
+        x: edge.from[0],
+        y: edge.from[1],
+        edgeFrom: edge.from,
+        edgeTo: edge.to,
+      },
+      {
+        pieceId: params.pieceId,
+        edge: edgeKey,
+        corner: backsplashCornerForEndpoint(edgeKey, "to"),
+        x: edge.to[0],
+        y: edge.to[1],
+        edgeFrom: edge.from,
+        edgeTo: edge.to,
+      },
+    ];
+  });
+
+  const wallCandidates = params.referenceLines
+    .filter(
+      (line) =>
+        line.pieceId === params.pieceId &&
+        line.kind === "wall" &&
+        line.color === wallColor &&
+        line.dash !== true,
+    )
+    .flatMap((line) => {
+      const lineHorizontal = drawingValuesNear(line.from[1], line.to[1]);
+      const anchorEdge =
+        params.boundaryEdges
+          .filter(
+            (edge) =>
+              drawingValuesNear(edge.from[1], edge.to[1]) === lineHorizontal,
+          )
+          .filter((edge) => {
+            if (lineHorizontal) {
+              return drawingRangesOverlap(
+                Math.min(line.from[0], line.to[0]),
+                Math.max(line.from[0], line.to[0]),
+                Math.min(edge.from[0], edge.to[0]),
+                Math.max(edge.from[0], edge.to[0]),
+              );
+            }
+
+            return drawingRangesOverlap(
+              Math.min(line.from[1], line.to[1]),
+              Math.max(line.from[1], line.to[1]),
+              Math.min(edge.from[1], edge.to[1]),
+              Math.max(edge.from[1], edge.to[1]),
+            );
+          })
+          .sort((left, right) => {
+            const leftMid = edgeMidpoint(left);
+            const rightMid = edgeMidpoint(right);
+            const lineMid = {
+              x: (line.from[0] + line.to[0]) / 2,
+              y: (line.from[1] + line.to[1]) / 2,
+            };
+
+            return lineHorizontal
+              ? Math.abs(leftMid.y - lineMid.y) -
+                  Math.abs(rightMid.y - lineMid.y)
+              : Math.abs(leftMid.x - lineMid.x) -
+                  Math.abs(rightMid.x - lineMid.x);
+          })[0] ?? null;
+
+      const edgeKey = anchorEdge
+        ? boundaryEdgeKeyForBacksplash(anchorEdge, params.rects)
+        : referenceLineEdgeKeyForBacksplash(line, params.rects);
+
+      return [
+        {
+          pieceId: params.pieceId,
+          edge: edgeKey,
+          corner: backsplashCornerForEndpoint(edgeKey, "from"),
+          x: line.from[0],
+          y: line.from[1],
+          edgeFrom: line.from,
+          edgeTo: line.to,
+        },
+        {
+          pieceId: params.pieceId,
+          edge: edgeKey,
+          corner: backsplashCornerForEndpoint(edgeKey, "to"),
+          x: line.to[0],
+          y: line.to[1],
+          edgeFrom: line.from,
+          edgeTo: line.to,
+        },
+      ];
+    });
+
+  const wallEdgeSides = new Set(wallCandidates.map((c) => c.edge));
+  const filteredBoundaryCandidates = boundaryCandidates.filter(
+    (c) => !wallEdgeSides.has(c.edge),
+  );
+  return [...wallCandidates, ...filteredBoundaryCandidates];
+}
+
+export function extendReferenceLineToEdges(params: {
+  line: DrawingBacksplashReferenceLine;
+  rects: DrawingShapeRect[];
+  boundaryEdges: DrawingShapeEdge[];
+  referenceLines: DrawingBacksplashReferenceLine[];
+  wallColor?: string;
+}): DrawingShapeEdge | null {
+  const wallColor = params.wallColor ?? "#78aa72";
+  const vertical = drawingValuesNear(params.line.from[0], params.line.to[0]);
+  const horizontal = drawingValuesNear(params.line.from[1], params.line.to[1]);
+  if (!vertical && !horizontal) return null;
+
+  const bounds = shapeBounds(params.rects);
+  const values: number[] = [];
+
+  if (vertical) {
+    const x = params.line.from[0];
+    params.boundaryEdges
+      .filter((edge) => drawingValuesNear(edge.from[1], edge.to[1]))
+      .filter(
+        (edge) =>
+          x >= Math.min(edge.from[0], edge.to[0]) - 0.001 &&
+          x <= Math.max(edge.from[0], edge.to[0]) + 0.001,
+      )
+      .forEach((edge) => values.push(edge.from[1]));
+
+    params.referenceLines
+      .filter(
+        (line) =>
+          line.pieceId === params.line.pieceId &&
+          line.kind === "wall" &&
+          line.color === wallColor &&
+          line.dash !== true &&
+          drawingValuesNear(line.from[1], line.to[1]) &&
+          x >= Math.min(line.from[0], line.to[0]) - 0.001 &&
+          x <= Math.max(line.from[0], line.to[0]) + 0.001,
+      )
+      .forEach((line) => values.push(line.from[1]));
+
+    if (values.length < 2) {
+      values.push(bounds.minY, bounds.maxY);
+    }
+
+    return {
+      from: [x, Math.min(...values)],
+      to: [x, Math.max(...values)],
+    };
+  }
+
+  const y = params.line.from[1];
+  params.boundaryEdges
+    .filter((edge) => drawingValuesNear(edge.from[0], edge.to[0]))
+    .filter(
+      (edge) =>
+        y >= Math.min(edge.from[1], edge.to[1]) - 0.001 &&
+        y <= Math.max(edge.from[1], edge.to[1]) + 0.001,
+    )
+    .forEach((edge) => values.push(edge.from[0]));
+
+  params.referenceLines
+    .filter(
+      (line) =>
+        line.pieceId === params.line.pieceId &&
+        line.kind === "wall" &&
+        line.color === wallColor &&
+        line.dash !== true &&
+        drawingValuesNear(line.from[0], line.to[0]) &&
+        y >= Math.min(line.from[1], line.to[1]) - 0.001 &&
+        y <= Math.max(line.from[1], line.to[1]) + 0.001,
+    )
+    .forEach((line) => values.push(line.from[0]));
+
+  if (values.length < 2) {
+    values.push(bounds.minX, bounds.maxX);
+  }
+
+  return {
+    from: [Math.min(...values), y],
+    to: [Math.max(...values), y],
+  };
+}
+
 export function rectUnionOutlinePointCount(rects: DrawingShapeRect[]) {
   const edges = rectUnionBoundaryEdges(rects);
   if (edges.length === 0) return 0;
@@ -1258,4 +1527,101 @@ export function connectEdgesToRectangle(params: {
     lengthIn: roundDrawingInches(rect.w / params.scale),
     widthIn: roundDrawingInches(rect.h / params.scale),
   };
+}
+
+export function segmentDimensionLabel(
+  segment: { lengthIn: number; widthIn: number },
+  axis: "length" | "width",
+): number {
+  return axis === "length" ? segment.lengthIn : segment.widthIn;
+}
+
+export function applyExtendToSegment(params: {
+  segment: DrawingChainShapeSegment;
+  side: "left" | "right" | "top" | "bottom";
+  deltaIn: number;
+  scale: number;
+  referenceLines?: DrawingReferenceLine[];
+}): DrawingChainShapeSegment & { referenceLines: DrawingReferenceLine[] } {
+  const { segment, side, deltaIn, scale } = params;
+  const deltaPx = roundDrawingInches(deltaIn) * scale;
+
+  let { x, y, w, h } = segment;
+
+  if (side === "right") {
+    w += deltaPx;
+  } else if (side === "left") {
+    x -= deltaPx;
+    w += deltaPx;
+  } else if (side === "bottom") {
+    h += deltaPx;
+  } else {
+    y -= deltaPx;
+    h += deltaPx;
+  }
+
+  return {
+    ...segment,
+    x,
+    y,
+    w,
+    h,
+    lengthIn: roundDrawingInches(w / scale),
+    widthIn: roundDrawingInches(h / scale),
+    referenceLines: params.referenceLines ?? [],
+  };
+}
+
+export function legacyShapeToChain(
+  shape: LShapeLayout | ZShapeLayout,
+  piece: { lengthIn: number; widthIn: number },
+  scale = 3,
+): ChainShapeLayout {
+  const mainW = piece.lengthIn * scale;
+  const mainH = piece.widthIn * scale;
+
+  if (shape.type === "z") {
+    const legW = shape.legWidthIn * scale;
+    const legH = shape.legLengthIn * scale;
+    const tailW = shape.tailLengthIn * scale;
+    const tailH = shape.tailWidthIn * scale;
+    const rects = normalizeDrawingRectUnion([
+      { x: 0, y: 0, w: mainW, h: mainH },
+      { x: shape.legX, y: shape.legY, w: legW, h: legH },
+      { x: shape.tailX, y: shape.tailY, w: tailW, h: tailH },
+    ]);
+    return { type: "chain", segments: rectsToChainSegments(rects, scale) };
+  }
+
+  // L shape: main bounding box with one corner notch removed → 2 rects
+  const legW = shape.legWidthIn * scale;
+  const legH = shape.legLengthIn * scale;
+  const legOnLeft = shape.legX <= 0;
+  const legAbove = shape.legY < 0;
+
+  let rects: DrawingShapeRect[];
+
+  if (!legAbove && !legOnLeft) {
+    rects = [
+      { x: 0, y: 0, w: mainW, h: shape.legY + legH },
+      { x: 0, y: shape.legY + legH, w: shape.legX, h: mainH - (shape.legY + legH) },
+    ];
+  } else if (!legAbove && legOnLeft) {
+    rects = [
+      { x: 0, y: 0, w: mainW, h: shape.legY + legH },
+      { x: shape.legX + legW, y: shape.legY + legH, w: mainW - (shape.legX + legW), h: mainH - (shape.legY + legH) },
+    ];
+  } else if (legAbove && !legOnLeft) {
+    rects = [
+      { x: 0, y: 0, w: shape.legX, h: mainH },
+      { x: shape.legX, y: shape.legY + legH, w: mainW - shape.legX, h: mainH - (shape.legY + legH) },
+    ];
+  } else {
+    rects = [
+      { x: shape.legX + legW, y: 0, w: mainW - (shape.legX + legW), h: mainH },
+      { x: 0, y: shape.legY + legH, w: shape.legX + legW, h: mainH - (shape.legY + legH) },
+    ];
+  }
+
+  return { type: "chain", segments: rectsToChainSegments(rects, scale) };
 }

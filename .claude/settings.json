@@ -9,7 +9,16 @@
       "Bash(pnpm typecheck *)",
       "Bash(node 'C:/Users/Lenovo 02/.claude/plugins/marketplaces/openai-codex/plugins/codex/scripts/codex-companion.mjs' task '<task> *)",
       "Bash(pnpm --filter @stoneboyz/api typecheck)",
-      "Bash(pnpm --filter @stoneboyz/web typecheck)"
+      "Bash(pnpm --filter @stoneboyz/web typecheck)",
+      "Bash(pnpm generate *)",
+      "Bash(pnpm spec:check)",
+      "Bash(pnpm typecheck:web)",
+      "Bash(npx vitest *)",
+      "Bash(cd * && pnpm test *)",
+      "Bash(cd * && pnpm test:integration *)",
+      "Bash(cd * && pnpm -C apps/api typecheck *)",
+      "Bash(cd * && pnpm --filter * typecheck *)",
+      "Bash(node \"C:/Users/Lenovo 02/.claude/plugins/cache/openai-codex/codex/*/scripts/codex-companion.mjs\" *)"
     ],
     "additionalDirectories": [
       "C:\\Users\\Lenovo 02\\.claude\\plugins\\marketplaces\\multica-ai",

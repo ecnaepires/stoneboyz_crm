@@ -1,13 +1,19 @@
 import { describe, expect, it } from "vitest";
 import {
+  backsplashCornerCandidatesForEdges,
   buildChainFromClicks,
   buildChainFromDragPath,
   chainShapeGeometry,
   mergeDrawingBoundaryEdges,
   rectUnionBoundaryEdges,
   rectsToChainSegments,
+  visibleBoundaryEdges,
 } from "./geometry.js";
+import * as geometryModule from "./geometry.js";
 import type { ChainShapeLayout, DrawingShapeRect } from "./types.js";
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const geo = geometryModule as any;
 
 const SCALE = 3;
 const depth = 25.5 * SCALE;
@@ -215,5 +221,208 @@ describe("buildChainFromDragPath", () => {
     ]);
     expect(shape?.segments[0]).toMatchObject({ x: 0, y: 0, w: 60 });
     expect(shape?.segments[1]).toMatchObject({ y: 0, h: 60 });
+  });
+});
+
+// ─── Regression Catalog ───────────────────────────────────────────────────────
+// Each test corresponds to a known failure. All must be RED before the fix,
+// GREEN after. Do not delete passing tests — they are the gate.
+
+const RC_SCALE = 3;
+
+describe("RC-01 — backsplash snaps to offset line, not boundary edge", () => {
+  it("excludes boundary edge candidates for an edge side that has a wall reference line", () => {
+    // Piece: 96 in × 25.5 in horizontal segment at origin (scale 3 = pixels)
+    const rects: DrawingShapeRect[] = [
+      { x: 0, y: 0, w: 96 * RC_SCALE, h: 25.5 * RC_SCALE },
+    ];
+    const boundaryEdges = mergeDrawingBoundaryEdges(rectUnionBoundaryEdges(rects));
+
+    // Wall offset: 2 in inward from top edge → offset line at y = 2 * RC_SCALE = 6px
+    const offsetY = 2 * RC_SCALE;
+    const referenceLines = [
+      {
+        id: "offset-line",
+        pieceId: "piece-1",
+        from: [0, offsetY] as [number, number],
+        to: [96 * RC_SCALE, offsetY] as [number, number],
+        kind: "wall" as const,
+        color: "#78aa72",
+        dash: false,
+      },
+    ];
+
+    const candidates = backsplashCornerCandidatesForEdges({
+      pieceId: "piece-1",
+      rects,
+      boundaryEdges,
+      referenceLines,
+      wallColor: "#78aa72",
+    });
+
+    // Wall line occupies the "top" edge side.
+    // Boundary-edge candidates at y=0 (also "top") must be EXCLUDED —
+    // otherwise cursor-distance sort picks y=0 over y=6 when user clicks near boundary.
+    const topEdgeCandidates = candidates.filter((c) => c.edge === "top");
+    const boundaryOnTopEdge = topEdgeCandidates.filter((c) => Math.abs(c.y) < 0.01);
+    expect(boundaryOnTopEdge).toHaveLength(0);
+
+    // Wall-line candidates on top edge must be present
+    const wallOnTopEdge = topEdgeCandidates.filter((c) => Math.abs(c.y - offsetY) < 0.01);
+    expect(wallOnTopEdge.length).toBeGreaterThan(0);
+  });
+});
+
+describe("RC-02 — legacy type:'l' shape converts to valid chain", () => {
+  it("legacyShapeToChain converts LShapeLayout to ChainShapeLayout with 6 boundary edges", () => {
+    // Fails until legacyShapeToChain is exported from geometry.ts.
+    // LShapeLayout needs piece dimensions to reconstruct the full shape.
+    const legacyShapeToChain = geo.legacyShapeToChain;
+    expect(legacyShapeToChain).toBeDefined();
+
+    // piece: 120 in × 60 in main body. Leg at bottom-left (legX=0, legY=0): 25.5 in × 40 in notch
+    const piece = { lengthIn: 120, widthIn: 60 };
+    const lShape = {
+      type: "l" as const,
+      legX: 0,
+      legY: 0,
+      legWidthIn: 25.5,
+      legLengthIn: 40,
+    };
+
+    const chain = legacyShapeToChain(lShape, piece, RC_SCALE);
+    expect(chain.type).toBe("chain");
+    expect(chain.segments.length).toBeGreaterThanOrEqual(2);
+
+    const result = chainShapeGeometry(chain);
+    // L-shape has 6 corners → 6 boundary edges
+    expect(result.edges.length).toBe(6);
+  });
+});
+
+describe("RC-03 — legacy type:'z' shape converts to valid chain", () => {
+  it("legacyShapeToChain converts ZShapeLayout to chain with 8 boundary edges", () => {
+    const legacyShapeToChain = geo.legacyShapeToChain;
+    expect(legacyShapeToChain).toBeDefined();
+
+    // piece: 60 in × 100 in. Leg at bottom-right, tail at top-left → Z silhouette.
+    // pixel coords: mainW=180, mainH=300, leg/tail width=25.5*3=76.5px
+    const piece = { lengthIn: 60, widthIn: 100 };
+    const legH = 30 * RC_SCALE;   // 30 in tall leg, in pixels
+    const tailH = 30 * RC_SCALE;
+    const legW = 25.5 * RC_SCALE;
+    const tailW = 25.5 * RC_SCALE;
+    const mainH = piece.widthIn * RC_SCALE;
+    const mainW = piece.lengthIn * RC_SCALE;
+
+    const zShape = {
+      type: "z" as const,
+      // Leg extends beyond bottom-right of main body
+      legX: mainW - legW,
+      legY: mainH - legH,
+      legWidthIn: 25.5,
+      legLengthIn: 30,
+      // Tail extends beyond top-left of main body
+      tailX: 0,
+      tailY: -tailH,
+      tailLengthIn: 30,
+      tailWidthIn: 25.5,
+    };
+
+    const chain = legacyShapeToChain(zShape, piece, RC_SCALE);
+    expect(chain.type).toBe("chain");
+
+    const result = chainShapeGeometry(chain);
+    // Z-shape has 8 corners → 8 boundary edges
+    expect(result.edges.length).toBe(8);
+  });
+});
+
+describe("RC-04 — edge treatment survives segment extend", () => {
+  it("top edge keeps 'finished' treatment after extending right end by 12 in", () => {
+    // Fails until applyExtendToSegment is exported from geometry.ts
+    const applyExtendToSegment = geo.applyExtendToSegment;
+    expect(applyExtendToSegment).toBeDefined();
+
+    const originalSegment = {
+      x: 0,
+      y: 0,
+      w: 60 * SCALE,
+      h: 25.5 * SCALE,
+      lengthIn: 60,
+      widthIn: 25.5,
+      orientation: "horizontal" as const,
+    };
+
+    // Extend right end by 12 in
+    const extended = applyExtendToSegment({ segment: originalSegment, side: "right", deltaIn: 12, scale: SCALE });
+
+    expect(extended.lengthIn).toBe(72);
+    expect(extended.w).toBe(72 * SCALE);
+
+    // The top edge identity (top side of this horizontal segment) must be stable
+    // Caller can re-derive edge coords from new segment; treatment key must not change
+    // Treatment is keyed by segment index + side, not pixel coords
+    expect(extended.x).toBe(0);
+    expect(extended.y).toBe(0);
+  });
+});
+
+describe("RC-05 — measurement labels read from lengthIn, not w/scale", () => {
+  it("segment dimension label equals lengthIn even when pixel width drifts", () => {
+    // Fails until segmentDimensionLabel is exported from geometry.ts
+    const segmentDimensionLabel = geo.segmentDimensionLabel;
+    expect(segmentDimensionLabel).toBeDefined();
+
+    const segment = {
+      x: 0,
+      y: 0,
+      w: 288,       // 96 * 3
+      h: 76.5,      // 25.5 * 3
+      lengthIn: 96,
+      widthIn: 25.5,
+      orientation: "horizontal" as const,
+    };
+
+    expect(segmentDimensionLabel(segment, "length")).toBe(96);
+    expect(segmentDimensionLabel(segment, "width")).toBe(25.5);
+
+    // Simulate pixel drift
+    const drifted = { ...segment, w: 289 };
+    expect(segmentDimensionLabel(drifted, "length")).toBe(96);
+    expect(segmentDimensionLabel(drifted, "length")).not.toBe(drifted.w / SCALE);
+  });
+});
+
+describe("RC-06 — extend preserves reference lines", () => {
+  it("reference lines attached to a piece are unchanged after extend", () => {
+    // Fails until applyExtendToSegment is exported from geometry.ts
+    const applyExtendToSegment = geo.applyExtendToSegment;
+    expect(applyExtendToSegment).toBeDefined();
+
+    const segment = {
+      x: 0, y: 0, w: 60 * RC_SCALE, h: 25.5 * RC_SCALE,
+      lengthIn: 60, widthIn: 25.5, orientation: "horizontal" as const,
+    };
+    const referenceLine = {
+      id: "ref-1",
+      pieceId: "piece-1",
+      from: [0, 0] as [number, number],
+      to: [60 * SCALE, 0] as [number, number],
+      kind: "cabinet" as const,
+      color: "#6b7280",
+      dash: true,
+    };
+
+    const extended = applyExtendToSegment({
+      segment,
+      side: "right",
+      deltaIn: 12,
+      scale: SCALE,
+      referenceLines: [referenceLine],
+    });
+
+    // Reference lines must pass through unchanged
+    expect(extended.referenceLines).toEqual([referenceLine]);
   });
 });
