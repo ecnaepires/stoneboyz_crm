@@ -23,6 +23,7 @@ export type {
 export {
   applyOffsetToSegments,
   AUTO_CLOSE_THRESHOLD_IN,
+  backsplashCornerCandidatesForEdges,
   buildDeletedLine,
   buildChainFromClicks,
   buildChainFromDragPath,
@@ -31,6 +32,7 @@ export {
   buildOffsetSegment,
   buildReferenceLine,
   buildReferenceLineCornerVisuals,
+  extendReferenceLineToEdges,
   chainFreeEnd,
   chainInnerDepthGuides,
   chainSegmentAttachmentAxisSide,
@@ -48,6 +50,7 @@ export {
   GRID_SNAP_IN,
   isChainShape,
   isRectangularUnion,
+  legacyShapeToChain,
   mergeDrawingBoundaryEdges,
   normalizeDrawingRectUnion,
   rectsToChainSegments,

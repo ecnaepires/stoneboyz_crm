@@ -48,13 +48,17 @@ import {
 } from "./drawing-colors";
 import {
   applyOffsetToSegments,
+  backsplashCornerCandidatesForEdges,
   buildReferenceLine,
   buildReferenceLineCornerVisuals,
   buildDeletedLine,
+  extendReferenceLineToEdges,
   isRectangularUnion,
+  legacyShapeToChain,
   removeReferenceLine,
   visibleBoundaryEdges,
 } from "@stoneboyz/domain";
+import type { DrawingReferenceLine } from "@stoneboyz/domain";
 
 const SCALE = 3;
 const PIECE_GAP = 40;
@@ -92,6 +96,7 @@ type Tool =
   | "select"
   | "offset"
   | "connect"
+  | "extend"
   | "deleteLine"
   | "centerline"
   | "paint"
@@ -108,6 +113,7 @@ type EdgeTreatment =
   | "splash"
   | "unfinished"
   | "additionalFinished";
+const RECTANGLE_EDGE_KEYS: EdgeKey[] = ["top", "right", "bottom", "left"];
 type SinkType = "undermount" | "drop_in" | "farm";
 type SinkShape =
   | "rectangle"
@@ -385,11 +391,13 @@ interface BacksplashSnapPoint {
 
 interface BacksplashCornerSnap extends BacksplashSnapPoint {
   corner: CornerKey;
+  edgeFrom: [number, number];
+  edgeTo: [number, number];
 }
 
 interface BacksplashSpan {
-  dot1: BacksplashSnapPoint;
-  dot2: BacksplashSnapPoint;
+  dot1: BacksplashCornerSnap;
+  dot2: BacksplashCornerSnap;
 }
 
 interface ChainEdgeActionState {
@@ -647,59 +655,49 @@ function edgeValue(piece: DrawingPiece, edge: EdgeKey) {
   return edge === "top" || edge === "bottom" ? piece.lengthIn : piece.widthIn;
 }
 
-function nearestBacksplashCorner(params: {
-  pieceId: string;
-  x: number;
-  y: number;
-  width: number;
-  height: number;
-  tolerance?: number;
-}): BacksplashCornerSnap | null {
-  const tolerance = params.tolerance ?? 18;
+function backsplashCornerCandidatesForPiece(params: {
+  piece: DrawingPiece;
+  pieceLayout: PieceLayout;
+  referenceLines: ReferenceLineLayout[];
+}): BacksplashCornerSnap[] {
+  const rects = drawingRectsForPiece(params.piece, params.pieceLayout);
 
-  const corners: BacksplashCornerSnap[] = [
-    {
-      pieceId: params.pieceId,
-      edge: "top",
-      corner: "topLeft",
-      x: 0,
-      y: 0,
-    },
-    {
-      pieceId: params.pieceId,
-      edge: "top",
-      corner: "topRight",
-      x: params.width,
-      y: 0,
-    },
-    {
-      pieceId: params.pieceId,
-      edge: "bottom",
-      corner: "bottomRight",
-      x: params.width,
-      y: params.height,
-    },
-    {
-      pieceId: params.pieceId,
-      edge: "bottom",
-      corner: "bottomLeft",
-      x: 0,
-      y: params.height,
-    },
-  ];
+  const boundaryEdges =
+    params.pieceLayout.shape &&
+    (isChainShape(params.pieceLayout.shape) ||
+      isZShape(params.pieceLayout.shape) ||
+      isLShape(params.pieceLayout.shape))
+      ? visibleBoundaryEdges({ rects, deletedLines: [] })
+      : [
+          rectangleShapeEdge(
+            params.piece.lengthIn * SCALE,
+            params.piece.widthIn * SCALE,
+            "top",
+          ),
+          rectangleShapeEdge(
+            params.piece.lengthIn * SCALE,
+            params.piece.widthIn * SCALE,
+            "right",
+          ),
+          rectangleShapeEdge(
+            params.piece.lengthIn * SCALE,
+            params.piece.widthIn * SCALE,
+            "bottom",
+          ),
+          rectangleShapeEdge(
+            params.piece.lengthIn * SCALE,
+            params.piece.widthIn * SCALE,
+            "left",
+          ),
+        ];
 
-  let nearest: BacksplashCornerSnap | null = null;
-  let nearestDistance = Number.POSITIVE_INFINITY;
-
-  for (const corner of corners) {
-    const distance = Math.hypot(params.x - corner.x, params.y - corner.y);
-    if (distance < nearestDistance) {
-      nearest = corner;
-      nearestDistance = distance;
-    }
-  }
-
-  return nearestDistance <= tolerance ? nearest : null;
+  return backsplashCornerCandidatesForEdges({
+    pieceId: params.piece.id,
+    rects,
+    boundaryEdges,
+    referenceLines: params.referenceLines,
+    wallColor: PIECE_STROKE,
+  });
 }
 
 function areAdjacentBacksplashCorners(
@@ -707,20 +705,35 @@ function areAdjacentBacksplashCorners(
   second: BacksplashCornerSnap,
 ): boolean {
   if (first.pieceId !== second.pieceId) return false;
-  if (first.corner === second.corner) return false;
+  if (valuesNear(first.x, second.x) && valuesNear(first.y, second.y)) {
+    return false;
+  }
 
-  const adjacentPairs = new Set([
-    "topLeft:topRight",
-    "topRight:bottomRight",
-    "bottomRight:bottomLeft",
-    "bottomLeft:topLeft",
-    "topRight:topLeft",
-    "bottomRight:topRight",
-    "bottomLeft:bottomRight",
-    "topLeft:bottomLeft",
-  ]);
+  // Fast path: both corners report the exact same edge identity.
+  if (
+    shapeEdgesEqual(
+      { from: first.edgeFrom, to: first.edgeTo },
+      { from: second.edgeFrom, to: second.edgeTo },
+    )
+  ) {
+    return true;
+  }
 
-  return adjacentPairs.has(`${first.corner}:${second.corner}`);
+  // Geometry path: the two clicked corners form an axis-aligned span (one side
+  // of the piece) and each corner's edge runs parallel to that span. This makes
+  // long edges work even when one corner snaps to a green wall-offset line and
+  // the other to the boundary edge, which produce different edge identities.
+  const spanHorizontal = valuesNear(first.y, second.y);
+  const spanVertical = valuesNear(first.x, second.x);
+  if (spanHorizontal === spanVertical) return false;
+
+  const firstEdgeHorizontal = valuesNear(first.edgeFrom[1], first.edgeTo[1]);
+  const secondEdgeHorizontal = valuesNear(second.edgeFrom[1], second.edgeTo[1]);
+
+  return (
+    firstEdgeHorizontal === spanHorizontal &&
+    secondEdgeHorizontal === spanHorizontal
+  );
 }
 
 function nearestRectangleEdge(
@@ -1585,15 +1598,6 @@ function valuesNear(a: number, b: number) {
   return Math.abs(a - b) <= CHAIN_JOIN_TOLERANCE_PX;
 }
 
-function rangesOverlap(
-  startA: number,
-  endA: number,
-  startB: number,
-  endB: number,
-) {
-  return Math.min(endA, endB) - Math.max(startA, startB) > 0.001;
-}
-
 function shapeEdgesEqual(left: ShapeEdge, right: ShapeEdge) {
   return (
     valuesNear(left.from[0], right.from[0]) &&
@@ -1661,11 +1665,8 @@ function drawingRectsForPiece(
   if (pieceLayout.shape && isChainShape(pieceLayout.shape)) {
     return chainShapeGeometry(pieceLayout.shape).rects;
   }
-  if (pieceLayout.shape && isZShape(pieceLayout.shape)) {
-    return zShapeGeometry(piece, pieceLayout.shape).rects;
-  }
-  if (pieceLayout.shape && isLShape(pieceLayout.shape)) {
-    return lShapeGeometry(piece, pieceLayout.shape).rects;
+  if (pieceLayout.shape && (isZShape(pieceLayout.shape) || isLShape(pieceLayout.shape))) {
+    return chainShapeGeometry(legacyShapeToChain(pieceLayout.shape, piece, SCALE)).rects;
   }
 
   return [
@@ -1716,15 +1717,15 @@ function pieceIdAtCanvasPoint(params: {
   return null;
 }
 
-function nearestBacksplashCornerAtCanvasPoint(params: {
+function backsplashCornersAtCanvasPoint(params: {
   point: { x: number; y: number };
   pieces: DrawingPiece[];
   layouts: PieceLayout[];
+  referenceLines: ReferenceLineLayout[];
   tolerance?: number;
-}): BacksplashCornerSnap | null {
+}): BacksplashCornerSnap[] {
   const tolerance = params.tolerance ?? 24;
-  let nearest: BacksplashCornerSnap | null = null;
-  let nearestDistance = Number.POSITIVE_INFINITY;
+  const hits: Array<{ corner: BacksplashCornerSnap; distance: number }> = [];
 
   for (let index = params.layouts.length - 1; index >= 0; index -= 1) {
     const pieceLayout = params.layouts[index];
@@ -1734,28 +1735,66 @@ function nearestBacksplashCornerAtCanvasPoint(params: {
     if (!piece || piece.kind === "backsplash") continue;
 
     const localPoint = canvasPointToPiecePoint(pieceLayout, params.point);
-    const corner = nearestBacksplashCorner({
-      pieceId: piece.id,
-      x: localPoint.x,
-      y: localPoint.y,
-      width: piece.lengthIn * SCALE,
-      height: piece.widthIn * SCALE,
-      tolerance,
+    const candidates = backsplashCornerCandidatesForPiece({
+      piece,
+      pieceLayout,
+      referenceLines: params.referenceLines,
     });
 
-    if (!corner) continue;
-
-    const distance = Math.hypot(
-      localPoint.x - corner.x,
-      localPoint.y - corner.y,
-    );
-    if (distance < nearestDistance) {
-      nearest = corner;
-      nearestDistance = distance;
+    for (const corner of candidates) {
+      const distance = Math.hypot(
+        localPoint.x - corner.x,
+        localPoint.y - corner.y,
+      );
+      if (distance <= tolerance) {
+        hits.push({ corner, distance });
+      }
     }
   }
 
-  return nearest;
+  return hits
+    .sort((left, right) => left.distance - right.distance)
+    .map((hit) => hit.corner);
+}
+
+function backsplashCornerAlternativesForSnap(params: {
+  snap: BacksplashCornerSnap;
+  pieces: DrawingPiece[];
+  layouts: PieceLayout[];
+  referenceLines: ReferenceLineLayout[];
+}): BacksplashCornerSnap[] {
+  const pieceLayout = params.layouts.find(
+    (layout) => layout.pieceId === params.snap.pieceId,
+  );
+  const piece = params.pieces.find((item) => item.id === params.snap.pieceId);
+  if (!pieceLayout || !piece) return [params.snap];
+
+  const candidates = backsplashCornerCandidatesForPiece({
+    piece,
+    pieceLayout,
+    referenceLines: params.referenceLines,
+  }).filter(
+    (corner) =>
+      valuesNear(corner.x, params.snap.x) &&
+      valuesNear(corner.y, params.snap.y),
+  );
+
+  return candidates.length > 0 ? candidates : [params.snap];
+}
+
+function chooseBacksplashSpan(
+  firstCandidates: BacksplashCornerSnap[],
+  secondCandidates: BacksplashCornerSnap[],
+): BacksplashSpan | null {
+  for (const first of firstCandidates) {
+    for (const second of secondCandidates) {
+      if (areAdjacentBacksplashCorners(first, second)) {
+        return { dot1: first, dot2: second };
+      }
+    }
+  }
+
+  return null;
 }
 
 function chainSegmentAttachmentSide(
@@ -2156,6 +2195,10 @@ export function DrawingCanvasInner({
   const [layout, setLayout] = useState<CanvasLayout>(() =>
     mergeLayout(initialLayout, pieces, sinks),
   );
+  const [layoutHistory, setLayoutHistory] = useState<{
+    past: CanvasLayout[];
+    future: CanvasLayout[];
+  }>({ past: [], future: [] });
   const [selectedPieceId, setSelectedPieceId] = useState<string | null>(null);
   const [selectedPieceIds, setSelectedPieceIds] = useState<string[]>([]);
   const [selectedSinkId, setSelectedSinkId] = useState<string | null>(null);
@@ -2215,6 +2258,7 @@ export function DrawingCanvasInner({
   const [segmentPreview, setSegmentPreview] = useState<SegmentPreview | null>(
     null,
   );
+  const segmentCommittedOnPointerDownRef = useRef(false);
   const [editDraft, setEditDraft] = useState<{
     pieceId: string;
     name: string;
@@ -2264,8 +2308,30 @@ export function DrawingCanvasInner({
   const [canvasHeight, setCanvasHeight] = useState(CANVAS_H);
   const layoutRef = useRef(layout);
   layoutRef.current = layout;
+  const layoutHistoryRef = useRef(layoutHistory);
+  layoutHistoryRef.current = layoutHistory;
+  const layoutHistoryModeRef = useRef<"record" | "skip">("record");
+  const lastLayoutForHistoryRef = useRef(layout);
 
   useEffect(() => {
+    const previousLayout = lastLayoutForHistoryRef.current;
+    if (previousLayout === layout) return;
+
+    if (layoutHistoryModeRef.current === "skip") {
+      layoutHistoryModeRef.current = "record";
+      lastLayoutForHistoryRef.current = layout;
+      return;
+    }
+
+    setLayoutHistory((prev) => ({
+      past: [...prev.past.slice(-49), previousLayout],
+      future: [],
+    }));
+    lastLayoutForHistoryRef.current = layout;
+  }, [layout]);
+
+  useEffect(() => {
+    layoutHistoryModeRef.current = "skip";
     setLayout((currentLayout) => {
       const nextLayout = mergeLayout(initialLayout, pieces, sinks);
       const currentPieces = new Map(
@@ -2294,6 +2360,9 @@ export function DrawingCanvasInner({
   useEffect(() => {
     setSaveNotes("");
     setIsDirty(false);
+    setLayoutHistory({ past: [], future: [] });
+    layoutHistoryModeRef.current = "skip";
+    lastLayoutForHistoryRef.current = layoutRef.current;
   }, [latestRevision?.id]);
 
   useEffect(() => {
@@ -2418,6 +2487,59 @@ export function DrawingCanvasInner({
     setSaveModalOpen(false);
     setRevisionsOpen(false);
   }, []);
+
+  const resetLayoutActionState = useCallback(() => {
+    setSelectedPieceId(null);
+    setSelectedPieceIds([]);
+    setSelectedSinkId(null);
+    setSinkPaletteId(null);
+    setContextMenu(null);
+    setSinkContextMenu(null);
+    setEdgeEditor(null);
+    setCornerEditor(null);
+    setEdgeTreatmentEditor(null);
+    setEditDraft(null);
+    setMarqueeSelection(null);
+    setSelectionDrag(null);
+    setSegmentStart(null);
+    setSegmentPreview(null);
+    setBacksplashPopupOpen(false);
+    setSelectedBacksplashCorner(null);
+    setConfirmedBacksplashSpan(null);
+    setCanvasError(null);
+  }, []);
+
+  const undoLayout = useCallback(() => {
+    const history = layoutHistoryRef.current;
+    const previous = history.past[history.past.length - 1];
+    if (!previous) return;
+
+    const current = layoutRef.current;
+    layoutHistoryModeRef.current = "skip";
+    setLayoutHistory({
+      past: history.past.slice(0, -1),
+      future: [current, ...history.future].slice(0, 50),
+    });
+    setLayout(previous);
+    resetLayoutActionState();
+    markDirty();
+  }, [markDirty, resetLayoutActionState]);
+
+  const redoLayout = useCallback(() => {
+    const history = layoutHistoryRef.current;
+    const next = history.future[0];
+    if (!next) return;
+
+    const current = layoutRef.current;
+    layoutHistoryModeRef.current = "skip";
+    setLayoutHistory({
+      past: [...history.past.slice(-49), current],
+      future: history.future.slice(1),
+    });
+    setLayout(next);
+    resetLayoutActionState();
+    markDirty();
+  }, [markDirty, resetLayoutActionState]);
 
   const screenToCanvas = useCallback(
     (point: { x: number; y: number }) => {
@@ -3305,10 +3427,12 @@ export function DrawingCanvasInner({
           pieces.length,
           layoutRef.current.pieces.length,
         );
+        const nextBacksplashNumber =
+          pieces.filter((p) => p.kind === "backsplash").length + 1;
 
         const formData = new FormData();
         formData.set("sortOrder", String(nextPieceIndex));
-        formData.set("name", `Backsplash ${nextPieceIndex + 1}`);
+        formData.set("name", `B/S${nextBacksplashNumber}`);
         formData.set("lengthIn", String(lengthIn));
         formData.set("widthIn", String(heightIn));
         formData.set("quantity", "1");
@@ -3643,20 +3767,9 @@ export function DrawingCanvasInner({
       const shapeSegments =
         pieceLayout.shape && isChainShape(pieceLayout.shape)
           ? pieceLayout.shape.segments
-          : rectsToChainSegments(
-              pieceLayout.shape && isZShape(pieceLayout.shape)
-                ? zShapeGeometry(piece, pieceLayout.shape).rects
-                : pieceLayout.shape && isLShape(pieceLayout.shape)
-                  ? lShapeGeometry(piece, pieceLayout.shape).rects
-                  : [
-                      {
-                        x: 0,
-                        y: 0,
-                        w: piece.lengthIn * SCALE,
-                        h: piece.widthIn * SCALE,
-                      },
-                    ],
-            );
+          : pieceLayout.shape && (isZShape(pieceLayout.shape) || isLShape(pieceLayout.shape))
+            ? legacyShapeToChain(pieceLayout.shape, piece, SCALE).segments
+            : rectsToChainSegments([{ x: 0, y: 0, w: piece.lengthIn * SCALE, h: piece.widthIn * SCALE }]);
       const segment = shapeSegments[segmentIndex];
       if (!segment) return;
 
@@ -3669,7 +3782,7 @@ export function DrawingCanvasInner({
         pieceId,
       });
       const matchingReferenceLines = currentLayout.referenceLines.filter(
-        (line) =>
+        (line): line is ReferenceLineLayout & { kind: "wall" } =>
           line.pieceId === pieceId &&
           line.kind === "wall" &&
           line.color === PIECE_STROKE &&
@@ -3914,18 +4027,9 @@ export function DrawingCanvasInner({
       const rects =
         pieceLayout.shape && isChainShape(pieceLayout.shape)
           ? chainShapeGeometry(pieceLayout.shape).rects
-          : pieceLayout.shape && isZShape(pieceLayout.shape)
-            ? zShapeGeometry(piece, pieceLayout.shape).rects
-            : pieceLayout.shape && isLShape(pieceLayout.shape)
-              ? lShapeGeometry(piece, pieceLayout.shape).rects
-              : [
-                  {
-                    x: 0,
-                    y: 0,
-                    w: piece.lengthIn * SCALE,
-                    h: piece.widthIn * SCALE,
-                  },
-                ];
+          : pieceLayout.shape && (isZShape(pieceLayout.shape) || isLShape(pieceLayout.shape))
+            ? chainShapeGeometry(legacyShapeToChain(pieceLayout.shape, piece, SCALE)).rects
+            : [{ x: 0, y: 0, w: piece.lengthIn * SCALE, h: piece.widthIn * SCALE }];
       const localPointer = canvasPointToPiecePoint(pieceLayout, pointer);
       if (
         tool !== "offset" &&
@@ -3977,15 +4081,9 @@ export function DrawingCanvasInner({
         const editableSegments =
           pieceLayout?.shape && isChainShape(pieceLayout.shape)
             ? pieceLayout.shape.segments
-            : pieceLayout?.shape && isZShape(pieceLayout.shape)
-              ? rectsToChainSegments(
-                  zShapeGeometry(basePiece, pieceLayout.shape).rects,
-                )
-              : pieceLayout?.shape && isLShape(pieceLayout.shape)
-                ? rectsToChainSegments(
-                    lShapeGeometry(basePiece, pieceLayout.shape).rects,
-                  )
-                : null;
+            : pieceLayout?.shape && (isZShape(pieceLayout.shape) || isLShape(pieceLayout.shape))
+              ? legacyShapeToChain(pieceLayout.shape, basePiece, SCALE).segments
+              : null;
 
         if (editableSegments) {
           const editedSegment = editableSegments[edgeEditor.segmentIndex];
@@ -4723,6 +4821,143 @@ export function DrawingCanvasInner({
     ],
   );
 
+  const resetSegmentInteraction = useCallback(() => {
+    setSegmentStart(null);
+    setSegmentPreview(null);
+  }, []);
+
+  const addSegmentLine = useCallback(
+    (preview: SegmentPreview) => {
+      const length = Math.hypot(
+        preview.to.x - preview.from.x,
+        preview.to.y - preview.from.y,
+      );
+      if (length < 4) return;
+
+      const pieceId =
+        selectedPieceId ??
+        pieceIdAtCanvasPoint({
+          point: preview.from,
+          pieces,
+          layouts: layoutRef.current.pieces,
+        });
+      if (!pieceId) {
+        setCanvasError(
+          "Select a counter piece or start the segment on a piece.",
+        );
+        return;
+      }
+      const pieceLayout = layoutRef.current.pieces.find(
+        (piece) => piece.pieceId === pieceId,
+      );
+      if (!pieceLayout) {
+        setCanvasError(
+          "Select a counter piece or start the segment on a piece.",
+        );
+        return;
+      }
+      const from = canvasPointToPiecePoint(pieceLayout, preview.from);
+      const to = canvasPointToPiecePoint(pieceLayout, preview.to);
+
+      setLayout((prev) => ({
+        ...prev,
+        referenceLines: [
+          ...prev.referenceLines,
+          buildReferenceLine({
+            id: lineId("segment"),
+            pieceId,
+            edge: {
+              from: [from.x, from.y],
+              to: [to.x, to.y],
+            },
+            kind: "cabinet",
+            color: PIECE_STROKE,
+          }),
+        ],
+      }));
+      markDirty();
+    },
+    [markDirty, pieces, selectedPieceId],
+  );
+
+  const handleSegmentPointerDown = useCallback(
+    (pointer: { x: number; y: number }) => {
+      if (segmentStart) {
+        segmentCommittedOnPointerDownRef.current = true;
+        addSegmentLine({ from: segmentStart, to: pointer });
+        resetSegmentInteraction();
+        return;
+      }
+      setSelectedPieceId(null);
+      setSelectedPieceIds([]);
+      setSelectedSinkId(null);
+      setSegmentStart(pointer);
+      setSegmentPreview({ from: pointer, to: pointer });
+    },
+    [addSegmentLine, resetSegmentInteraction, segmentStart],
+  );
+
+  const extendReferenceLine = useCallback(
+    (pieceId: string, referenceLineId?: string) => {
+      const currentLayout = layoutRef.current;
+      const pieceLayout = currentLayout.pieces.find(
+        (item) => item.pieceId === pieceId,
+      );
+      const piece = pieces.find((item) => item.id === pieceId);
+      if (!pieceLayout || !piece) return;
+
+      const rects = drawingRectsForPiece(piece, pieceLayout);
+      const boundaryEdges = visibleBoundaryEdges({
+        rects,
+        deletedLines: currentLayout.deletedLines.filter(
+          (line) => line.pieceId === pieceId,
+        ),
+      });
+      const targetLines = currentLayout.referenceLines.filter(
+        (line) =>
+          line.pieceId === pieceId &&
+          (!referenceLineId || line.id === referenceLineId) &&
+          (line.kind === "centerline" || line.kind === "cabinet"),
+      );
+
+      const extendedLines = new Map<string, ShapeEdge>();
+      targetLines.forEach((line) => {
+        const extended = extendReferenceLineToEdges({
+          line,
+          rects,
+          boundaryEdges,
+          referenceLines: currentLayout.referenceLines,
+          wallColor: PIECE_STROKE,
+        });
+        if (extended && !shapeEdgeMatchesLine(extended, line)) {
+          extendedLines.set(line.id, extended);
+        }
+      });
+
+      if (extendedLines.size === 0) {
+        setCanvasError("Click a horizontal or vertical line to extend.");
+        return;
+      }
+
+      setLayout((prev) => ({
+        ...prev,
+        referenceLines: prev.referenceLines.map((line) => {
+          const extended = extendedLines.get(line.id);
+          return extended
+            ? {
+                ...line,
+                from: extended.from,
+                to: extended.to,
+              }
+            : line;
+        }),
+      }));
+      setCanvasError(null);
+      markDirty();
+    },
+    [markDirty, pieces],
+  );
+
   const handleStageMouseDown = useCallback(
     (e: { target: { getStage: () => unknown } }) => {
       if (!isDraft) return;
@@ -4739,11 +4974,13 @@ export function DrawingCanvasInner({
       }
 
       if (tool === "backsplash") {
-        const corner = nearestBacksplashCornerAtCanvasPoint({
+        const cornerCandidates = backsplashCornersAtCanvasPoint({
           point: pointer,
           pieces,
           layouts: layoutRef.current.pieces,
+          referenceLines: layoutRef.current.referenceLines,
         });
+        const corner = cornerCandidates[0] ?? null;
 
         if (!corner) {
           return;
@@ -4755,16 +4992,23 @@ export function DrawingCanvasInner({
           return;
         }
 
-        if (!areAdjacentBacksplashCorners(selectedBacksplashCorner, corner)) {
+        const span = chooseBacksplashSpan(
+          backsplashCornerAlternativesForSnap({
+            snap: selectedBacksplashCorner,
+            pieces,
+            layouts: layoutRef.current.pieces,
+            referenceLines: layoutRef.current.referenceLines,
+          }),
+          cornerCandidates,
+        );
+
+        if (!span) {
           setCanvasError("Choose an adjacent corner.");
           return;
         }
 
         setCanvasError(null);
-        setConfirmedBacksplashSpan({
-          dot1: selectedBacksplashCorner,
-          dot2: corner,
-        });
+        setConfirmedBacksplashSpan(span);
         setSelectedBacksplashCorner(null);
         return;
       }
@@ -4808,11 +5052,7 @@ export function DrawingCanvasInner({
       }
 
       if (tool === "segment") {
-        setSelectedPieceId(null);
-        setSelectedPieceIds([]);
-        setSelectedSinkId(null);
-        setSegmentStart(pointer);
-        setSegmentPreview({ from: pointer, to: pointer });
+        handleSegmentPointerDown(pointer);
         return;
       }
 
@@ -4835,6 +5075,7 @@ export function DrawingCanvasInner({
       chainEdgeAction,
       confirmedBacksplashSpan,
       getPointer,
+      handleSegmentPointerDown,
       isDraft,
       pan,
       pieces,
@@ -4934,54 +5175,6 @@ export function DrawingCanvasInner({
     setDrawPath([]);
     setDrawPreview(null);
   }, []);
-
-  const resetSegmentInteraction = useCallback(() => {
-    setSegmentStart(null);
-    setSegmentPreview(null);
-  }, []);
-
-  const addSegmentLine = useCallback(
-    (preview: SegmentPreview) => {
-      const length = Math.hypot(
-        preview.to.x - preview.from.x,
-        preview.to.y - preview.from.y,
-      );
-      if (length < 4) return;
-
-      const pieceId =
-        selectedPieceId ??
-        pieceIdAtCanvasPoint({
-          point: preview.from,
-          pieces,
-          layouts: layoutRef.current.pieces,
-        });
-      if (!pieceId) {
-        setCanvasError(
-          "Select a counter piece or start the segment on a piece.",
-        );
-        return;
-      }
-
-      setLayout((prev) => ({
-        ...prev,
-        referenceLines: [
-          ...prev.referenceLines,
-          buildReferenceLine({
-            id: lineId("segment"),
-            pieceId,
-            edge: {
-              from: [preview.from.x, preview.from.y],
-              to: [preview.to.x, preview.to.y],
-            },
-            kind: "cabinet",
-            color: PIECE_STROKE,
-          }),
-        ],
-      }));
-      markDirty();
-    },
-    [markDirty, pieces, selectedPieceId],
-  );
 
   const handleStageMouseUp = useCallback(() => {
     if (panStart) {
@@ -5091,10 +5284,20 @@ export function DrawingCanvasInner({
     };
 
     const handleWindowMouseUp = () => {
-      if (segmentPreview) {
-        addSegmentLine(segmentPreview);
+      if (segmentCommittedOnPointerDownRef.current) {
+        segmentCommittedOnPointerDownRef.current = false;
+        return;
       }
-      resetSegmentInteraction();
+      if (
+        segmentPreview &&
+        Math.hypot(
+          segmentPreview.to.x - segmentPreview.from.x,
+          segmentPreview.to.y - segmentPreview.from.y,
+        ) >= 4
+      ) {
+        addSegmentLine(segmentPreview);
+        resetSegmentInteraction();
+      }
     };
 
     window.addEventListener("mousemove", handleWindowMouseMove);
@@ -5310,10 +5513,14 @@ export function DrawingCanvasInner({
     {
       label: "Extend",
       icon: "⊥",
-      action: () => setTool("draw"),
-      active: tool === "draw" && selectedPieceId !== null,
+      action: () => {
+        setTool((prev) => (prev === "extend" ? "draw" : "extend"));
+        if (selectedPieceId) {
+          extendReferenceLine(selectedPieceId);
+        }
+      },
+      active: tool === "extend",
       draftOnly: true,
-      disabled: !selectedPieceId,
       tone: "purple",
     },
     {
@@ -5341,17 +5548,17 @@ export function DrawingCanvasInner({
     },
     {
       label: "Undo",
-      icon: "·",
-      action: () => undefined,
-      disabled: true,
+      icon: "↶",
+      action: undoLayout,
+      disabled: layoutHistory.past.length === 0,
       tone: "muted",
       dividerBefore: true,
     },
     {
       label: "Redo",
-      icon: "·",
-      action: () => undefined,
-      disabled: true,
+      icon: "↷",
+      action: redoLayout,
+      disabled: layoutHistory.future.length === 0,
       tone: "muted",
     },
   ];
@@ -5372,26 +5579,10 @@ export function DrawingCanvasInner({
     const rects = pieceLayout?.shape
       ? isChainShape(pieceLayout.shape)
         ? chainShapeGeometry(pieceLayout.shape).rects
-        : isZShape(pieceLayout.shape)
-          ? zShapeGeometry(renderedPiece, pieceLayout.shape).rects
-          : isLShape(pieceLayout.shape)
-            ? lShapeGeometry(renderedPiece, pieceLayout.shape).rects
-            : [
-                {
-                  x: 0,
-                  y: 0,
-                  w: renderedPiece.lengthIn * SCALE,
-                  h: renderedPiece.widthIn * SCALE,
-                },
-              ]
-      : [
-          {
-            x: 0,
-            y: 0,
-            w: renderedPiece.lengthIn * SCALE,
-            h: renderedPiece.widthIn * SCALE,
-          },
-        ];
+        : (isZShape(pieceLayout.shape) || isLShape(pieceLayout.shape))
+          ? chainShapeGeometry(legacyShapeToChain(pieceLayout.shape, renderedPiece, SCALE)).rects
+          : [{ x: 0, y: 0, w: renderedPiece.lengthIn * SCALE, h: renderedPiece.widthIn * SCALE }]
+      : [{ x: 0, y: 0, w: renderedPiece.lengthIn * SCALE, h: renderedPiece.widthIn * SCALE }];
     const bounds = shapeBounds(rects);
     const fallbackEdges: Record<EdgeKey, ShapeEdge> = {
       top: { from: [bounds.minX, bounds.minY], to: [bounds.maxX, bounds.minY] },
@@ -5428,7 +5619,17 @@ export function DrawingCanvasInner({
       }
 
       const key = event.key.toLowerCase();
-      if (key === "n" && isDraft) {
+      if ((event.ctrlKey || event.metaKey) && key === "z") {
+        event.preventDefault();
+        if (event.shiftKey) {
+          redoLayout();
+        } else {
+          undoLayout();
+        }
+      } else if ((event.ctrlKey || event.metaKey) && key === "y") {
+        event.preventDefault();
+        redoLayout();
+      } else if (key === "n" && isDraft) {
         event.preventDefault();
         setTool((prev) => (prev === "text" ? "draw" : "text"));
       } else if (key === "y" && isDraft) {
@@ -5463,6 +5664,9 @@ export function DrawingCanvasInner({
       } else if (key === "s" && isDraft) {
         event.preventDefault();
         setTool((prev) => (prev === "segment" ? "draw" : "segment"));
+      } else if (key === "x" && isDraft) {
+        event.preventDefault();
+        setTool((prev) => (prev === "extend" ? "draw" : "extend"));
       } else if ((key === "d" || key === "delete") && isDraft) {
         event.preventDefault();
         setTool((prev) => (prev === "deleteLine" ? "draw" : "deleteLine"));
@@ -5471,7 +5675,7 @@ export function DrawingCanvasInner({
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [isDraft]);
+  }, [isDraft, redoLayout, undoLayout]);
 
   useEffect(() => {
     if (tool === "offset" || tool === "connect") return;
@@ -5484,6 +5688,13 @@ export function DrawingCanvasInner({
     if (tool === "segment") return;
     setSegmentStart(null);
     setSegmentPreview(null);
+  }, [tool]);
+
+  useEffect(() => {
+    if (tool === "backsplash") return;
+    setBacksplashPopupOpen(false);
+    setSelectedBacksplashCorner(null);
+    setConfirmedBacksplashSpan(null);
   }, [tool]);
 
   useEffect(() => {
@@ -5525,10 +5736,20 @@ export function DrawingCanvasInner({
             >
               Help
             </Button>
-            <Button size="sm" variant="outline" disabled>
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={layoutHistory.past.length === 0}
+              onClick={undoLayout}
+            >
               Undo
             </Button>
-            <Button size="sm" variant="outline" disabled>
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={layoutHistory.future.length === 0}
+              onClick={redoLayout}
+            >
               Redo
             </Button>
             <Button
@@ -5957,9 +6178,18 @@ export function DrawingCanvasInner({
                                 tool !== "pan" &&
                                 tool !== "segment" &&
                                 tool !== "paint" &&
+                                tool !== "extend" &&
                                 tool !== "backsplash"
                               }
                               onMouseDown={(event) => {
+                                if (tool === "segment") {
+                                  event.cancelBubble = true;
+                                  const pointer = getPointer();
+                                  if (pointer) {
+                                    handleSegmentPointerDown(pointer);
+                                  }
+                                  return;
+                                }
                                 event.cancelBubble = true;
                                 if (tool === "select") {
                                   beginSelectionDrag(
@@ -5970,6 +6200,9 @@ export function DrawingCanvasInner({
                               }}
                               onClick={(event) => {
                                 event.cancelBubble = true;
+                                if (tool === "segment") {
+                                  return;
+                                }
                                 if (tool === "select") {
                                   if (
                                     selectedPieceIdsForAction.includes(
@@ -6222,15 +6455,11 @@ export function DrawingCanvasInner({
                         const piece = getRenderedPiece(basePiece);
                         const w = piece.lengthIn * SCALE;
                         const h = piece.widthIn * SCALE;
-                        const lShape = isLShape(pos.shape)
-                          ? lShapeGeometry(piece, pos.shape)
-                          : null;
-                        const zShape = isZShape(pos.shape)
-                          ? zShapeGeometry(piece, pos.shape)
-                          : null;
                         const chainShape = isChainShape(pos.shape)
                           ? chainShapeGeometry(pos.shape)
-                          : null;
+                          : (isLShape(pos.shape) || isZShape(pos.shape))
+                            ? chainShapeGeometry(legacyShapeToChain(pos.shape, piece, SCALE))
+                            : null;
                         const isSelected =
                           selectedPieceIdSet.has(pos.pieceId) ||
                           selectedPieceId === pos.pieceId ||
@@ -6278,21 +6507,7 @@ export function DrawingCanvasInner({
                         );
                         const compoundEdges = chainShape
                           ? { edges: chainShape.edges, rects: chainShape.rects }
-                          : zShape
-                            ? {
-                                edges: mergeBoundaryEdges(
-                                  rectUnionBoundary(zShape.rects),
-                                ),
-                                rects: zShape.rects,
-                              }
-                            : lShape
-                              ? {
-                                  edges: mergeBoundaryEdges(
-                                    rectUnionBoundary(lShape.rects),
-                                  ),
-                                  rects: lShape.rects,
-                                }
-                              : null;
+                          : null;
                         const pieceRects = compoundEdges?.rects ?? [
                           {
                             x: 0,
@@ -6304,8 +6519,11 @@ export function DrawingCanvasInner({
                         const referenceLineVisuals =
                           buildReferenceLineCornerVisuals({
                             referenceLines: referenceLines.filter(
-                              (line) =>
-                                line.kind === "cabinet" || line.kind === "wall",
+                              (
+                                line,
+                              ): line is DrawingReferenceLine =>
+                                line.kind === "cabinet" ||
+                                line.kind === "wall",
                             ),
                             rects: pieceRects,
                             corners: Array.from(cornerTreatments.values()),
@@ -6318,7 +6536,7 @@ export function DrawingCanvasInner({
                             })
                           : [];
                         const visibleRectangleDimensionEdges =
-                          !chainShape && !zShape && !lShape
+                          !chainShape
                             ? (
                                 [
                                   ["top", rectangleShapeEdge(w, h, "top")],
@@ -6362,9 +6580,18 @@ export function DrawingCanvasInner({
                               tool !== "connect" &&
                               tool !== "centerline" &&
                               tool !== "paint" &&
+                              tool !== "extend" &&
                               tool !== "backsplash"
                             }
                             onMouseDown={(event) => {
+                              if (tool === "segment") {
+                                event.cancelBubble = true;
+                                const pointer = getPointer();
+                                if (pointer) {
+                                  handleSegmentPointerDown(pointer);
+                                }
+                                return;
+                              }
                               if (tool === "backsplash") {
                                 return;
                               }
@@ -6379,6 +6606,9 @@ export function DrawingCanvasInner({
                             }}
                             onClick={(event) => {
                               event.cancelBubble = true;
+                              if (tool === "segment") {
+                                return;
+                              }
                               if (tool === "select") {
                                 if (
                                   selectedPieceIdsForAction.includes(
@@ -6657,22 +6887,6 @@ export function DrawingCanvasInner({
                                   })(),
                                 )}
                               </>
-                            ) : zShape ? (
-                              <Line
-                                points={zShape.outline}
-                                closed
-                                fill={pieceFill}
-                                stroke="transparent"
-                                strokeWidth={0}
-                              />
-                            ) : lShape ? (
-                              <Line
-                                points={lShape.outline}
-                                closed
-                                fill={pieceFill}
-                                stroke="transparent"
-                                strokeWidth={0}
-                              />
                             ) : (
                               <Rect
                                 width={w}
@@ -6683,7 +6897,7 @@ export function DrawingCanvasInner({
                                 cornerRadius={2}
                               />
                             )}
-                            {!chainShape && !zShape && !lShape ? (
+                            {!chainShape ? (
                               <>
                                 {(
                                   [
@@ -7062,7 +7276,8 @@ export function DrawingCanvasInner({
                                       dash={[6, 5]}
                                     />
                                     {tool === "deleteLine" ||
-                                    tool === "paint" ? (
+                                    tool === "paint" ||
+                                    tool === "extend" ? (
                                       <Line
                                         points={[
                                           line.from[0],
@@ -7082,6 +7297,13 @@ export function DrawingCanvasInner({
                                         }
                                         onClick={(event) => {
                                           event.cancelBubble = true;
+                                          if (tool === "extend") {
+                                            extendReferenceLine(
+                                              basePiece.id,
+                                              line.id,
+                                            );
+                                            return;
+                                          }
                                           if (tool === "paint") {
                                             setLayout((prev) => ({
                                               ...prev,
@@ -7153,7 +7375,8 @@ export function DrawingCanvasInner({
                                   {tool === "deleteLine" ||
                                   tool === "offset" ||
                                   tool === "connect" ||
-                                  tool === "paint" ? (
+                                  tool === "paint" ||
+                                  tool === "extend" ? (
                                     <Line
                                       points={[
                                         line.from[0],
@@ -7177,6 +7400,13 @@ export function DrawingCanvasInner({
                                       onClick={(event) => {
                                         event.cancelBubble = true;
                                         setSelectedPieceId(basePiece.id);
+                                        if (tool === "extend") {
+                                          extendReferenceLine(
+                                            basePiece.id,
+                                            line.sourceLineId,
+                                          );
+                                          return;
+                                        }
                                         if (tool === "paint") {
                                           setLayout((prev) => ({
                                             ...prev,
@@ -7501,19 +7731,12 @@ export function DrawingCanvasInner({
                                           return;
                                         }
                                         {
-                                          [
-                                            "top",
-                                            "right",
-                                            "bottom",
-                                            "left",
-                                          ].map((edgeKey) => {
+                                          RECTANGLE_EDGE_KEYS.map((edgeKey) => {
                                             const edgeLayout =
-                                              edgeTreatments.get(
-                                                edgeKey as EdgeKey,
-                                              );
+                                              edgeTreatments.get(edgeKey);
                                             if (!edgeLayout?.color) return null;
                                             const pts: Record<
-                                              string,
+                                              EdgeKey,
                                               number[]
                                             > = {
                                               top: [0, 0, w, 0],
@@ -7535,14 +7758,9 @@ export function DrawingCanvasInner({
                                         }
                                         {
                                           tool === "paint" && !compoundEdges
-                                            ? [
-                                                "top",
-                                                "right",
-                                                "bottom",
-                                                "left",
-                                              ].map((edgeKey) => {
+                                            ? RECTANGLE_EDGE_KEYS.map((edgeKey) => {
                                                 const pts: Record<
-                                                  string,
+                                                  EdgeKey,
                                                   number[]
                                                 > = {
                                                   top: [0, 0, w, 0],
@@ -7589,7 +7807,7 @@ export function DrawingCanvasInner({
                                                             {
                                                               pieceId:
                                                                 pos.pieceId,
-                                                              edge: edgeKey as EdgeKey,
+                                                              edge: edgeKey,
                                                               treatment:
                                                                 "finished",
                                                               splashHeightIn:
@@ -7899,9 +8117,9 @@ export function DrawingCanvasInner({
                             ) : null}
                             <Text
                               text={piece.name ?? "Counter"}
-                              x={6}
-                              y={6}
-                              fontSize={11}
+                              x={piece.kind === "backsplash" ? 3 : 6}
+                              y={piece.kind === "backsplash" ? 2 : 6}
+                              fontSize={piece.kind === "backsplash" ? 7 : 11}
                               fill="#2f6b2c"
                               fontStyle="bold"
                             />
@@ -7953,31 +8171,28 @@ export function DrawingCanvasInner({
                                 })}
                               </>
                             ) : null}
-                            {["top", "right", "bottom", "left"].map(
+                            {RECTANGLE_EDGE_KEYS.map(
                               (edgeKey) => {
-                                const edgeLayout = edgeTreatments.get(
-                                  edgeKey as EdgeKey,
-                                );
+                                const edgeLayout = edgeTreatments.get(edgeKey);
                                 const isEdgeHovered =
                                   hoveredPaintEdge?.pieceId === pos.pieceId &&
                                   hoveredPaintEdge?.edge === edgeKey;
-                                const pts: Record<string, number[]> = {
+                                const pts: Record<EdgeKey, number[]> = {
                                   top: [0, 0, w, 0],
                                   right: [w, 0, w, h],
                                   bottom: [0, h, w, h],
                                   left: [0, 0, 0, h],
                                 };
-                                if (!edgeLayout?.color && !isEdgeHovered)
+                                const stroke = isEdgeHovered
+                                  ? paintColor
+                                  : edgeLayout?.color;
+                                if (!stroke)
                                   return null;
                                 return (
                                   <Line
                                     key={edgeKey}
                                     points={pts[edgeKey]}
-                                    stroke={
-                                      isEdgeHovered
-                                        ? paintColor
-                                        : edgeLayout!.color
-                                    }
+                                    stroke={stroke}
                                     strokeWidth={PAINTED_EDGE_STROKE_WIDTH}
                                     opacity={1}
                                   />
@@ -7985,9 +8200,9 @@ export function DrawingCanvasInner({
                               },
                             )}
                             {tool === "paint"
-                              ? ["top", "right", "bottom", "left"].map(
+                              ? RECTANGLE_EDGE_KEYS.map(
                                   (edgeKey) => {
-                                    const pts: Record<string, number[]> = {
+                                    const pts: Record<EdgeKey, number[]> = {
                                       top: [0, 0, w, 0],
                                       right: [w, 0, w, h],
                                       bottom: [0, h, w, h],
@@ -8036,7 +8251,7 @@ export function DrawingCanvasInner({
                                                 ...prev.edges,
                                                 {
                                                   pieceId: pos.pieceId,
-                                                  edge: edgeKey as EdgeKey,
+                                                  edge: edgeKey,
                                                   treatment: "finished",
                                                   splashHeightIn: null,
                                                   label: null,
@@ -8600,8 +8815,7 @@ export function DrawingCanvasInner({
             <div>
               <p className="font-semibold text-[#2f6b2c]">Segment</p>
               <p className="mt-1 text-sm text-muted-foreground">
-                Click and drag from one point to another to draw one straight
-                line.
+                Click two points, or click and drag, to draw one straight line.
               </p>
             </div>
             <Button
@@ -8613,6 +8827,22 @@ export function DrawingCanvasInner({
                 setSegmentPreview(null);
               }}
             >
+              Done
+            </Button>
+          </div>
+        </div>
+      ) : null}
+      {tool === "extend" ? (
+        <div className="rounded-md border border-[#c8dec3] bg-white p-4 shadow-sm">
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div>
+              <p className="font-semibold text-[#2f6b2c]">Extend</p>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Click a centerline or segment to extend it to the counter edge
+                or green wall offset.
+              </p>
+            </div>
+            <Button size="sm" variant="outline" onClick={() => setTool("draw")}>
               Done
             </Button>
           </div>
@@ -8889,12 +9119,14 @@ export function DrawingCanvasInner({
             : tool === "offset"
               ? "Offset mode: enter inches, click the real chain edge, then click white space on the side where you want the new parallel run."
               : tool === "segment"
-                ? "Segment mode: click and drag to draw one straight line from point to point."
-                : tool === "select"
-                  ? "Select mode: drag a box around pieces, then delete the selected pieces from the side panel."
-                  : tool === "connect"
-                    ? "Fillet mode: click a green wall offset line and the side or green line it should meet."
-                  : 'Drag with the pencil to create a 25 1/2" deep counter. Use on-piece controls for rotate, duplicate, and delete.'}
+                ? "Segment mode: click two points or drag to draw one straight line."
+                : tool === "extend"
+                  ? "Extend mode: click a centerline or segment to meet the counter edge or green wall offset."
+                  : tool === "select"
+                    ? "Select mode: drag a box around pieces, then delete the selected pieces from the side panel."
+                    : tool === "connect"
+                      ? "Fillet mode: click a green wall offset line and the side or green line it should meet."
+                      : 'Drag with the pencil to create a 25 1/2" deep counter. Use on-piece controls for rotate, duplicate, and delete.'}
         </p>
       </div>
 
