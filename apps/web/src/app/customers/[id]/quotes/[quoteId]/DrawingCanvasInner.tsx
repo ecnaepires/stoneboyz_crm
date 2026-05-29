@@ -4364,9 +4364,17 @@ export function DrawingCanvasInner({
       const pieceLayout = currentLayout.pieces.find(
         (item) => item.pieceId === pieceId,
       );
-      if (!pieceLayout?.shape || !isChainShape(pieceLayout.shape)) return;
+      if (!pieceLayout?.shape) return;
+      const basePieceForExtend = pieces.find((p) => p.id === pieceId);
+      if (!basePieceForExtend) return;
+      const resolvedExtendShape = isChainShape(pieceLayout.shape)
+        ? pieceLayout.shape
+        : (isLShape(pieceLayout.shape) || isZShape(pieceLayout.shape))
+          ? legacyShapeToChain(pieceLayout.shape, basePieceForExtend, SCALE)
+          : null;
+      if (!resolvedExtendShape) return;
 
-      const end = chainFreeEnd(pieceLayout.shape);
+      const end = chainFreeEnd(resolvedExtendShape);
       if (!end) return;
 
       const depthPx =
@@ -4404,7 +4412,7 @@ export function DrawingCanvasInner({
               widthIn: STANDARD_DEPTH_IN,
               orientation: "horizontal" as const,
             };
-      const nextSegments = [...pieceLayout.shape.segments, nextSegment];
+      const nextSegments = [...resolvedExtendShape.segments, nextSegment];
       const minX = Math.min(...nextSegments.map((segment) => segment.x));
       const maxX = Math.max(
         ...nextSegments.map((segment) => segment.x + segment.w),
@@ -4421,7 +4429,7 @@ export function DrawingCanvasInner({
             : item,
         ),
       };
-      const basePiece = pieces.find((piece) => piece.id === pieceId);
+      const basePiece = basePieceForExtend;
 
       if (basePiece) {
         const nextLengthIn = roundToSixteenth(
@@ -6455,11 +6463,14 @@ export function DrawingCanvasInner({
                         const piece = getRenderedPiece(basePiece);
                         const w = piece.lengthIn * SCALE;
                         const h = piece.widthIn * SCALE;
-                        const chainShape = isChainShape(pos.shape)
-                          ? chainShapeGeometry(pos.shape)
+                        const resolvedChainLayout = isChainShape(pos.shape)
+                          ? pos.shape
                           : (isLShape(pos.shape) || isZShape(pos.shape))
-                            ? chainShapeGeometry(legacyShapeToChain(pos.shape, piece, SCALE))
+                            ? legacyShapeToChain(pos.shape, piece, SCALE)
                             : null;
+                        const chainShape = resolvedChainLayout
+                          ? chainShapeGeometry(resolvedChainLayout)
+                          : null;
                         const isSelected =
                           selectedPieceIdSet.has(pos.pieceId) ||
                           selectedPieceId === pos.pieceId ||
@@ -7996,8 +8007,8 @@ export function DrawingCanvasInner({
                             activeStep === 1 &&
                             tool === "draw"
                               ? (() => {
-                                  if (!isChainShape(pos.shape)) return null;
-                                  const freeEnd = chainFreeEnd(pos.shape);
+                                  if (!resolvedChainLayout) return null;
+                                  const freeEnd = chainFreeEnd(resolvedChainLayout);
                                   if (!freeEnd) return null;
                                   const arrows: Array<{
                                     direction: ContinueDirection;
