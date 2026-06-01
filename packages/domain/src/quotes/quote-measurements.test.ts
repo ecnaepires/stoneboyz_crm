@@ -55,11 +55,32 @@ describe('quote measurement calculators', () => {
     expect(calculateMeasurementAreaTotals(kitchen)).toEqual({
       pieceCount: 2,
       countertopSqFt: 35.708,
+      backsplashSqFt: 0,
+      combinedSqFt: 35.708,
       finishedEdgeLinFt: 14.333,
       splashSqFt: 2.778,
       sinkCutoutCount: 1,
       faucetHoleCount: 1
     });
+  });
+
+  it('splits backsplash pieces out of countertop square footage and combines them', () => {
+    const kitchen: QuoteMeasurementAreaInput = {
+      name: 'Kitchen',
+      pieces: [
+        { name: 'Counter 1', lengthIn: 121, widthIn: 35.5, kind: 'countertop' },
+        { name: 'B/S1', lengthIn: 121, widthIn: 4, kind: 'backsplash' },
+        { name: 'B/S2', lengthIn: 35.5, widthIn: 4, kind: 'backsplash' }
+      ]
+    };
+
+    const totals = calculateMeasurementAreaTotals(kitchen);
+
+    expect(totals.countertopSqFt).toBe(calculateCountertopSqFt(121, 35.5));
+    expect(totals.backsplashSqFt).toBe(
+      calculateCountertopSqFt(121, 4) + calculateCountertopSqFt(35.5, 4)
+    );
+    expect(totals.combinedSqFt).toBe(totals.countertopSqFt + totals.backsplashSqFt);
   });
 
   it('summarizes multiple areas', () => {
@@ -89,6 +110,8 @@ describe('quote measurement calculators', () => {
       areaCount: 2,
       pieceCount: 2,
       countertopSqFt: 26.208,
+      backsplashSqFt: 0,
+      combinedSqFt: 26.208,
       finishedEdgeLinFt: 12.333,
       splashSqFt: 2.778,
       sinkCutoutCount: 1,

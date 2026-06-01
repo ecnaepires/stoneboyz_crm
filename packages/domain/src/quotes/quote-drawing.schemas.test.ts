@@ -124,7 +124,16 @@ describe('canvasLayoutSchema', () => {
       ],
       sinks: [],
       corners: [],
-      edges: [],
+      edges: [
+        {
+          pieceId,
+          edge: 'top',
+          treatment: 'finished',
+          splashHeightIn: null,
+          label: null,
+          color: '#ef4444'
+        }
+      ],
       referenceLines: [
         {
           id: 'cabinet-line-1',
@@ -133,6 +142,15 @@ describe('canvasLayoutSchema', () => {
           to: [120, 0],
           kind: 'cabinet',
           color: '#6b7280',
+          dash: true
+        },
+        {
+          id: 'centerline-1',
+          pieceId,
+          from: [60, 0],
+          to: [60, 25.5],
+          kind: 'centerline',
+          color: '#000000',
           dash: true
         }
       ],
@@ -146,6 +164,16 @@ describe('canvasLayoutSchema', () => {
       ]
     });
 
+    expect(parsed.edges).toEqual([
+      {
+        pieceId,
+        edge: 'top',
+        treatment: 'finished',
+        splashHeightIn: null,
+        label: null,
+        color: '#ef4444'
+      }
+    ]);
     expect(parsed.referenceLines).toEqual([
       {
         id: 'cabinet-line-1',
@@ -154,6 +182,15 @@ describe('canvasLayoutSchema', () => {
         to: [120, 0],
         kind: 'cabinet',
         color: '#6b7280',
+        dash: true
+      },
+      {
+        id: 'centerline-1',
+        pieceId,
+        from: [60, 0],
+        to: [60, 25.5],
+        kind: 'centerline',
+        color: '#000000',
         dash: true
       }
     ]);

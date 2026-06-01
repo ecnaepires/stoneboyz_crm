@@ -169,6 +169,8 @@ export class QuoteAreasRepository {
     const result = await this.pool.query<{
       piece_count: string;
       countertop_sq_ft: string;
+      backsplash_sq_ft: string;
+      combined_sq_ft: string;
       finished_edge_lin_ft: string;
       splash_sq_ft: string;
       sink_cutout_count: string;
@@ -177,7 +179,9 @@ export class QuoteAreasRepository {
       `
         SELECT
           COALESCE((SELECT SUM(quantity) FROM counter_pieces WHERE quote_area_id = $1), 0) AS piece_count,
-          COALESCE((SELECT SUM(length_in * width_in * quantity) / 144 FROM counter_pieces WHERE quote_area_id = $1), 0) AS countertop_sq_ft,
+          COALESCE((SELECT SUM(length_in * width_in * quantity) / 144 FROM counter_pieces WHERE quote_area_id = $1 AND kind <> 'backsplash'), 0) AS countertop_sq_ft,
+          COALESCE((SELECT SUM(length_in * width_in * quantity) / 144 FROM counter_pieces WHERE quote_area_id = $1 AND kind = 'backsplash'), 0) AS backsplash_sq_ft,
+          COALESCE((SELECT SUM(length_in * width_in * quantity) / 144 FROM counter_pieces WHERE quote_area_id = $1), 0) AS combined_sq_ft,
           COALESCE((SELECT SUM(length_in) / 12 FROM edge_segments WHERE quote_area_id = $1 AND treatment = 'finished'), 0) AS finished_edge_lin_ft,
           COALESCE((SELECT SUM(length_in * splash_height_in) / 144 FROM edge_segments WHERE quote_area_id = $1 AND splash_height_in IS NOT NULL), 0) AS splash_sq_ft,
           COALESCE((SELECT SUM(quantity) FROM sink_cutouts WHERE quote_area_id = $1), 0) AS sink_cutout_count,
@@ -190,6 +194,8 @@ export class QuoteAreasRepository {
     return {
       pieceCount: Number(row?.piece_count ?? 0),
       countertopSqFt: Number(row?.countertop_sq_ft ?? 0),
+      backsplashSqFt: Number(row?.backsplash_sq_ft ?? 0),
+      combinedSqFt: Number(row?.combined_sq_ft ?? 0),
       finishedEdgeLinFt: Number(row?.finished_edge_lin_ft ?? 0),
       splashSqFt: Number(row?.splash_sq_ft ?? 0),
       sinkCutoutCount: Number(row?.sink_cutout_count ?? 0),
@@ -218,7 +224,8 @@ export class QuoteAreasRepository {
           const input: CounterPieceInput = {
             lengthIn: Number(piece.length_in),
             widthIn: Number(piece.width_in),
-            quantity: piece.quantity
+            quantity: piece.quantity,
+            kind: piece.kind === "backsplash" ? "backsplash" : "countertop"
           };
 
           if (piece.name !== null) {

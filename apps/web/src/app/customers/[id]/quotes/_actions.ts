@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { getApiClientWithAuth } from "@/lib/api";
+import type { CanvasLayout } from "@stoneboyz/domain";
 
 const toOptionalString = (value: FormDataEntryValue | null) => {
   const stringValue = typeof value === "string" ? value.trim() : "";
@@ -792,96 +793,7 @@ export async function saveDrawingAction(
   customerId: string,
   quoteId: string,
   areaId: string,
-  layout: {
-    pieces: Array<{
-      pieceId: string;
-      x: number;
-      y: number;
-      rotation: number;
-      groupId?: string | null;
-      shape?:
-        | {
-            type: "l";
-            legX: number;
-            legY: number;
-            legWidthIn: number;
-            legLengthIn: number;
-          }
-        | {
-            type: "z";
-            legX: number;
-            legY: number;
-            legWidthIn: number;
-            legLengthIn: number;
-            tailX: number;
-            tailY: number;
-            tailLengthIn: number;
-            tailWidthIn: number;
-          }
-        | {
-            type: "chain";
-            segments: Array<{
-              x: number;
-              y: number;
-              w: number;
-              h: number;
-              lengthIn: number;
-              widthIn: number;
-              orientation: "horizontal" | "vertical";
-            }>;
-          }
-        | null;
-    }>;
-    sinks: Array<{
-      sinkId: string;
-      pieceId: string | null;
-      x: number;
-      y: number;
-      rotation: number;
-    }>;
-    corners?: Array<{
-      pieceId: string;
-      corner: "topLeft" | "topRight" | "bottomRight" | "bottomLeft";
-      treatment: "none" | "radius" | "clip" | "bumpOut" | "notch";
-      valueIn: number | null;
-    }>;
-    edges?: Array<{
-      pieceId: string;
-      edge: "top" | "right" | "bottom" | "left";
-      treatment:
-        | "finished"
-        | "appliance"
-        | "mitered"
-        | "waterfall"
-        | "splash"
-        | "unfinished"
-        | "additionalFinished";
-      splashHeightIn: number | null;
-      label: string | null;
-    }>;
-    paintedEdges?: Array<{
-      id: string;
-      pieceId: string;
-      from: [number, number];
-      to: [number, number];
-      color: string;
-    }>;
-    referenceLines?: Array<{
-      id: string;
-      pieceId: string;
-      from: [number, number];
-      to: [number, number];
-      kind: "cabinet" | "wall";
-      color: string;
-      dash?: boolean | undefined;
-    }>;
-    deletedLines?: Array<{
-      id: string;
-      pieceId: string;
-      from: [number, number];
-      to: [number, number];
-    }>;
-  },
+  layout: CanvasLayout,
   notes?: string | null,
 ) {
   const client =

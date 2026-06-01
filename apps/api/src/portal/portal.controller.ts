@@ -1,8 +1,10 @@
-import { Controller, Get, Post, Param, HttpCode } from '@nestjs/common';
+import { Controller, Get, Post, Param, HttpCode, UseGuards } from '@nestjs/common';
+import { ThrottlerGuard } from '@nestjs/throttler';
 import { Public } from '../auth/public.decorator.js';
 import { PortalService } from './portal.service.js';
 
 @Public()
+@UseGuards(ThrottlerGuard)
 @Controller('portal')
 export class PortalController {
   constructor(private readonly portalService: PortalService) {}

@@ -35,6 +35,7 @@ export interface CounterPieceInput {
   lengthIn: number;
   widthIn: number;
   quantity?: number | undefined;
+  kind?: "countertop" | "backsplash" | undefined;
 }
 
 export interface CounterPiece {
@@ -150,6 +151,8 @@ export interface QuoteMeasurementAreaInput {
 export interface QuoteMeasurementAreaTotals {
   pieceCount: number;
   countertopSqFt: number;
+  backsplashSqFt: number;
+  combinedSqFt: number;
   finishedEdgeLinFt: number;
   splashSqFt: number;
   sinkCutoutCount: number;

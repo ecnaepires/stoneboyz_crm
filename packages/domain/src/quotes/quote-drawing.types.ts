@@ -12,6 +12,7 @@ export interface CanvasEdgeLayout {
   treatment: CanvasEdgeTreatment;
   splashHeightIn: number | null;
   label: string | null;
+  color?: string | undefined;
 }
 
 export interface CanvasPaintedEdgeLayout {
@@ -91,7 +92,7 @@ export interface CanvasReferenceLineLayout {
   pieceId: string;
   from: [number, number];
   to: [number, number];
-  kind: 'cabinet' | 'wall';
+  kind: 'cabinet' | 'wall' | 'centerline' | 'dimension';
   color: string;
   dash?: boolean | undefined;
 }

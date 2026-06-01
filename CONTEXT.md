@@ -1,5 +1,9 @@
 # Glossary
 
+## Splash (edge treatment)
+
+A property set on a single countertop edge marking that the edge has stone running up the wall, recorded as a splash height. It does not create a separate drawn piece. It is a distinct concept from a Backsplash and must not be blurred with it: a Backsplash is the drawn piece a user creates and the way the team represents stone on the wall going forward. The same wall is never recorded as both a Splash edge treatment and a Backsplash piece.
+
 ## Backsplash
 
 A separate drawn piece placed against an existing countertop edge. A backsplash has a length based on the selected countertop edge span and a user-selected height such as 3 inches, 4 inches, 5 inches, or custom.
@@ -16,7 +20,7 @@ Drawing-only customers still need a lightweight business shell for projects, sav
 
 Backsplash work will start inside the current quote drawing page, while using drawing-specific concepts and names so the drawing tool can be separated as a product module later.
 
-Backsplash pieces use simple sequential labels such as "Backsplash 1" on the canvas. Dimensions communicate the exact size.
+Backsplash pieces use compact sequential labels such as "B/S1" on the canvas, shown in a small font so the label fits inside the thin piece. Dimensions communicate the exact size.
 
 Backsplash pieces are rectangular and aligned to the selected edge span.
 
@@ -42,7 +46,7 @@ Drawn pieces have a product identity so the system can distinguish countertop pi
 
 Square footage reporting should support countertop square footage, backsplash square footage, and combined total square footage.
 
-Backsplashes are created from one countertop corner to an adjacent countertop corner. Partial edge runs are not selected during backsplash creation.
+Backsplashes are created from one countertop corner to an adjacent countertop corner, or from one green wall offset endpoint to the other endpoint on the same offset line. Partial edge runs are not selected during backsplash creation.
 
 When the Back Splash tool is active, the canvas remains visually clean until the user selects a corner.
 
@@ -50,7 +54,7 @@ Clicking near a countertop corner while the Back Splash tool is active catches t
 
 Back Splash click sounds are optional future polish and should not be part of the first build slice.
 
-Only actual countertop corners can be selected for backsplash creation. Middle points along an edge are not valid backsplash anchors.
+Only actual countertop corners and green wall offset endpoints can be selected for backsplash creation. Middle points along an edge are not valid backsplash anchors.
 
 After the user chooses two adjacent backsplash corners, the app asks for direction visually: the user chooses which side of the selected edge span receives the backsplash, similar to an offset workflow.
 

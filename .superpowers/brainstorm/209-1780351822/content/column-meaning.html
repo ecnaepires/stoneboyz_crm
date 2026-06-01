@@ -1,0 +1,44 @@
+<h2>What does a column mean?</h2>
+<p class="subtitle">You just finished the <b>Template appointment</b> for job J-098. Which board is correct afterward? This defines when cards move.</p>
+
+<div class="split">
+  <div class="mockup">
+    <div class="mockup-header">A · Column = "up next / working on now"</div>
+    <div class="mockup-body" style="font-size:12px;">
+      <p style="margin:0 0 8px;">Finishing Template pushes the card <b>forward</b> to the next step.</p>
+      <div style="display:flex;gap:6px;">
+        <div style="flex:1;"><div class="label">Template</div><div class="placeholder" style="padding:6px;opacity:.4;">(empty)</div></div>
+        <div style="flex:1;"><div class="label">Deposit →</div><div class="placeholder" style="padding:6px;border:2px solid #4ade80;">J-098 · Lee</div></div>
+      </div>
+      <p style="margin:8px 0 0;opacity:.8;">Card column = the step the job is <b>currently at / heading into</b>.</p>
+    </div>
+  </div>
+  <div class="mockup">
+    <div class="mockup-header">B · Column = "last step completed"</div>
+    <div class="mockup-body" style="font-size:12px;">
+      <p style="margin:0 0 8px;">Finishing Template lands the card <b>in</b> the Template column.</p>
+      <div style="display:flex;gap:6px;">
+        <div style="flex:1;"><div class="label">Template ✓</div><div class="placeholder" style="padding:6px;border:2px solid #4ade80;">J-098 · Lee</div></div>
+        <div style="flex:1;"><div class="label">Deposit</div><div class="placeholder" style="padding:6px;opacity:.4;">(empty)</div></div>
+      </div>
+      <p style="margin:8px 0 0;opacity:.8;">Card column = the <b>furthest step finished</b> so far.</p>
+    </div>
+  </div>
+</div>
+
+<div class="options">
+  <div class="option" data-choice="current" onclick="toggleSelect(this)">
+    <div class="letter">A</div>
+    <div class="content">
+      <h3>Column = current / up-next step</h3>
+      <p>Most common pipeline feel. A card in "Install" means install is the active job. Reads as "what's everyone working on right now."</p>
+    </div>
+  </div>
+  <div class="option" data-choice="completed" onclick="toggleSelect(this)">
+    <div class="letter">B</div>
+    <div class="content">
+      <h3>Column = last completed step</h3>
+      <p>A card in "Install" means install is done. Reads as "how far has this job progressed." Slightly trickier when nothing's done yet (sits in Lead).</p>
+    </div>
+  </div>
+</div>

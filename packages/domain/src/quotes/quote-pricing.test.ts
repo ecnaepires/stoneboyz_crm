@@ -5,6 +5,8 @@ import type { PriceListItemInput } from './quote-pricing.types.js';
 const kitchenTotals = {
   pieceCount: 2,
   countertopSqFt: 35.708,
+  backsplashSqFt: 0,
+  combinedSqFt: 35.708,
   finishedEdgeLinFt: 14.333,
   splashSqFt: 2.778,
   sinkCutoutCount: 1,
@@ -14,6 +16,8 @@ const kitchenTotals = {
 const emptyTotals = {
   pieceCount: 0,
   countertopSqFt: 0,
+  backsplashSqFt: 0,
+  combinedSqFt: 0,
   finishedEdgeLinFt: 0,
   splashSqFt: 0,
   sinkCutoutCount: 0,
@@ -78,5 +82,22 @@ describe('generatePriceLines', () => {
 
   it('returns no lines when there are no price list items', () => {
     expect(generatePriceLines(kitchenTotals, {}, [])).toEqual([]);
+  });
+
+  it('bills material and fabrication on combined countertop + backsplash square footage', () => {
+    const totalsWithBacksplash = {
+      ...kitchenTotals,
+      countertopSqFt: 30,
+      backsplashSqFt: 5,
+      combinedSqFt: 35
+    };
+
+    const lines = generatePriceLines(totalsWithBacksplash, {}, [
+      { id: 'price-material', category: 'material', unitPriceCents: 2000 },
+      { id: 'price-fabrication', category: 'fabrication', unitPriceCents: 1500 }
+    ]);
+
+    expect(lines.find((line) => line.category === 'material')?.quantity).toBe(35);
+    expect(lines.find((line) => line.category === 'fabrication')?.quantity).toBe(35);
   });
 });

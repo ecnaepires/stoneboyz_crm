@@ -146,6 +146,7 @@ describe('Quote drawing save and load', () => {
       sinks: [],
       corners: [],
       edges: [],
+      paintedEdges: [],
       deletedLines: [],
       referenceLines: []
     });
@@ -208,7 +209,18 @@ describe('Quote drawing save and load', () => {
         pieces: [{ pieceId, x: 100, y: 200, rotation: 90 }],
         sinks: [{ sinkId, pieceId, x: 50, y: 75, rotation: 0 }],
         corners: [{ pieceId, corner: 'topLeft', treatment: 'radius', valueIn: 3 }],
-        edges: [{ pieceId, edge: 'top', treatment: 'splash', splashHeightIn: 4, label: 'S4' }]
+        edges: [{ pieceId, edge: 'top', treatment: 'splash', splashHeightIn: 4, label: 'S4', color: '#ef4444' }],
+        referenceLines: [
+          {
+            id: 'centerline-1',
+            pieceId,
+            from: [60, 0],
+            to: [60, 25.5],
+            kind: 'centerline',
+            color: '#000000',
+            dash: true
+          }
+        ]
       }
     };
 
@@ -240,7 +252,17 @@ describe('Quote drawing save and load', () => {
       edge: 'top',
       treatment: 'splash',
       splashHeightIn: 4,
-      label: 'S4'
+      label: 'S4',
+      color: '#ef4444'
+    });
+    expect((savedLayout['referenceLines'] as Array<Record<string, unknown>>)[0]).toEqual({
+      id: 'centerline-1',
+      pieceId,
+      from: [60, 0],
+      to: [60, 25.5],
+      kind: 'centerline',
+      color: '#000000',
+      dash: true
     });
   });
 });
@@ -346,6 +368,7 @@ describe('Quote drawing revisions', () => {
         sinks: [],
         corners: [],
         edges: [],
+        paintedEdges: [],
         deletedLines: [],
         referenceLines: []
       }

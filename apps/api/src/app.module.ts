@@ -58,7 +58,6 @@ import { TagsModule } from "./tags/tags.module.js";
 
 @Module({
   imports: [
-      imports: [
     ActivityNotesModule,
     AttachmentsModule,
     DashboardModule,
@@ -75,8 +74,6 @@ import { TagsModule } from "./tags/tags.module.js";
     ScheduledEventsModule,
     TagsModule,
     UsersModule
-  ],
-
   ],
   controllers: [
     HealthController,

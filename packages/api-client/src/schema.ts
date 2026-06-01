@@ -1782,6 +1782,8 @@ export interface components {
         QuoteMeasurementAreaTotals: {
             pieceCount: number;
             countertopSqFt: number;
+            backsplashSqFt: number;
+            combinedSqFt: number;
             finishedEdgeLinFt: number;
             splashSqFt: number;
             sinkCutoutCount: number;

@@ -137,6 +137,8 @@ export const quoteMeasurementAreaInputSchema = z.object({
 export const quoteMeasurementAreaTotalsSchema = z.object({
   pieceCount: z.number(),
   countertopSqFt: z.number(),
+  backsplashSqFt: z.number(),
+  combinedSqFt: z.number(),
   finishedEdgeLinFt: z.number(),
   splashSqFt: z.number(),
   sinkCutoutCount: z.number(),

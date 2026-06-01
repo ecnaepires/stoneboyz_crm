@@ -75,6 +75,7 @@ const canvasEdgeLayoutSchema = z.object({
   ]),
   splashHeightIn: z.number().positive().nullable().default(null),
   label: z.string().trim().max(8).nullable().default(null),
+  color: z.string().trim().max(32).optional(),
 });
 
 const canvasPaintedEdgeLayoutSchema = z.object({
@@ -90,7 +91,7 @@ const canvasReferenceLineLayoutSchema = z.object({
   pieceId: z.string().uuid(),
   from: z.tuple([z.number(), z.number()]),
   to: z.tuple([z.number(), z.number()]),
-  kind: z.enum(["cabinet", "wall"]).default("cabinet"),
+  kind: z.enum(["cabinet", "wall", "centerline", "dimension"]).default("cabinet"),
   color: z.string().trim().max(32).default("#6b7280"),
   dash: z.boolean().optional(),
 });

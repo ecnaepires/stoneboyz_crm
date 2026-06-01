@@ -4,6 +4,7 @@ import {
   buildChainFromClicks,
   buildChainFromDragPath,
   chainShapeGeometry,
+  connectEdgesToRectangle,
   mergeDrawingBoundaryEdges,
   rectUnionBoundaryEdges,
   rectsToChainSegments,
@@ -424,5 +425,71 @@ describe("RC-06 — extend preserves reference lines", () => {
 
     // Reference lines must pass through unchanged
     expect(extended.referenceLines).toEqual([referenceLine]);
+  });
+});
+
+describe("connectEdgesToRectangle", () => {
+  const SCALE = 3;
+
+  it("returns null for the same edge (degenerate case)", () => {
+    const edge: { from: [number, number]; to: [number, number] } = {
+      from: [0, 0],
+      to: [96 * SCALE, 0],
+    };
+    expect(connectEdgesToRectangle({ firstEdge: edge, secondEdge: edge, scale: SCALE })).toBeNull();
+  });
+
+  it("connects a horizontal and vertical edge into a rectangle", () => {
+    const hEdge: { from: [number, number]; to: [number, number] } = {
+      from: [0, 0],
+      to: [96 * SCALE, 0],
+    };
+    const vEdge: { from: [number, number]; to: [number, number] } = {
+      from: [96 * SCALE, 0],
+      to: [96 * SCALE, 25.5 * SCALE],
+    };
+    const result = connectEdgesToRectangle({
+      firstEdge: hEdge,
+      secondEdge: vEdge,
+      scale: SCALE,
+    });
+    expect(result).not.toBeNull();
+    expect(result!.rect.w).toBeGreaterThan(0);
+    expect(result!.rect.h).toBeGreaterThan(0);
+    expect(result!.lengthIn).toBeGreaterThan(0);
+    expect(result!.widthIn).toBeGreaterThan(0);
+  });
+
+  it("connects two parallel horizontal edges into a rectangle", () => {
+    const topEdge: { from: [number, number]; to: [number, number] } = {
+      from: [0, 0],
+      to: [60 * SCALE, 0],
+    };
+    const bottomEdge: { from: [number, number]; to: [number, number] } = {
+      from: [0, 25.5 * SCALE],
+      to: [60 * SCALE, 25.5 * SCALE],
+    };
+    const result = connectEdgesToRectangle({
+      firstEdge: topEdge,
+      secondEdge: bottomEdge,
+      scale: SCALE,
+    });
+    expect(result).not.toBeNull();
+    expect(result!.lengthIn).toBeCloseTo(60, 0);
+    expect(result!.widthIn).toBeCloseTo(25.5, 0);
+  });
+
+  it("returns null when resulting rect is smaller than one scale unit", () => {
+    const edge1: { from: [number, number]; to: [number, number] } = {
+      from: [0, 0],
+      to: [0, 0],
+    };
+    const edge2: { from: [number, number]; to: [number, number] } = {
+      from: [0, 0],
+      to: [0, 1],
+    };
+    expect(
+      connectEdgesToRectangle({ firstEdge: edge1, secondEdge: edge2, scale: SCALE })
+    ).toBeNull();
   });
 });

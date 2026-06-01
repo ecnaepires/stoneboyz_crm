@@ -410,6 +410,8 @@ describe('Quote measurement golden acceptance scenario', () => {
     expect(kitchen?.['measurementTotals']).toEqual({
       pieceCount: 2,
       countertopSqFt: 35.708,
+      backsplashSqFt: 0,
+      combinedSqFt: 35.708,
       finishedEdgeLinFt: 14.333,
       splashSqFt: 2.778,
       sinkCutoutCount: 1,

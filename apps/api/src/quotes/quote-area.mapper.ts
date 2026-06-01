@@ -19,6 +19,8 @@ const toIso = (value: Date): string => value.toISOString();
 const emptyMeasurementTotals = (): QuoteMeasurementAreaTotals => ({
   pieceCount: 0,
   countertopSqFt: 0,
+  backsplashSqFt: 0,
+  combinedSqFt: 0,
   finishedEdgeLinFt: 0,
   splashSqFt: 0,
   sinkCutoutCount: 0,

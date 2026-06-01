@@ -1344,11 +1344,15 @@ components:
 
     QuoteMeasurementAreaTotals:
       type: object
-      required: [pieceCount, countertopSqFt, finishedEdgeLinFt, splashSqFt, sinkCutoutCount, faucetHoleCount]
+      required: [pieceCount, countertopSqFt, backsplashSqFt, combinedSqFt, finishedEdgeLinFt, splashSqFt, sinkCutoutCount, faucetHoleCount]
       properties:
         pieceCount:
           type: integer
         countertopSqFt:
+          type: number
+        backsplashSqFt:
+          type: number
+        combinedSqFt:
           type: number
         finishedEdgeLinFt:
           type: number

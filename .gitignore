@@ -9,4 +9,4 @@ dist/
 coverage/
 .turbo/
 .env.test
-output/moraware-recordings/
+output/moraware-recordings/.superpowers/

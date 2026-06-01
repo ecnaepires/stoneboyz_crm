@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   applyOffsetToSegments,
+  backsplashCornerCandidatesForEdges,
   buildReferenceLineCornerVisuals,
   buildDeletedLine,
   buildOffsetSegment,
@@ -8,6 +9,7 @@ import {
   connectEdgesToRectangle,
   drawingShapeEdgeMatchesLine,
   drawingShapeEdgesEqual,
+  extendReferenceLineToEdges,
   normalizeDrawingRectUnion,
   drawingRectsToChainSegments,
   isRectangularUnion,
@@ -347,6 +349,251 @@ describe("drawing geometry workflow rules", () => {
       to: [300, -4.5],
       kind: "wall",
       color: "#78aa72",
+    });
+  });
+
+  it("uses green wall offset endpoints as backsplash snap corners", () => {
+    const rects = [{ x: 0, y: 0, w: 300, h: 76.5 }];
+    const boundaryEdges = visibleBoundaryEdges({ rects });
+    const referenceLines = [
+      {
+        id: "source",
+        pieceId: "piece-1",
+        from: [0, 0] as [number, number],
+        to: [300, 0] as [number, number],
+        kind: "cabinet",
+        color: "#6b7280",
+        dash: true,
+      },
+      {
+        id: "source:offset",
+        pieceId: "piece-1",
+        from: [0, -4.5] as [number, number],
+        to: [300, -4.5] as [number, number],
+        kind: "wall",
+        color: "#78aa72",
+        dash: false,
+      },
+    ];
+
+    const candidates = backsplashCornerCandidatesForEdges({
+      pieceId: "piece-1",
+      rects,
+      boundaryEdges,
+      referenceLines,
+    });
+
+    expect(candidates.slice(0, 2)).toEqual([
+      {
+        pieceId: "piece-1",
+        edge: "top",
+        corner: "topLeft",
+        x: 0,
+        y: -4.5,
+        edgeFrom: [0, -4.5],
+        edgeTo: [300, -4.5],
+      },
+      {
+        pieceId: "piece-1",
+        edge: "top",
+        corner: "topRight",
+        x: 300,
+        y: -4.5,
+        edgeFrom: [0, -4.5],
+        edgeTo: [300, -4.5],
+      },
+    ]);
+    expect(candidates.some((candidate) => candidate.y === 0)).toBe(true);
+  });
+
+  it.each([
+    {
+      name: "top",
+      line: {
+        from: [0, -4.5] as [number, number],
+        to: [300, -4.5] as [number, number],
+      },
+      snaps: [
+        { edge: "top", corner: "topLeft", x: 0, y: -4.5 },
+        { edge: "top", corner: "topRight", x: 300, y: -4.5 },
+      ],
+    },
+    {
+      name: "right",
+      line: {
+        from: [304.5, 0] as [number, number],
+        to: [304.5, 76.5] as [number, number],
+      },
+      snaps: [
+        { edge: "right", corner: "topRight", x: 304.5, y: 0 },
+        { edge: "right", corner: "bottomRight", x: 304.5, y: 76.5 },
+      ],
+    },
+    {
+      name: "bottom",
+      line: {
+        from: [300, 81] as [number, number],
+        to: [0, 81] as [number, number],
+      },
+      snaps: [
+        { edge: "bottom", corner: "bottomRight", x: 300, y: 81 },
+        { edge: "bottom", corner: "bottomLeft", x: 0, y: 81 },
+      ],
+    },
+    {
+      name: "left",
+      line: {
+        from: [-4.5, 76.5] as [number, number],
+        to: [-4.5, 0] as [number, number],
+      },
+      snaps: [
+        { edge: "left", corner: "bottomLeft", x: -4.5, y: 76.5 },
+        { edge: "left", corner: "topLeft", x: -4.5, y: 0 },
+      ],
+    },
+  ])("uses $name wall offset endpoints for backsplash snaps", ({ line, snaps }) => {
+    const rects = [{ x: 0, y: 0, w: 300, h: 76.5 }];
+    const candidates = backsplashCornerCandidatesForEdges({
+      pieceId: "piece-1",
+      rects,
+      boundaryEdges: visibleBoundaryEdges({ rects }),
+      referenceLines: [
+        {
+          id: "offset",
+          pieceId: "piece-1",
+          from: line.from,
+          to: line.to,
+          kind: "wall",
+          color: "#78aa72",
+          dash: false,
+        },
+      ],
+    });
+
+    expect(
+      candidates.slice(0, 2).map((candidate) => ({
+        edge: candidate.edge,
+        corner: candidate.corner,
+        x: candidate.x,
+        y: candidate.y,
+      })),
+    ).toEqual(snaps);
+  });
+
+  it("keeps offset wall endpoints selectable even without an anchor-edge overlap", () => {
+    const rects = [{ x: 0, y: 0, w: 300, h: 76.5 }];
+    const candidates = backsplashCornerCandidatesForEdges({
+      pieceId: "piece-1",
+      rects,
+      boundaryEdges: visibleBoundaryEdges({ rects }),
+      referenceLines: [
+        {
+          id: "trimmed-offset",
+          pieceId: "piece-1",
+          from: [320, -4.5] as [number, number],
+          to: [420, -4.5] as [number, number],
+          kind: "wall",
+          color: "#78aa72",
+          dash: false,
+        },
+      ],
+    });
+
+    expect(candidates.slice(0, 2).map((candidate) => ({
+      edge: candidate.edge,
+      x: candidate.x,
+      y: candidate.y,
+    }))).toEqual([
+      { edge: "top", x: 320, y: -4.5 },
+      { edge: "top", x: 420, y: -4.5 },
+    ]);
+  });
+
+  it("offers both edge identities at shared rectangle corners", () => {
+    const rects = [{ x: 0, y: 0, w: 300, h: 76.5 }];
+    const candidates = backsplashCornerCandidatesForEdges({
+      pieceId: "piece-1",
+      rects,
+      boundaryEdges: visibleBoundaryEdges({ rects }),
+      referenceLines: [],
+    });
+
+    expect(
+      candidates
+        .filter((candidate) => candidate.x === 300 && candidate.y === 0)
+        .map((candidate) => candidate.edge)
+        .sort(),
+    ).toEqual(["right", "top"]);
+    expect(
+      candidates
+        .filter((candidate) => candidate.x === 300 && candidate.y === 76.5)
+        .map((candidate) => candidate.edge)
+        .sort(),
+    ).toEqual(["bottom", "right"]);
+  });
+
+  it("extends vertical centerlines through wall offsets", () => {
+    const rects = [{ x: 0, y: 0, w: 300, h: 76.5 }];
+    const extended = extendReferenceLineToEdges({
+      line: {
+        id: "center",
+        pieceId: "piece-1",
+        from: [150, 0],
+        to: [150, 76.5],
+        kind: "centerline",
+        color: "#000000",
+        dash: true,
+      },
+      rects,
+      boundaryEdges: visibleBoundaryEdges({ rects }),
+      referenceLines: [
+        {
+          id: "top-offset",
+          pieceId: "piece-1",
+          from: [0, -30],
+          to: [300, -30],
+          kind: "wall",
+          color: "#78aa72",
+          dash: false,
+        },
+      ],
+    });
+
+    expect(extended).toEqual({
+      from: [150, -30],
+      to: [150, 76.5],
+    });
+  });
+
+  it("extends horizontal segments through wall offsets", () => {
+    const rects = [{ x: 0, y: 0, w: 300, h: 76.5 }];
+    const extended = extendReferenceLineToEdges({
+      line: {
+        id: "segment",
+        pieceId: "piece-1",
+        from: [0, 40],
+        to: [300, 40],
+        kind: "cabinet",
+        color: "#78aa72",
+      },
+      rects,
+      boundaryEdges: visibleBoundaryEdges({ rects }),
+      referenceLines: [
+        {
+          id: "right-offset",
+          pieceId: "piece-1",
+          from: [330, 0],
+          to: [330, 76.5],
+          kind: "wall",
+          color: "#78aa72",
+          dash: false,
+        },
+      ],
+    });
+
+    expect(extended).toEqual({
+      from: [0, 40],
+      to: [330, 40],
     });
   });
 

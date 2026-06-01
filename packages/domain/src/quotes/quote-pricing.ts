@@ -29,13 +29,13 @@ export function generatePriceLines(
         case 'material':
           return {
             label: area.material ?? 'Material',
-            quantity: totals.countertopSqFt,
+            quantity: totals.combinedSqFt,
             unit: 'sqft'
           };
         case 'fabrication':
           return {
             label: 'Fabrication',
-            quantity: totals.countertopSqFt,
+            quantity: totals.combinedSqFt,
             unit: 'sqft'
           };
         case 'finished_edge':

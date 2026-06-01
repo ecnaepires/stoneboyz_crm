@@ -49,11 +49,22 @@ export function calculateMeasurementAreaTotals(area: QuoteMeasurementAreaInput):
   const edges = area.edges ?? [];
   const sinks = area.sinks ?? [];
 
+  const countertopSqFt = sumRounded(
+    pieces
+      .filter((piece) => piece.kind !== 'backsplash')
+      .map((piece) => calculateCountertopSqFt(piece.lengthIn, piece.widthIn, piece.quantity ?? 1))
+  );
+  const backsplashSqFt = sumRounded(
+    pieces
+      .filter((piece) => piece.kind === 'backsplash')
+      .map((piece) => calculateCountertopSqFt(piece.lengthIn, piece.widthIn, piece.quantity ?? 1))
+  );
+
   return {
     pieceCount: pieces.reduce((total, piece) => total + (piece.quantity ?? 1), 0),
-    countertopSqFt: sumRounded(
-      pieces.map((piece) => calculateCountertopSqFt(piece.lengthIn, piece.widthIn, piece.quantity ?? 1))
-    ),
+    countertopSqFt,
+    backsplashSqFt,
+    combinedSqFt: sumRounded([countertopSqFt, backsplashSqFt]),
     finishedEdgeLinFt: sumRounded(
       edges
         .filter((edge) => edge.treatment === 'finished')
@@ -75,6 +86,8 @@ export function calculateMeasurementTotals(areas: QuoteMeasurementAreaInput[]): 
     areaCount: areas.length,
     pieceCount: areaTotals.reduce((total, area) => total + area.pieceCount, 0),
     countertopSqFt: sumRounded(areaTotals.map((area) => area.countertopSqFt)),
+    backsplashSqFt: sumRounded(areaTotals.map((area) => area.backsplashSqFt)),
+    combinedSqFt: sumRounded(areaTotals.map((area) => area.combinedSqFt)),
     finishedEdgeLinFt: sumRounded(areaTotals.map((area) => area.finishedEdgeLinFt)),
     splashSqFt: sumRounded(areaTotals.map((area) => area.splashSqFt)),
     sinkCutoutCount: areaTotals.reduce((total, area) => total + area.sinkCutoutCount, 0),
