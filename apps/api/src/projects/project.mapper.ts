@@ -16,6 +16,8 @@ export interface ProjectRow {
   job_phone: string | null;
   job_email: string | null;
   status: Project['status'];
+  pipeline_stage: Project['pipelineStage'];
+  stage_entered_at: Date;
   owner_user_id: string;
   archived_at: Date | null;
   created_at: Date;
@@ -48,6 +50,8 @@ export const mapProjectRow = (row: ProjectRow): Project => ({
   description: row.description,
   jobAddress: mapJobAddress(row),
   status: row.status,
+  pipelineStage: row.pipeline_stage,
+  stageEnteredAt: toIso(row.stage_entered_at),
   ownerUserId: row.owner_user_id,
   archivedAt: row.archived_at === null ? null : toIso(row.archived_at),
   createdAt: toIso(row.created_at),

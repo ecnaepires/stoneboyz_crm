@@ -2,6 +2,7 @@ import type { Project } from '@stoneboyz/domain';
 import type {
   ProjectArchivedData,
   ProjectCreatedData,
+  ProjectStageChangedData,
   ProjectStatusChangedData,
   ProjectUpdatedData
 } from '../events/event-types.js';
@@ -46,4 +47,18 @@ export const buildProjectStatusChangedPayload = (
   actorUserId,
   fromStatus,
   toStatus
+});
+
+export const buildProjectStageChangedPayload = (
+  projectId: string,
+  actorUserId: string,
+  fromStage: string,
+  toStage: string,
+  source: 'manual' | 'auto'
+): ProjectStageChangedData => ({
+  projectId,
+  actorUserId,
+  fromStage,
+  toStage,
+  source
 });

@@ -1,17 +1,19 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
-import { canTransitionProjectStatus } from '@stoneboyz/domain';
+import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import { canTransitionProjectStatus, isForward, statusFromStage } from '@stoneboyz/domain';
 import type {
   ArchiveProjectInput,
   CreateProjectInput,
   ListProjectsInput,
   Project,
-  UpdateProjectInput
+  UpdateProjectInput,
+  UpdateProjectStageInput
 } from '@stoneboyz/domain';
 import type { DatabaseError } from 'pg';
 import { EventBus } from '../events/event-bus.js';
 import {
   buildProjectArchivedPayload,
   buildProjectCreatedPayload,
+  buildProjectStageChangedPayload,
   buildProjectStatusChangedPayload,
   buildProjectUpdatedPayload
 } from './project-events.js';
@@ -138,6 +140,61 @@ export class ProjectsService {
 
       throw error;
     }
+  }
+
+  async setStage(
+    projectId: string,
+    input: UpdateProjectStageInput,
+    source: 'manual' | 'auto' = 'manual'
+  ): Promise<Project> {
+    const current = await this.projectsRepository.findByIdAnyState(projectId);
+
+    if (current === null) {
+      throw new NotFoundException({ code: 'NOT_FOUND', message: 'Project not found' });
+    }
+
+    if (current.archivedAt !== null) {
+      throw new ConflictException({
+        code: 'PROJECT_ARCHIVED',
+        message: 'Cannot change the stage of an archived project'
+      });
+    }
+
+    if (input.stage === current.pipelineStage) {
+      return current;
+    }
+
+    if (
+      !isForward(current.pipelineStage, input.stage) &&
+      source === 'manual' &&
+      input.allowBackward !== true
+    ) {
+      throw new ConflictException({
+        code: 'BACKWARD_STAGE_NOT_ALLOWED',
+        message: `Cannot move stage backward from ${current.pipelineStage} to ${input.stage} without allowBackward`,
+        details: { from: current.pipelineStage, to: input.stage }
+      });
+    }
+
+    const status = statusFromStage(input.stage);
+    const project = await this.projectsRepository.updateStage(projectId, { stage: input.stage, status });
+
+    if (project === null) {
+      throw new NotFoundException({ code: 'NOT_FOUND', message: 'Project not found' });
+    }
+
+    this.eventBus.emit(
+      'project.stage_changed',
+      buildProjectStageChangedPayload(
+        projectId,
+        input.actorUserId,
+        current.pipelineStage,
+        input.stage,
+        source
+      )
+    );
+
+    return project;
   }
 
   async archive(projectId: string, input: ArchiveProjectInput): Promise<Project> {

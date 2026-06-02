@@ -101,6 +101,14 @@ export interface ProjectStatusChangedData {
   toStatus: string;
 }
 
+export interface ProjectStageChangedData {
+  projectId: string;
+  actorUserId: string;
+  fromStage: string;
+  toStage: string;
+  source: 'manual' | 'auto';
+}
+
 export interface QuoteEventData {
   quoteId: string;
   customerId: string;
@@ -224,7 +232,8 @@ export type ProjectEventName =
   | 'project.created'
   | 'project.updated'
   | 'project.archived'
-  | 'project.status_changed';
+  | 'project.status_changed'
+  | 'project.stage_changed';
 
 export type QuoteEventName =
   | 'quote.created'

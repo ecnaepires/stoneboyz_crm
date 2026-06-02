@@ -1,5 +1,5 @@
 import { BadRequestException, Body, Controller, Get, HttpCode, Param, Patch, Post, Query } from '@nestjs/common';
-import { archiveProjectSchema, createProjectSchema, listProjectsSchema, updateProjectSchema } from '@stoneboyz/domain';
+import { archiveProjectSchema, createProjectSchema, listProjectsSchema, updateProjectSchema, updateProjectStageSchema } from '@stoneboyz/domain';
 import { z } from 'zod';
 import { CurrentUser } from '../auth/current-user.decorator.js';
 import { ProjectsService } from './projects.service.js';
@@ -127,6 +127,31 @@ export class ProjectsController {
     }
 
     return this.projectsService.update(parsedProjectId.data, { ...parsedBody.data, actorUserId });
+  }
+
+  @Patch(':projectId/stage')
+  async setStage(@Param('projectId') projectId: string, @Body() body: unknown, @CurrentUser() actorUserId: string) {
+    const parsedProjectId = projectIdSchema.safeParse(projectId);
+
+    if (!parsedProjectId.success) {
+      throw new BadRequestException({
+        code: 'VALIDATION_ERROR',
+        message: 'Request validation failed',
+        details: { projectId: ['Invalid UUID'] }
+      });
+    }
+
+    const parsedBody = updateProjectStageSchema.safeParse(body);
+
+    if (!parsedBody.success) {
+      throw new BadRequestException({
+        code: 'VALIDATION_ERROR',
+        message: 'Request validation failed',
+        details: formatZodError(parsedBody.error)
+      });
+    }
+
+    return this.projectsService.setStage(parsedProjectId.data, { ...parsedBody.data, actorUserId });
   }
 
   @Post(':projectId/archive')

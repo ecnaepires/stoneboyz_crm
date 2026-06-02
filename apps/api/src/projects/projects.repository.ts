@@ -3,7 +3,9 @@ import type {
   ArchiveProjectInput,
   CreateProjectInput,
   ListProjectsInput,
+  PipelineStage,
   Project,
+  ProjectStatus,
   ProjectSortBy,
   SortDirection,
   UpdateProjectInput
@@ -276,6 +278,21 @@ export class ProjectsRepository {
     return row === undefined ? null : mapProjectRow(row);
   }
 
+  async findByIdAnyState(projectId: string): Promise<Project | null> {
+    const result = await this.pool.query<ProjectRow>(
+      `
+        SELECT *
+        FROM projects
+        WHERE id = $1
+      `,
+      [projectId]
+    );
+
+    const row = result.rows[0];
+
+    return row === undefined ? null : mapProjectRow(row);
+  }
+
   async update(projectId: string, input: UpdateProjectInput): Promise<Project | null> {
     const values: unknown[] = [];
     const assignments: string[] = [];
@@ -312,6 +329,25 @@ export class ProjectsRepository {
         RETURNING *
       `,
       values
+    );
+
+    const row = result.rows[0];
+
+    return row === undefined ? null : mapProjectRow(row);
+  }
+
+  async updateStage(
+    projectId: string,
+    params: { stage: PipelineStage; status: ProjectStatus }
+  ): Promise<Project | null> {
+    const result = await this.pool.query<ProjectRow>(
+      `
+        UPDATE projects
+        SET pipeline_stage = $1, status = $2, stage_entered_at = now(), updated_at = now()
+        WHERE id = $3 AND archived_at IS NULL
+        RETURNING *
+      `,
+      [params.stage, params.status, projectId]
     );
 
     const row = result.rows[0];
