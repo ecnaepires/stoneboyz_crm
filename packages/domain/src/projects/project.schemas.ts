@@ -1,9 +1,11 @@
 import { z } from 'zod';
 import { SORT_DIRECTION_VALUES } from '../customers/customer.constants.js';
 import { PROJECT_SORT_BY_VALUES, PROJECT_STATUS_VALUES } from './project.constants.js';
+import { PIPELINE_STAGE_VALUES } from './project.pipeline.js';
 
 const projectStatusSchema = z.enum(PROJECT_STATUS_VALUES);
 const projectSortBySchema = z.enum(PROJECT_SORT_BY_VALUES);
+const pipelineStageSchema = z.enum(PIPELINE_STAGE_VALUES);
 const sortDirectionSchema = z.enum(SORT_DIRECTION_VALUES);
 
 const projectJobAddressSchema = z.object({
@@ -42,6 +44,11 @@ export const updateProjectSchema = z.object({
 });
 
 export const archiveProjectSchema = z.object({});
+
+export const updateProjectStageSchema = z.object({
+  stage: pipelineStageSchema,
+  allowBackward: z.boolean().optional()
+});
 
 export const listProjectsSchema = z.object({
   cursor: z.string().min(1).optional(),

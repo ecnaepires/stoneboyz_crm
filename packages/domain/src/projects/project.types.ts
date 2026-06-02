@@ -1,4 +1,5 @@
 import type { ProjectSortBy, ProjectStatus } from './project.constants.js';
+import type { PipelineStage } from './project.pipeline.js';
 import type { SortDirection } from '../customers/customer.constants.js';
 
 export interface Project {
@@ -9,6 +10,8 @@ export interface Project {
   description: string | null;
   jobAddress: ProjectJobAddress | null;
   status: ProjectStatus;
+  pipelineStage: PipelineStage;
+  stageEnteredAt: string;
   ownerUserId: string;
   archivedAt: string | null;
   createdAt: string;
@@ -51,6 +54,12 @@ export interface UpdateProjectInput {
 
 export interface ArchiveProjectInput {
   actorUserId: string;
+}
+
+export interface UpdateProjectStageInput {
+  actorUserId: string;
+  stage: PipelineStage;
+  allowBackward?: boolean | undefined;
 }
 
 export interface ListProjectsInput {
