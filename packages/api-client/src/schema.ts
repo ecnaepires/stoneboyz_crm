@@ -2124,7 +2124,7 @@ export interface components {
         /** @enum {string} */
         ScheduledEventType: "appointment" | "shop_job";
         /** @enum {string} */
-        AppointmentType: "template" | "deposit" | "material" | "fabrication" | "install" | "invoice" | "repair" | "other";
+        AppointmentType: "template" | "deposit" | "material" | "cut" | "fabrication" | "install" | "invoice" | "repair" | "other";
         /** @enum {string} */
         ScheduledEventStatus: "scheduled" | "confirmed" | "in_progress" | "completed" | "cancelled";
         ScheduledEvent: {

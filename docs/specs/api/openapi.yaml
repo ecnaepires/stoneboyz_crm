@@ -2105,7 +2105,7 @@ components:
 
     AppointmentType:
       type: string
-      enum: [template, deposit, material, fabrication, install, invoice, repair, other]
+      enum: [template, deposit, material, cut, fabrication, install, invoice, repair, other]
 
     ScheduledEventStatus:
       type: string

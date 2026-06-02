@@ -3,7 +3,10 @@
 import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { AlertTriangle, CalendarDays, CalendarPlus } from 'lucide-react';
 import type { PipelineStage } from '@stoneboyz/domain';
+import { Button } from '@/components/ui/button';
+import { buildScheduleHref, nextAppointmentTypeForPipelineStage } from '@/lib/schedule-links';
 import { resolveStageDrop } from './stage-drop';
 import { setProjectStageAction } from './_actions';
 
@@ -31,7 +34,7 @@ const STAGE_LABELS: Record<PipelineStage, string> = {
   fabrication: 'Fabrication',
   install: 'Install',
   invoice: 'Invoice',
-  done: 'Done'
+  done: 'Done',
 };
 
 const formatDollars = (cents: number): string =>
@@ -39,6 +42,12 @@ const formatDollars = (cents: number): string =>
 
 const formatDate = (iso: string): string =>
   new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+
+const labelize = (value: string): string =>
+  value
+    .split('_')
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ');
 
 export function PipelineBoard({ cards, stages }: { cards: PipelineCard[]; stages: readonly PipelineStage[] }) {
   const router = useRouter();
@@ -71,7 +80,7 @@ export function PipelineBoard({ cards, stages }: { cards: PipelineCard[]; stages
     }
     if (drop.kind === 'backward') {
       const confirmed = window.confirm(
-        `Move ${STAGE_LABELS[from]} → ${STAGE_LABELS[to]}? This moves the job backward.`
+        `Move ${STAGE_LABELS[from]} -> ${STAGE_LABELS[to]}? This moves the job backward.`,
       );
       if (!confirmed) {
         return;
@@ -86,7 +95,7 @@ export function PipelineBoard({ cards, stages }: { cards: PipelineCard[]; stages
     <div className='space-y-4'>
       <div className='flex items-center justify-between'>
         <h1 className='text-xl font-semibold'>Pipeline</h1>
-        {isPending && <span className='text-sm text-muted-foreground'>Saving…</span>}
+        {isPending && <span className='text-sm text-muted-foreground'>Saving...</span>}
       </div>
       {error && (
         <div className='rounded-md border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-700'>{error}</div>
@@ -106,38 +115,59 @@ export function PipelineBoard({ cards, stages }: { cards: PipelineCard[]; stages
                 <span className='text-muted-foreground'>{stageCards.length}</span>
               </div>
               <div className='space-y-2'>
-                {stageCards.length === 0 && (
-                  <p className='px-1 text-xs text-muted-foreground'>No jobs</p>
-                )}
-                {stageCards.map((card) => (
-                  <div
-                    key={card.id}
-                    draggable
-                    onDragStart={() => setDragged({ id: card.id, from: card.pipelineStage })}
-                    onDragEnd={() => setDragged(null)}
-                    className='cursor-grab rounded-md border bg-background p-2 text-xs shadow-sm active:cursor-grabbing'
-                  >
-                    <Link href={`/projects/${card.id}`} className='font-semibold hover:underline'>
-                      {card.jobNumber} · {card.customerName}
-                    </Link>
-                    <div className='text-muted-foreground'>{card.title}</div>
-                    {card.city && <div className='text-muted-foreground'>{card.city}</div>}
-                    {card.nextAppointment && (
-                      <div className='mt-1'>
-                        {'📅'} {card.nextAppointment.appointmentType ?? 'Appt'} ·{' '}
-                        {formatDate(card.nextAppointment.scheduledAt)}
+                {stageCards.length === 0 && <p className='px-1 text-xs text-muted-foreground'>No jobs</p>}
+                {stageCards.map((card) => {
+                  const nextAppointmentType = nextAppointmentTypeForPipelineStage(card.pipelineStage);
+                  return (
+                    <div
+                      key={card.id}
+                      draggable
+                      onDragStart={() => setDragged({ id: card.id, from: card.pipelineStage })}
+                      onDragEnd={() => setDragged(null)}
+                      className='cursor-grab rounded-md border bg-background p-2 text-xs shadow-sm active:cursor-grabbing'
+                    >
+                      <Link href={`/projects/${card.id}`} className='font-semibold hover:underline'>
+                        {card.jobNumber} - {card.customerName}
+                      </Link>
+                      <div className='text-muted-foreground'>{card.title}</div>
+                      {card.city && <div className='text-muted-foreground'>{card.city}</div>}
+                      {card.nextAppointment && (
+                        <div className='mt-1 flex items-center gap-1'>
+                          <CalendarDays className='size-3 shrink-0' aria-hidden='true' />
+                          <span>
+                            {card.nextAppointment.appointmentType ?? 'Appt'} -{' '}
+                            {formatDate(card.nextAppointment.scheduledAt)}
+                          </span>
+                        </div>
+                      )}
+                      <div className='mt-1 flex flex-wrap gap-x-2 text-muted-foreground'>
+                        <span>{formatDollars(card.quoteValueCents)}</span>
+                        <span>{card.squareFeet} sq ft</span>
+                        <span>{card.daysInStage}d in stage</span>
+                        {card.openIssueCount > 0 && (
+                          <span className='inline-flex items-center gap-1 text-red-600'>
+                            <AlertTriangle className='size-3' aria-hidden='true' />
+                            {card.openIssueCount}
+                          </span>
+                        )}
                       </div>
-                    )}
-                    <div className='mt-1 flex flex-wrap gap-x-2 text-muted-foreground'>
-                      <span>{formatDollars(card.quoteValueCents)}</span>
-                      <span>{card.squareFeet} sq ft</span>
-                      <span>{card.daysInStage}d in stage</span>
-                      {card.openIssueCount > 0 && (
-                        <span className='text-red-600'>{'⚠'} {card.openIssueCount}</span>
+                      {nextAppointmentType && (
+                        <Button asChild variant='outline' size='sm' className='mt-2 h-7 w-full justify-start px-2 text-xs'>
+                          <Link
+                            href={buildScheduleHref({
+                              customerId: card.customerId,
+                              projectId: card.id,
+                              appointmentType: nextAppointmentType,
+                            })}
+                          >
+                            <CalendarPlus className='mr-1 size-3' aria-hidden='true' />
+                            Schedule {labelize(nextAppointmentType)}
+                          </Link>
+                        </Button>
                       )}
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
           );

@@ -1,5 +1,5 @@
 export const SCHEDULED_EVENT_TYPE_VALUES = ['appointment', 'shop_job'] as const;
-export const APPOINTMENT_TYPE_VALUES = ['template', 'deposit', 'material', 'fabrication', 'install', 'invoice', 'repair', 'other'] as const;
+export const APPOINTMENT_TYPE_VALUES = ['template', 'deposit', 'material', 'cut', 'fabrication', 'install', 'invoice', 'repair', 'other'] as const;
 export const TEMPLATE_KIND_VALUES = ['measurement_only', 'physical_template', 'laser_template'] as const;
 export const SCHEDULED_EVENT_STATUS_VALUES = ['scheduled', 'confirmed', 'in_progress', 'completed', 'cancelled'] as const;
 

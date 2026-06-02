@@ -58,6 +58,8 @@ Fields:
 - Archived events are excluded from normal reads (`WHERE deleted_at IS NULL`).
 - Events must be emitted after successful transaction commit only.
 - `actorUserId` is required on all mutating requests.
+- Project-linked events (`projectId` set) are visible to the pipeline as the job's next appointment, but creating or rescheduling an event must not move the pipeline stage.
+- The pipeline stage advances only after a project-linked appointment reaches `completed` and maps to a pipeline milestone.
 
 ## API Endpoints (what operations exist)
 

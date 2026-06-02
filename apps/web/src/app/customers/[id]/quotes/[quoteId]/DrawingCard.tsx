@@ -1,6 +1,3 @@
-import Link from 'next/link';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
 import { getApiClientWithAuth } from '@/lib/api';
 import { DrawingCanvasInner } from './DrawingCanvasInner';
 import type { DrawingPiece, DrawingSink, CanvasLayout, DrawingRevisionSummary } from './DrawingCanvasInner';
@@ -12,7 +9,6 @@ interface DrawingCardProps {
   areas: QuoteAreaWithMeasurementTotals[];
   isDraft: boolean;
   hasPriceList: boolean;
-  standalone?: boolean;
 }
 
 type MeasurementClient = {
@@ -90,7 +86,6 @@ export async function DrawingCard({
   areas,
   isDraft,
   hasPriceList,
-  standalone = false,
 }: DrawingCardProps) {
   const dataByArea = new Map(
     await Promise.all(
@@ -101,7 +96,7 @@ export async function DrawingCard({
   const body = areas.length === 0 ? (
     <p className="text-sm text-muted-foreground">Add an area before using the drawing canvas.</p>
   ) : (
-    <div className={standalone ? "flex min-h-0 flex-1 flex-col" : "space-y-6"}>
+    <div className="flex min-h-0 flex-1 flex-col">
       {areas.map((area) => {
         const data = dataByArea.get(area.id) ?? {
           pieces: [],
@@ -115,9 +110,9 @@ export async function DrawingCard({
         return (
           <section
             key={area.id}
-            className={standalone ? "flex min-h-0 flex-1 flex-col" : "space-y-2"}
+            className="flex min-h-0 flex-1 flex-col"
           >
-            <h3 className={standalone ? "sr-only" : "font-medium"}>{area.name}</h3>
+            <h3 className="sr-only">{area.name}</h3>
             {isDraft || data.pieces.length > 0 ? (
               <DrawingCanvasInner
                 customerId={customerId}
@@ -132,7 +127,7 @@ export async function DrawingCard({
                 pricingLines={data.pricingLines}
                 hasPriceList={hasPriceList}
                 isDraft={isDraft}
-                fullscreen={standalone}
+                fullscreen
               />
             ) : (
               <p className="text-sm text-muted-foreground">No counter pieces have been drawn for this area.</p>
@@ -143,19 +138,5 @@ export async function DrawingCard({
     </div>
   );
 
-  if (standalone) {
-    return <div className="flex min-h-0 flex-1 flex-col">{body}</div>;
-  }
-
-  return (
-    <Card>
-      <CardHeader className="flex flex-row items-center justify-between gap-3">
-        <CardTitle>Drawing</CardTitle>
-        <Button asChild size="sm" variant="outline">
-          <Link href={`/customers/${customerId}/quotes/${quoteId}/drawing`}>Open Drawing Workspace</Link>
-        </Button>
-      </CardHeader>
-      <CardContent>{body}</CardContent>
-    </Card>
-  );
+  return <div className="flex min-h-0 flex-1 flex-col">{body}</div>;
 }

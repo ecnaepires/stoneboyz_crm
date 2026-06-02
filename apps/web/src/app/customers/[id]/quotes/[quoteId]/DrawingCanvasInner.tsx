@@ -60,6 +60,199 @@ import {
 } from "@stoneboyz/domain";
 import type { DrawingReferenceLine } from "@stoneboyz/domain";
 
+interface DrawingPreviewLayerProps {
+  drawPreview: DrawPreview | null;
+  segmentPreview: SegmentPreview | null;
+  marqueeSelection: {
+    start: { x: number; y: number };
+    end: { x: number; y: number };
+  } | null;
+  pan: { x: number; y: number };
+  zoom: number;
+}
+
+function DrawingPreviewLayer({
+  drawPreview,
+  segmentPreview,
+  marqueeSelection,
+  pan,
+  zoom,
+}: DrawingPreviewLayerProps) {
+  return (
+    <Layer>
+      <Group x={pan.x} y={pan.y} scaleX={zoom} scaleY={zoom}>
+        {segmentPreview ? (
+          <Line
+            points={[
+              segmentPreview.from.x,
+              segmentPreview.from.y,
+              segmentPreview.to.x,
+              segmentPreview.to.y,
+            ]}
+            stroke={PIECE_STROKE}
+            strokeWidth={2}
+            dash={[6, 4]}
+          />
+        ) : null}
+
+        {marqueeSelection
+          ? (() => {
+              const selectionRect = selectionRectFromPoints(
+                marqueeSelection.start,
+                marqueeSelection.end,
+              );
+              return (
+                <Rect
+                  x={selectionRect.x}
+                  y={selectionRect.y}
+                  width={selectionRect.width}
+                  height={selectionRect.height}
+                  fill={MARQUEE_FILL}
+                  stroke={MARQUEE_STROKE}
+                  strokeWidth={1}
+                  dash={[6, 4]}
+                  listening={false}
+                />
+              );
+            })()
+          : null}
+
+        {drawPreview ? (
+          <Group x={drawPreview.x} y={drawPreview.y}>
+            {drawPreview.segments && drawPreview.segments.length > 0 ? (
+              <>
+                {drawPreview.segments.map((segment, index) => (
+                  <Rect
+                    key={`preview-segment-${index}`}
+                    x={segment.x - drawPreview.x}
+                    y={segment.y - drawPreview.y}
+                    width={segment.w}
+                    height={segment.h}
+                    fill={PIECE_FILL}
+                    opacity={0.8}
+                  />
+                ))}
+                {rectUnionBoundary(
+                  drawPreview.segments.map((segment) => ({
+                    x: segment.x - drawPreview.x,
+                    y: segment.y - drawPreview.y,
+                    w: segment.w,
+                    h: segment.h,
+                  })),
+                ).map((edge, index) => (
+                  <Line
+                    key={`preview-edge-${index}`}
+                    points={[edge.from[0], edge.from[1], edge.to[0], edge.to[1]]}
+                    stroke={GUIDE_COLOR}
+                    strokeWidth={2}
+                  />
+                ))}
+              </>
+            ) : (
+              <Rect
+                width={drawPreview.w}
+                height={drawPreview.h}
+                fill={PIECE_FILL}
+                opacity={0.8}
+                stroke={GUIDE_COLOR}
+                strokeWidth={2}
+              />
+            )}
+            <Line
+              points={[0, -10, drawPreview.w, -10]}
+              stroke="#d1d5db"
+              strokeWidth={1}
+            />
+            <Line
+              points={[-10, 0, -10, drawPreview.h]}
+              stroke="#d1d5db"
+              strokeWidth={1}
+            />
+            <Text
+              text={formatInches(drawPreview.lengthIn)}
+              x={drawPreview.w / 2 - 28}
+              y={-24}
+              fontSize={12}
+              fill="#4b5563"
+            />
+            <Text
+              text={formatInches(drawPreview.widthIn)}
+              x={-50}
+              y={drawPreview.h / 2 - 6}
+              fontSize={12}
+              fill="#4b5563"
+            />
+            {!drawPreview.segments && drawPreview.leg ? (
+              <Group
+                x={drawPreview.leg.x - drawPreview.x}
+                y={drawPreview.leg.y - drawPreview.y}
+              >
+                <Rect
+                  width={drawPreview.leg.w}
+                  height={drawPreview.leg.h}
+                  fill={PIECE_FILL}
+                  opacity={0.8}
+                  stroke={GUIDE_COLOR}
+                  strokeWidth={2}
+                />
+                <Text
+                  text={formatInches(drawPreview.leg.widthIn)}
+                  x={drawPreview.leg.w + 6}
+                  y={drawPreview.leg.h / 2 - 6}
+                  fontSize={12}
+                  fill="#4b5563"
+                />
+              </Group>
+            ) : null}
+            {!drawPreview.segments && drawPreview.tail ? (
+              <Group
+                x={drawPreview.tail.x - drawPreview.x}
+                y={drawPreview.tail.y - drawPreview.y}
+              >
+                <Rect
+                  width={drawPreview.tail.w}
+                  height={drawPreview.tail.h}
+                  fill={PIECE_FILL}
+                  opacity={0.8}
+                  stroke={GUIDE_COLOR}
+                  strokeWidth={2}
+                />
+                <Text
+                  text={formatInches(drawPreview.tail.lengthIn)}
+                  x={drawPreview.tail.w / 2 - 28}
+                  y={drawPreview.tail.h + 8}
+                  fontSize={12}
+                  fill="#4b5563"
+                />
+              </Group>
+            ) : null}
+            {drawPreview.segments?.map((segment, index) => (
+              <Text
+                key={`${segment.orientation}-${index}`}
+                text={formatInches(
+                  segment.orientation === "horizontal"
+                    ? segment.lengthIn
+                    : segment.widthIn,
+                )}
+                x={segment.x - drawPreview.x + segment.w / 2 - 28}
+                y={
+                  segment.y -
+                  drawPreview.y +
+                  (segment.orientation === "horizontal"
+                    ? segment.h + 8
+                    : segment.h / 2 - 6)
+                }
+                fontSize={12}
+                fill="#4b5563"
+              />
+            ))}
+          </Group>
+        ) : null}
+      </Group>
+    </Layer>
+  );
+}
+
 const SCALE = 3;
 const PIECE_GAP = 40;
 const CANVAS_W = 760;
@@ -752,6 +945,35 @@ function nearestRectangleEdge(
   const [edge, distance] = distances.reduce((nearest, current) =>
     current[1] < nearest[1] ? current : nearest,
   );
+  return distance <= tolerance ? edge : null;
+}
+
+function distanceToShapeEdge(x: number, y: number, edge: ShapeEdge): number {
+  const minX = Math.min(edge.from[0], edge.to[0]);
+  const maxX = Math.max(edge.from[0], edge.to[0]);
+  const minY = Math.min(edge.from[1], edge.to[1]);
+  const maxY = Math.max(edge.from[1], edge.to[1]);
+  const closestX = Math.max(minX, Math.min(x, maxX));
+  const closestY = Math.max(minY, Math.min(y, maxY));
+  return Math.hypot(x - closestX, y - closestY);
+}
+
+function nearestShapeBoundaryEdge(
+  x: number,
+  y: number,
+  edges: ShapeEdge[],
+  tolerance = 18,
+): ShapeEdge | null {
+  if (edges.length === 0) return null;
+  const [edge, distance] = edges
+    .map((candidate) => [
+      candidate,
+      distanceToShapeEdge(x, y, candidate),
+    ] as const)
+    .reduce((nearest, current) =>
+      current[1] < nearest[1] ? current : nearest,
+    );
+
   return distance <= tolerance ? edge : null;
 }
 
@@ -2210,6 +2432,19 @@ export function DrawingCanvasInner({
     DEFAULT_DRAWING_MARKUP_COLOR,
   );
   const [showLegend, setShowLegend] = useState<boolean>(false);
+  const legendColors = useMemo(
+    () =>
+      DRAWING_MARKUP_COLORS.filter((swatch) => {
+        const matchesColor = (color: string | null | undefined) =>
+          color === swatch.color;
+        return (
+          layout.referenceLines.some((line) => matchesColor(line.color)) ||
+          layout.edges.some((edge) => matchesColor(edge.color)) ||
+          layout.paintedEdges.some((edge) => matchesColor(edge.color))
+        );
+      }),
+    [layout.edges, layout.paintedEdges, layout.referenceLines],
+  );
   const [backsplashPopupOpen, setBacksplashPopupOpen] = useState(false);
   const [backsplashHeightIn, setBacksplashHeightIn] = useState(
     String(DEFAULT_BACKSPLASH_HEIGHT_IN),
@@ -6103,7 +6338,7 @@ export function DrawingCanvasInner({
                         }}
                       />
 
-                      {pieces.length === 0 && !drawPreview ? (
+                      {pieces.length === 0 && tool !== "draw" ? (
                         <Text
                           x={32}
                           y={34}
@@ -6135,20 +6370,6 @@ export function DrawingCanvasInner({
                           />
                         </Group>
                       ))}
-
-                      {segmentPreview ? (
-                        <Line
-                          points={[
-                            segmentPreview.from.x,
-                            segmentPreview.from.y,
-                            segmentPreview.to.x,
-                            segmentPreview.to.y,
-                          ]}
-                          stroke={PIECE_STROKE}
-                          strokeWidth={2}
-                          dash={[6, 4]}
-                        />
-                      ) : null}
 
                       {layout.pieces.map((pos) => {
                         const basePiece = pieceMap.get(pos.pieceId);
@@ -6232,13 +6453,48 @@ export function DrawingCanvasInner({
                                     if (!groupPiece) continue;
                                     const renderedGroupPiece =
                                       getRenderedPiece(groupPiece);
+                                    const groupShape = isChainShape(
+                                      groupPos.shape,
+                                    )
+                                      ? chainShapeGeometry(groupPos.shape)
+                                      : isLShape(groupPos.shape) ||
+                                          isZShape(groupPos.shape)
+                                        ? chainShapeGeometry(
+                                            legacyShapeToChain(
+                                              groupPos.shape,
+                                              renderedGroupPiece,
+                                              SCALE,
+                                            ),
+                                          )
+                                        : null;
+                                    const localX = pointer.x - groupPos.x;
+                                    const localY = pointer.y - groupPos.y;
+                                    if (groupShape) {
+                                      const boundaryEdge =
+                                        nearestShapeBoundaryEdge(
+                                          localX,
+                                          localY,
+                                          groupShape.edges,
+                                        );
+                                      if (boundaryEdge) {
+                                        paintPieceEdge(
+                                          groupPos.pieceId,
+                                          boundaryEdgeKey(
+                                            boundaryEdge,
+                                            groupShape.rects,
+                                          ),
+                                        );
+                                        return;
+                                      }
+                                      continue;
+                                    }
                                     const groupW =
                                       renderedGroupPiece.lengthIn * SCALE;
                                     const groupH =
                                       renderedGroupPiece.widthIn * SCALE;
                                     const edge = nearestRectangleEdge(
-                                      pointer.x - groupPos.x,
-                                      pointer.y - groupPos.y,
+                                      localX,
+                                      localY,
                                       groupW,
                                       groupH,
                                     );
@@ -6634,9 +6890,29 @@ export function DrawingCanvasInner({
                               if (tool === "paint") {
                                 const pointer = getPointer();
                                 if (!pointer) return;
+                                const localX = pointer.x - pos.x;
+                                const localY = pointer.y - pos.y;
+                                if (chainShape) {
+                                  const boundaryEdge =
+                                    nearestShapeBoundaryEdge(
+                                      localX,
+                                      localY,
+                                      visibleCompoundEdges,
+                                    );
+                                  if (boundaryEdge) {
+                                    paintPieceEdge(
+                                      pos.pieceId,
+                                      boundaryEdgeKey(
+                                        boundaryEdge,
+                                        chainShape.rects,
+                                      ),
+                                    );
+                                  }
+                                  return;
+                                }
                                 const edge = nearestRectangleEdge(
-                                  pointer.x - pos.x,
-                                  pointer.y - pos.y,
+                                  localX,
+                                  localY,
                                   w,
                                   h,
                                 );
@@ -8430,166 +8706,6 @@ export function DrawingCanvasInner({
                         );
                       })}
 
-                      {marqueeSelection
-                        ? (() => {
-                            const selectionRect = selectionRectFromPoints(
-                              marqueeSelection.start,
-                              marqueeSelection.end,
-                            );
-                            return (
-                              <Rect
-                                x={selectionRect.x}
-                                y={selectionRect.y}
-                                width={selectionRect.width}
-                                height={selectionRect.height}
-                                fill={MARQUEE_FILL}
-                                stroke={MARQUEE_STROKE}
-                                strokeWidth={1}
-                                dash={[6, 4]}
-                                listening={false}
-                              />
-                            );
-                          })()
-                        : null}
-
-                      {drawPreview ? (
-                        <Group x={drawPreview.x} y={drawPreview.y}>
-                          {drawPreview.segments &&
-                          drawPreview.segments.length > 0 ? (
-                            <>
-                              {drawPreview.segments.map((segment, index) => (
-                                <Rect
-                                  key={`preview-segment-${index}`}
-                                  x={segment.x - drawPreview.x}
-                                  y={segment.y - drawPreview.y}
-                                  width={segment.w}
-                                  height={segment.h}
-                                  fill={PIECE_FILL}
-                                  opacity={0.8}
-                                />
-                              ))}
-                              {rectUnionBoundary(
-                                drawPreview.segments.map((segment) => ({
-                                  x: segment.x - drawPreview.x,
-                                  y: segment.y - drawPreview.y,
-                                  w: segment.w,
-                                  h: segment.h,
-                                })),
-                              ).map((edge, index) => (
-                                <Line
-                                  key={`preview-edge-${index}`}
-                                  points={[
-                                    edge.from[0],
-                                    edge.from[1],
-                                    edge.to[0],
-                                    edge.to[1],
-                                  ]}
-                                  stroke={GUIDE_COLOR}
-                                  strokeWidth={2}
-                                />
-                              ))}
-                            </>
-                          ) : (
-                            <Rect
-                              width={drawPreview.w}
-                              height={drawPreview.h}
-                              fill={PIECE_FILL}
-                              opacity={0.8}
-                              stroke={GUIDE_COLOR}
-                              strokeWidth={2}
-                            />
-                          )}
-                          <Line
-                            points={[0, -10, drawPreview.w, -10]}
-                            stroke="#d1d5db"
-                            strokeWidth={1}
-                          />
-                          <Line
-                            points={[-10, 0, -10, drawPreview.h]}
-                            stroke="#d1d5db"
-                            strokeWidth={1}
-                          />
-                          <Text
-                            text={formatInches(drawPreview.lengthIn)}
-                            x={drawPreview.w / 2 - 28}
-                            y={-24}
-                            fontSize={12}
-                            fill="#4b5563"
-                          />
-                          <Text
-                            text={formatInches(drawPreview.widthIn)}
-                            x={-50}
-                            y={drawPreview.h / 2 - 6}
-                            fontSize={12}
-                            fill="#4b5563"
-                          />
-                          {!drawPreview.segments && drawPreview.leg ? (
-                            <Group
-                              x={drawPreview.leg.x - drawPreview.x}
-                              y={drawPreview.leg.y - drawPreview.y}
-                            >
-                              <Rect
-                                width={drawPreview.leg.w}
-                                height={drawPreview.leg.h}
-                                fill={PIECE_FILL}
-                                opacity={0.8}
-                                stroke={GUIDE_COLOR}
-                                strokeWidth={2}
-                              />
-                              <Text
-                                text={formatInches(drawPreview.leg.widthIn)}
-                                x={drawPreview.leg.w + 6}
-                                y={drawPreview.leg.h / 2 - 6}
-                                fontSize={12}
-                                fill="#4b5563"
-                              />
-                            </Group>
-                          ) : null}
-                          {!drawPreview.segments && drawPreview.tail ? (
-                            <Group
-                              x={drawPreview.tail.x - drawPreview.x}
-                              y={drawPreview.tail.y - drawPreview.y}
-                            >
-                              <Rect
-                                width={drawPreview.tail.w}
-                                height={drawPreview.tail.h}
-                                fill={PIECE_FILL}
-                                opacity={0.8}
-                                stroke={GUIDE_COLOR}
-                                strokeWidth={2}
-                              />
-                              <Text
-                                text={formatInches(drawPreview.tail.lengthIn)}
-                                x={drawPreview.tail.w / 2 - 28}
-                                y={drawPreview.tail.h + 8}
-                                fontSize={12}
-                                fill="#4b5563"
-                              />
-                            </Group>
-                          ) : null}
-                          {drawPreview.segments?.map((segment, index) => (
-                            <Text
-                              key={`${segment.orientation}-${index}`}
-                              text={formatInches(
-                                segment.orientation === "horizontal"
-                                  ? segment.lengthIn
-                                  : segment.widthIn,
-                              )}
-                              x={segment.x - drawPreview.x + segment.w / 2 - 28}
-                              y={
-                                segment.y -
-                                drawPreview.y +
-                                (segment.orientation === "horizontal"
-                                  ? segment.h + 8
-                                  : segment.h / 2 - 6)
-                              }
-                              fontSize={12}
-                              fill="#4b5563"
-                            />
-                          ))}
-                        </Group>
-                      ) : null}
-
                       {textNotes.map((note) => (
                         <Text
                           key={note.id}
@@ -8602,21 +8718,23 @@ export function DrawingCanvasInner({
                       ))}
                     </Group>
                   </Layer>
+                  <DrawingPreviewLayer
+                    drawPreview={drawPreview}
+                    segmentPreview={segmentPreview}
+                    marqueeSelection={marqueeSelection}
+                    pan={pan}
+                    zoom={zoom}
+                  />
                 </Stage>
                 {showLegend &&
                   (() => {
-                    const usedColors = DRAWING_MARKUP_COLORS.filter((swatch) =>
-                      layout.referenceLines.some(
-                        (l) => l.color === swatch.color,
-                      ),
-                    );
-                    if (usedColors.length === 0) return null;
+                    if (legendColors.length === 0) return null;
                     return (
                       <div className="absolute top-4 left-4 bg-white border border-gray-300 rounded shadow-sm p-2 pointer-events-none">
                         <p className="text-[9px] font-bold text-gray-500 mb-1">
                           Legend
                         </p>
-                        {usedColors.map((swatch) => (
+                        {legendColors.map((swatch) => (
                           <div
                             key={swatch.id}
                             className="flex items-center gap-1 mb-1"
@@ -8859,50 +8977,6 @@ export function DrawingCanvasInner({
           </div>
         </div>
       ) : null}
-      {showLegend &&
-        (() => {
-          const usedColors = DRAWING_MARKUP_COLORS.filter((swatch) =>
-            layout.referenceLines.some((l) => l.color === swatch.color),
-          );
-          if (usedColors.length === 0) return null;
-          return (
-            <Group x={20} y={20}>
-              <Rect
-                width={90}
-                height={16 + usedColors.length * 18}
-                fill="white"
-                stroke="#999"
-                strokeWidth={1}
-                cornerRadius={3}
-              />
-              <Text
-                text="Legend"
-                x={6}
-                y={5}
-                fontSize={8}
-                fontStyle="bold"
-                fill="#333"
-              />
-              {usedColors.map((swatch, i) => (
-                <Group key={swatch.id} x={6} y={16 + i * 18}>
-                  <Rect
-                    width={10}
-                    height={10}
-                    fill={swatch.color}
-                    cornerRadius={2}
-                  />
-                  <Text
-                    text={swatch.name}
-                    x={14}
-                    y={1}
-                    fontSize={9}
-                    fill="#333"
-                  />
-                </Group>
-              ))}
-            </Group>
-          );
-        })()}
       {tool === "deleteLine" ? (
         <div className="rounded-md border border-[#c8dec3] bg-white p-4 shadow-sm">
           <div className="flex flex-wrap items-start justify-between gap-4">

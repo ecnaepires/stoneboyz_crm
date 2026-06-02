@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+timport { describe, expect, it } from "vitest";
 import {
   backsplashCornerCandidatesForEdges,
   buildChainFromClicks,

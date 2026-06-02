@@ -6,7 +6,7 @@ import { getActorUserId } from '@/lib/actor';
 import { getApiClientWithAuth } from '@/lib/api';
 
 type ScheduledEventType = 'appointment' | 'shop_job';
-type AppointmentType = 'template' | 'deposit' | 'material' | 'fabrication' | 'install' | 'invoice' | 'repair' | 'other';
+type AppointmentType = 'template' | 'deposit' | 'material' | 'cut' | 'fabrication' | 'install' | 'invoice' | 'repair' | 'other';
 
 const toOptionalString = (value: FormDataEntryValue | null) => {
   const stringValue = typeof value === 'string' ? value.trim() : '';

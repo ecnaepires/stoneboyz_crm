@@ -28,7 +28,6 @@ import {
 import { addQuoteNoteAction, deleteQuoteNoteAction } from './_actions';
 import { convertQuoteToOrderAction } from '../../orders/_actions';
 import { CopyLinkButton } from './CopyLinkButton';
-import { DrawingCard } from './DrawingCard';
 import { MeasurementsCard } from './MeasurementsCard';
 import type { QuoteAreaWithMeasurementTotals } from './MeasurementsCard';
 import { PricingCard } from './PricingCard';
@@ -322,14 +321,6 @@ export default async function QuoteDetailPage({
         </Card>
 
         <MeasurementsCard customerId={customerId} quoteId={quoteId} areas={areas} isDraft={isDraft} />
-
-        <DrawingCard
-          customerId={customerId}
-          quoteId={quoteId}
-          areas={areas}
-          isDraft={isDraft}
-          hasPriceList={hasPriceList}
-        />
 
         <PricingCard
           customerId={customerId}

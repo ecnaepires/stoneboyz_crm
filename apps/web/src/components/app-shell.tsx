@@ -27,7 +27,7 @@ export function AppShell({ isAdmin, children }: AppShellProps) {
             { href: '/projects', label: 'Jobs' },
             { href: '/pipeline', label: 'Pipeline' },
             { href: '/customers', label: 'Quotes' },
-            { href: '/customers', label: 'Scheduling' },
+            { href: '/schedule', label: 'Scheduling' },
             { href: '/price-lists', label: 'Price Lists' },
             { href: '/slabs', label: 'Slabs' },
             { href: '/customers/archived', label: 'Archived' },

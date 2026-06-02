@@ -61,7 +61,6 @@ export default async function QuoteDrawingWorkspacePage({
           areas={areas}
           isDraft={isDraft}
           hasPriceList={hasPriceList}
-          standalone
         />
       </div>
     </div>

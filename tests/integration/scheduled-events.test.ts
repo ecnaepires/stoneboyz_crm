@@ -140,6 +140,21 @@ describe('scheduled events', () => {
     });
   });
 
+  it('creates a cut appointment event', async () => {
+    const { response, body } = await createEvent({
+      appointmentType: 'cut',
+      title: 'Cut kitchen slabs'
+    });
+
+    expect(response.status).toBe(201);
+    expect(body).toMatchObject({
+      eventType: 'appointment',
+      appointmentType: 'cut',
+      title: 'Cut kitchen slabs',
+      status: 'scheduled'
+    });
+  });
+
   it('lists events for a customer', async () => {
     await createEvent({ title: 'First event' });
 

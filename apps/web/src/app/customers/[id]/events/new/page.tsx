@@ -62,6 +62,7 @@ export default async function NewEventPage({
                   <option value="template">Template</option>
                   <option value="deposit">Deposit</option>
                   <option value="material">Material</option>
+                  <option value="cut">Cut</option>
                   <option value="fabrication">Fabrication</option>
                   <option value="install">Install</option>
                   <option value="invoice">Invoice</option>

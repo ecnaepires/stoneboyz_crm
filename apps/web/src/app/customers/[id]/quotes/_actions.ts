@@ -836,6 +836,7 @@ export async function revertDrawingRevisionAction(
   }
 
   revalidatePath(`/customers/${customerId}/quotes/${quoteId}`);
+  revalidatePath(`/customers/${customerId}/quotes/${quoteId}/drawing`);
   return { ok: true as const, data: undefined };
 }
 
