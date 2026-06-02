@@ -18,6 +18,7 @@ import { CustomersService } from './customers/customers.service.js';
 import { JobNotesModule } from './job-notes/job-notes.module.js';
 import { DashboardModule } from './dashboard/dashboard.module.js';
 import { PipelineModule } from './pipeline/pipeline.module.js';
+import { ProjectPipelineListener } from './pipeline/project-pipeline.listener.js';
 import { PortalModule } from './portal/portal.module.js';
 import { databaseProvider } from './database.provider.js';
 import { EmailModule } from './email/email.module.js';
@@ -117,7 +118,8 @@ import { TagsModule } from "./tags/tags.module.js";
     QuoteDrawingRepository,
     QuoteDrawingService,
     OrdersRepository,
-    OrdersService
+    OrdersService,
+    ProjectPipelineListener
   ]
 })
 export class AppModule {}
