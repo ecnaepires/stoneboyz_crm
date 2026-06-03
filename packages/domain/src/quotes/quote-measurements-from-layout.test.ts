@@ -12,12 +12,17 @@ const emptyLayout = (): CanvasLayout => ({
   deletedLines: []
 });
 
-const rectChain = (lengthIn: number, widthIn: number): CanvasChainShapeLayout => ({
-  type: 'chain',
-  segments: [
-    { x: 0, y: 0, w: lengthIn, h: widthIn, lengthIn, widthIn, orientation: 'horizontal' }
-  ]
-});
+const rectChain = (lengthIn: number, widthIn: number): CanvasChainShapeLayout => {
+  const halfLen = lengthIn / 2;
+  const scale = 3;
+  return {
+    type: 'chain',
+    segments: [
+      { x: 0, y: 0, w: halfLen * scale, h: widthIn * scale, lengthIn: halfLen, widthIn: widthIn, orientation: 'horizontal' },
+      { x: halfLen * scale, y: 0, w: halfLen * scale, h: widthIn * scale, lengthIn: halfLen, widthIn: widthIn, orientation: 'horizontal' }
+    ]
+  };
+};
 
 describe('measurementTotalsFromLayout', () => {
   it('derives countertop square footage from a single rectangular piece', () => {
@@ -110,6 +115,21 @@ describe('measurementTotalsFromLayout', () => {
     expect(totals.splashSqFt).toBe(2.778);
     // finished outline = top run (100) + two sides (2 * 4) = 108in / 12 = 9 lin ft
     expect(totals.finishedEdgeLinFt).toBe(9);
+  });
+
+  it('derives countertop square footage from a multi-segment L piece', () => {
+    const layout = emptyLayout();
+    layout.pieces = [
+      {
+        pieceId: 'p1', x: 0, y: 0, rotation: 0, kind: 'countertop',
+        shape: { type: 'chain', segments: [
+          { x: 0, y: 0, w: 300, h: 75, lengthIn: 100, widthIn: 25, orientation: 'horizontal' },
+          { x: 0, y: 75, w: 75, h: 150, lengthIn: 25, widthIn: 50, orientation: 'vertical' }
+        ] }
+      }
+    ];
+    // union = 100*25 + 25*50 = 3750 sq in / 144 = 26.042 sq ft
+    expect(measurementTotalsFromLayout(layout).countertopSqFt).toBe(26.042);
   });
 
   it('counts sinks and faucet holes weighted by quantity', () => {

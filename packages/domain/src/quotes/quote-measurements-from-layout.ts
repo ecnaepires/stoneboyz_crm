@@ -1,3 +1,4 @@
+import { chainShapeAreaSqIn, chainShapeGeometry } from '../drawing/geometry.js';
 import { calculateMeasurementAreaTotals } from './quote-measurements.js';
 import type {
   CounterPieceInput,
@@ -24,27 +25,50 @@ const FINISHED_TREATMENTS: ReadonlySet<CanvasEdgeTreatment> = new Set([
   'additionalFinished'
 ]);
 
-interface PieceDimensions {
-  lengthIn: number;
-  widthIn: number;
+interface PieceExtents {
+  lengthIn: number; // bounding-box extent along X
+  widthIn: number; // bounding-box extent along Y
 }
 
-function pieceDimensions(piece: CanvasPieceLayout): PieceDimensions | null {
+// Bounding-box extents of a piece in inches. Edge linear footage is keyed by
+// pieceId + top/right/bottom/left, which is exact for a single-segment
+// rectangle. KNOWN GAP (ADR 0003 step 5): for a multi-segment chain this uses
+// the bounding box, so an L/U over-reports a side's run; resolved when the edge
+// tool is reshaped to address per-segment boundary edges.
+function pieceExtents(piece: CanvasPieceLayout): PieceExtents | null {
   const shape = piece.shape;
   if (shape === null || shape === undefined || shape.type !== 'chain') {
     return null;
   }
-
-  const segment = shape.segments[0];
-  if (segment === undefined) {
+  const first = shape.segments[0];
+  if (first === undefined || first.lengthIn === 0) {
+    return null;
+  }
+  const scale = first.w / first.lengthIn;
+  if (scale === 0) {
     return null;
   }
 
-  return { lengthIn: segment.lengthIn, widthIn: segment.widthIn };
+  const { rects } = chainShapeGeometry(shape as Parameters<typeof chainShapeGeometry>[0]);
+  let minX = Infinity;
+  let minY = Infinity;
+  let maxX = -Infinity;
+  let maxY = -Infinity;
+  for (const rect of rects) {
+    minX = Math.min(minX, rect.x);
+    minY = Math.min(minY, rect.y);
+    maxX = Math.max(maxX, rect.x + rect.w);
+    maxY = Math.max(maxY, rect.y + rect.h);
+  }
+  if (!Number.isFinite(minX)) {
+    return null;
+  }
+
+  return { lengthIn: (maxX - minX) / scale, widthIn: (maxY - minY) / scale };
 }
 
-function sideLengthIn(dimensions: PieceDimensions, edge: CanvasEdgeLayout['edge']): number {
-  return edge === 'top' || edge === 'bottom' ? dimensions.lengthIn : dimensions.widthIn;
+function sideLengthIn(extents: PieceExtents, edge: CanvasEdgeLayout['edge']): number {
+  return edge === 'top' || edge === 'bottom' ? extents.lengthIn : extents.widthIn;
 }
 
 // Translate one canvas edge into the domain edge inputs that reproduce its
@@ -73,29 +97,38 @@ function edgeInputs(edge: CanvasEdgeLayout, sideLengthIn: number): EdgeSegmentIn
 }
 
 export function measurementTotalsFromLayout(layout: CanvasLayout): QuoteMeasurementAreaTotals {
-  const dimensionsByPiece = new Map<string, PieceDimensions>();
+  const extentsByPiece = new Map<string, PieceExtents>();
   const pieces: CounterPieceInput[] = [];
 
   for (const piece of layout.pieces) {
-    const dimensions = pieceDimensions(piece);
-    if (dimensions === null) {
+    const shape = piece.shape;
+    if (shape === null || shape === undefined || shape.type !== 'chain') {
       continue;
     }
-    dimensionsByPiece.set(piece.pieceId, dimensions);
+    const areaSqIn = chainShapeAreaSqIn(shape as Parameters<typeof chainShapeAreaSqIn>[0]);
+    if (areaSqIn <= 0) {
+      continue;
+    }
+    const extents = pieceExtents(piece);
+    if (extents !== null) {
+      extentsByPiece.set(piece.pieceId, extents);
+    }
+    // Route the precomputed union area through the canonical sqft formula
+    // (area / 144) by feeding it as length with unit width.
     pieces.push({
-      lengthIn: dimensions.lengthIn,
-      widthIn: dimensions.widthIn,
+      lengthIn: areaSqIn,
+      widthIn: 1,
       kind: piece.kind ?? 'countertop'
     });
   }
 
   const edges: EdgeSegmentInput[] = [];
   for (const edge of layout.edges) {
-    const dimensions = dimensionsByPiece.get(edge.pieceId);
-    if (dimensions === undefined) {
+    const extents = extentsByPiece.get(edge.pieceId);
+    if (extents === undefined) {
       continue;
     }
-    edges.push(...edgeInputs(edge, sideLengthIn(dimensions, edge.edge)));
+    edges.push(...edgeInputs(edge, sideLengthIn(extents, edge.edge)));
   }
 
   const sinks = layout.sinks.map(sinkToCutoutInput);
