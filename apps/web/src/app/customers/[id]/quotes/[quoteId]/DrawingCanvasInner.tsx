@@ -377,6 +377,7 @@ export interface PieceLayout {
   x: number;
   y: number;
   rotation: number;
+  kind?: "countertop" | "backsplash";
   groupId?: string | null;
   shape?: PieceShape | null;
 }
@@ -3492,6 +3493,17 @@ export function DrawingCanvasInner({
     [areaId, customerId, quoteId, router],
   );
 
+  const withPieceKinds = useCallback(
+    (toSave: CanvasLayout): CanvasLayout => ({
+      ...toSave,
+      pieces: toSave.pieces.map((piece) => ({
+        ...piece,
+        kind: piece.kind ?? pieces.find((dp) => dp.id === piece.pieceId)?.kind ?? "countertop",
+      })),
+    }),
+    [pieces],
+  );
+
   const persistDrawing = useCallback(
     async (mode: "continue" | "save") => {
       setSaving(true);
@@ -3499,7 +3511,7 @@ export function DrawingCanvasInner({
         customerId,
         quoteId,
         areaId,
-        layoutRef.current,
+        withPieceKinds(layoutRef.current),
         saveNotes.trim() || null,
       );
       setSaving(false);
@@ -3514,7 +3526,7 @@ export function DrawingCanvasInner({
       }
       router.refresh();
     },
-    [areaId, customerId, quoteId, resetTransientState, router, saveNotes],
+    [areaId, customerId, quoteId, resetTransientState, router, saveNotes, withPieceKinds],
   );
 
   const addCounterPiece = useCallback(
@@ -3600,7 +3612,7 @@ export function DrawingCanvasInner({
           customerId,
           quoteId,
           areaId,
-          nextLayout,
+          withPieceKinds(nextLayout),
           null,
         );
         if (!saveResult.ok) {
@@ -3612,7 +3624,7 @@ export function DrawingCanvasInner({
         router.refresh();
       });
     },
-    [areaId, buildPieceFormData, customerId, pieces.length, quoteId, router],
+    [areaId, buildPieceFormData, customerId, pieces.length, quoteId, router, withPieceKinds],
   );
 
   const addBacksplashPiece = useCallback(
@@ -3693,7 +3705,7 @@ export function DrawingCanvasInner({
           ...snapshot,
           pieces: [
             ...snapshot.pieces,
-            { pieceId: first.id, x: bx, y: by, rotation },
+            { pieceId: first.id, x: bx, y: by, rotation, kind: "backsplash" as const },
           ],
         };
 
@@ -3708,7 +3720,7 @@ export function DrawingCanvasInner({
           customerId,
           quoteId,
           areaId,
-          nextLayout,
+          withPieceKinds(nextLayout),
           null,
         );
         if (!saveResult.ok) {
@@ -3724,6 +3736,7 @@ export function DrawingCanvasInner({
       customerId,
       pieces,
       quoteId,
+      withPieceKinds,
     ],
   );
 
@@ -3954,7 +3967,7 @@ export function DrawingCanvasInner({
           customerId,
           quoteId,
           areaId,
-          nextLayout,
+          withPieceKinds(nextLayout),
           null,
         );
         if (!saveResult.ok) {
@@ -3981,7 +3994,7 @@ export function DrawingCanvasInner({
         }
       });
     },
-    [areaId, customerId, markDirty, pieces, quoteId, roundSixteenth, router],
+    [areaId, customerId, markDirty, pieces, quoteId, roundSixteenth, router, withPieceKinds],
   );
 
   const createOffsetChainSegment = useCallback(
@@ -4176,7 +4189,7 @@ export function DrawingCanvasInner({
             customerId,
             quoteId,
             areaId,
-            nextLayout,
+            withPieceKinds(nextLayout),
             null,
           );
           if (!saveResult.ok) {
@@ -4224,7 +4237,7 @@ export function DrawingCanvasInner({
               customerId,
               quoteId,
               areaId,
-              nextLayout,
+              withPieceKinds(nextLayout),
               null,
             );
             if (!saveResult.ok) {
@@ -4246,7 +4259,7 @@ export function DrawingCanvasInner({
       );
       return;
     },
-    [areaId, chainEdgeAction, customerId, markDirty, pieces, quoteId, router],
+    [areaId, chainEdgeAction, customerId, markDirty, pieces, quoteId, router, withPieceKinds],
   );
 
   const applyChainEdgeClickDirection = useCallback(
@@ -4384,7 +4397,7 @@ export function DrawingCanvasInner({
               customerId,
               quoteId,
               areaId,
-              nextLayout,
+              withPieceKinds(nextLayout),
               null,
             );
             if (!saveResult.ok) {
@@ -4525,7 +4538,7 @@ export function DrawingCanvasInner({
             customerId,
             quoteId,
             areaId,
-            nextLayout,
+            withPieceKinds(nextLayout),
             null,
           );
           if (!saveResult.ok) {
@@ -4590,6 +4603,7 @@ export function DrawingCanvasInner({
       quoteId,
       roundSixteenth,
       router,
+      withPieceKinds,
     ],
   );
 
@@ -4699,7 +4713,7 @@ export function DrawingCanvasInner({
             customerId,
             quoteId,
             areaId,
-            nextLayout,
+            withPieceKinds(nextLayout),
             null,
           );
           if (!saveResult.ok) {
@@ -4728,7 +4742,7 @@ export function DrawingCanvasInner({
         });
       }
     },
-    [areaId, customerId, markDirty, pieces, quoteId, roundSixteenth, router],
+    [areaId, customerId, markDirty, pieces, quoteId, roundSixteenth, router, withPieceKinds],
   );
 
   const saveCornerTreatment = useCallback(
