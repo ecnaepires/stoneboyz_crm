@@ -2,16 +2,27 @@ import { calculateMeasurementAreaTotals } from './quote-measurements.js';
 import type {
   CounterPieceInput,
   EdgeSegmentInput,
-  EdgeTreatment,
   QuoteMeasurementAreaTotals,
   SinkCutoutInput
 } from './quote-measurements.types.js';
 import type {
   CanvasEdgeLayout,
+  CanvasEdgeTreatment,
   CanvasLayout,
   CanvasPieceLayout,
   CanvasSinkLayout
 } from './quote-drawing.types.js';
+
+// Every drawn edge treatment except the wall edge ('unfinished') is fabricated
+// and counts as finished-edge footage (see CONTEXT.md "Finished Edge"). Splash
+// is handled separately because it also contributes square footage.
+const FINISHED_TREATMENTS: ReadonlySet<CanvasEdgeTreatment> = new Set([
+  'finished',
+  'appliance',
+  'mitered',
+  'waterfall',
+  'additionalFinished'
+]);
 
 interface PieceDimensions {
   lengthIn: number;
@@ -36,8 +47,29 @@ function sideLengthIn(dimensions: PieceDimensions, edge: CanvasEdgeLayout['edge'
   return edge === 'top' || edge === 'bottom' ? dimensions.lengthIn : dimensions.widthIn;
 }
 
-function edgeTreatment(treatment: CanvasEdgeLayout['treatment']): EdgeTreatment {
-  return treatment === 'finished' ? 'finished' : 'unfinished';
+// Translate one canvas edge into the domain edge inputs that reproduce its
+// measurement contribution. A splash is emitted as two finished runs — the top
+// run (length, which also carries the splash height for square footage) plus the
+// two vertical sides (2 * height) — because its bottom touches the counter and
+// its back touches the wall, so only the outline is finished.
+function edgeInputs(edge: CanvasEdgeLayout, sideLengthIn: number): EdgeSegmentInput[] {
+  if (edge.treatment === 'splash') {
+    const height = edge.splashHeightIn ?? undefined;
+    const inputs: EdgeSegmentInput[] = [
+      { lengthIn: sideLengthIn, treatment: 'finished', splashHeightIn: height }
+    ];
+    if (height !== undefined && height > 0) {
+      inputs.push({ lengthIn: 2 * height, treatment: 'finished' });
+    }
+    return inputs;
+  }
+
+  return [
+    {
+      lengthIn: sideLengthIn,
+      treatment: FINISHED_TREATMENTS.has(edge.treatment) ? 'finished' : 'unfinished'
+    }
+  ];
 }
 
 export function measurementTotalsFromLayout(layout: CanvasLayout): QuoteMeasurementAreaTotals {
@@ -63,11 +95,7 @@ export function measurementTotalsFromLayout(layout: CanvasLayout): QuoteMeasurem
     if (dimensions === undefined) {
       continue;
     }
-    edges.push({
-      lengthIn: sideLengthIn(dimensions, edge.edge),
-      treatment: edgeTreatment(edge.treatment),
-      splashHeightIn: edge.splashHeightIn ?? undefined
-    });
+    edges.push(...edgeInputs(edge, sideLengthIn(dimensions, edge.edge)));
   }
 
   const sinks = layout.sinks.map(sinkToCutoutInput);

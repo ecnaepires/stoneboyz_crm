@@ -67,7 +67,35 @@ describe('measurementTotalsFromLayout', () => {
     expect(measurementTotalsFromLayout(layout).finishedEdgeLinFt).toBe(8.333);
   });
 
-  it('measures splash square footage from edge length and splash height', () => {
+  it('counts every non-wall edge treatment as finished edge', () => {
+    const layout = emptyLayout();
+    layout.pieces = [
+      { pieceId: 'p1', x: 0, y: 0, rotation: 0, shape: rectChain(120, 120) }
+    ];
+    layout.edges = [
+      { pieceId: 'p1', edge: 'top', treatment: 'appliance', splashHeightIn: null, label: null },
+      { pieceId: 'p1', edge: 'bottom', treatment: 'mitered', splashHeightIn: null, label: null },
+      { pieceId: 'p1', edge: 'left', treatment: 'waterfall', splashHeightIn: null, label: null },
+      { pieceId: 'p1', edge: 'right', treatment: 'additionalFinished', splashHeightIn: null, label: null }
+    ];
+
+    // four 120in sides, all finished -> 480in / 12 = 40 lin ft
+    expect(measurementTotalsFromLayout(layout).finishedEdgeLinFt).toBe(40);
+  });
+
+  it('excludes wall (unfinished) edges from finished edge', () => {
+    const layout = emptyLayout();
+    layout.pieces = [
+      { pieceId: 'p1', x: 0, y: 0, rotation: 0, shape: rectChain(100, 25) }
+    ];
+    layout.edges = [
+      { pieceId: 'p1', edge: 'top', treatment: 'unfinished', splashHeightIn: null, label: null }
+    ];
+
+    expect(measurementTotalsFromLayout(layout).finishedEdgeLinFt).toBe(0);
+  });
+
+  it('measures splash square footage and adds its non-wall outline to finished edge', () => {
     const layout = emptyLayout();
     layout.pieces = [
       { pieceId: 'p1', x: 0, y: 0, rotation: 0, shape: rectChain(100, 25) }
@@ -76,7 +104,12 @@ describe('measurementTotalsFromLayout', () => {
       { pieceId: 'p1', edge: 'top', treatment: 'splash', splashHeightIn: 4, label: null }
     ];
 
-    expect(measurementTotalsFromLayout(layout).splashSqFt).toBe(2.778);
+    const totals = measurementTotalsFromLayout(layout);
+
+    // splash sf = 100 * 4 / 144
+    expect(totals.splashSqFt).toBe(2.778);
+    // finished outline = top run (100) + two sides (2 * 4) = 108in / 12 = 9 lin ft
+    expect(totals.finishedEdgeLinFt).toBe(9);
   });
 
   it('counts sinks and faucet holes weighted by quantity', () => {
@@ -100,7 +133,7 @@ describe('measurementTotalsFromLayout', () => {
       { pieceId: 'bs', x: 0, y: 0, rotation: 0, kind: 'backsplash', shape: rectChain(100, 4) }
     ];
     layout.edges = [
-      { pieceId: 'counter', edge: 'top', treatment: 'finished', splashHeightIn: 4, label: null },
+      { pieceId: 'counter', edge: 'top', treatment: 'splash', splashHeightIn: 4, label: null },
       { pieceId: 'island', edge: 'top', treatment: 'finished', splashHeightIn: null, label: null }
     ];
     layout.sinks = [
@@ -112,7 +145,8 @@ describe('measurementTotalsFromLayout', () => {
       countertopSqFt: 35.708,
       backsplashSqFt: 2.778,
       combinedSqFt: 38.486,
-      finishedEdgeLinFt: 14.333,
+      // counter splash outline 100 + 2*4 = 108in, island finished 72in -> 180in / 12 = 15
+      finishedEdgeLinFt: 15,
       splashSqFt: 2.778,
       sinkCutoutCount: 1,
       faucetHoleCount: 1

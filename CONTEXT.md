@@ -1,5 +1,45 @@
 # Glossary
 
+## Pipeline Stage
+
+A job's current position in the CRM workflow. Scheduling a stage appointment places the job in the matching Pipeline Stage when that move is forward.
+
+## Scheduled Appointment
+
+A calendar item tied to customer work, optionally tied to a job. Deposit, Template, Material, Fabrication, Install, and Invoice appointments are stage appointments; Repair, Other, and Cut appointments are side-work and do not define a Pipeline Stage.
+
+## Area (Sheet)
+
+A named, ordered drawing surface within a quote, presented to the user as a Sheet — like a tab at the bottom of a spreadsheet. Each Sheet holds its own separate drawing and its own pieces; pieces on one Sheet are isolated from another. The user divides work into Sheets manually, typically one room or location per Sheet ("Kitchen", "Master Bath", "Outdoor Kitchen"), and renames each Sheet freely. A Sheet carries a single material, color, and edge profile; when a room mixes materials, the user creates a second Sheet rather than mixing materials on one. "Sheet" is the user-facing word; "Area" is the same concept in the data model.
+
+Each Sheet reports its own measurement rollup: counter square footage, backsplash square footage, the two combined, finished-edge linear footage, splash square footage, sink count, and faucet-hole count. The quote-wide total is the sum of all its Sheets.
+
+## Templater
+
+The field worker who visits the customer's home and produces the drawing: counters, backsplashes, floor tiles, sinks, faucet holes, and edges, divided into Sheets by room. The Templater works only in the drawing workspace and never sets pricing. Drawing is the only input; measurements are read off the drawing.
+
+## Salesperson
+
+The office worker who receives a Templater's finished drawing and its measurements and turns them into a priced quote using a price list. Pricing belongs to the Salesperson's surface, not the drawing workspace.
+
+## Price List
+
+A reusable set of charges a Salesperson applies to quotes. A Price List can be edited after it is active; existing quote price lines keep their current amounts unless the Salesperson regenerates pricing for that quote.
+
+## Price List Task
+
+A single sellable charge inside a Price List, such as Material, Fabrication, Eased Edge, Bullnose, Sink Cutout, or Faucet Hole. The task is the user-facing thing being charged for, not an internal category or type code.
+
+Edge profile tasks, such as Eased Edge or Bullnose, are chosen per Sheet and charge only the finished-edge linear footage on Sheets using that edge profile.
+
+## Charge Method
+
+How a Price List Task is measured for billing: by square foot, by linear foot, or by each/unit. The Charge Method determines which quote measurement supplies the task quantity.
+
+## Finished Edge
+
+Any countertop edge that is not a wall edge. A wall edge sits against the wall and receives no fabrication; every other edge treatment (eased, appliance, mitered, waterfall, additional finished) is a finished edge and contributes to finished-edge linear footage. The distinction is binary for measurement: wall edge or finished edge.
+
 ## Splash (edge treatment)
 
 A property set on a single countertop edge marking that the edge has stone running up the wall, recorded as a splash height. It does not create a separate drawn piece. It is a distinct concept from a Backsplash and must not be blurred with it: a Backsplash is the drawn piece a user creates and the way the team represents stone on the wall going forward. The same wall is never recorded as both a Splash edge treatment and a Backsplash piece.
