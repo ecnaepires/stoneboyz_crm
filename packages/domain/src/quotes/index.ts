@@ -3,6 +3,7 @@ export * from './quote.schemas.js';
 export * from './quote-measurements.types.js';
 export * from './quote-measurements.schemas.js';
 export * from './quote-measurements.js';
+export * from './quote-measurements-from-layout.js';
 export * from './quote-pricing.types.js';
 export * from './quote-pricing.schemas.js';
 export * from './quote-pricing.js';

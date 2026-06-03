@@ -57,6 +57,7 @@ export interface CanvasPieceLayout {
   x: number;
   y: number;
   rotation: number;
+  kind?: 'countertop' | 'backsplash' | undefined;
   groupId?: string | null | undefined;
   shape?: CanvasPieceShape | null | undefined;
 }
@@ -67,6 +68,8 @@ export interface CanvasSinkLayout {
   x: number;
   y: number;
   rotation: number;
+  quantity?: number | undefined;
+  faucetHoleCount?: number | undefined;
 }
 
 export type CanvasCornerKey = 'topLeft' | 'topRight' | 'bottomRight' | 'bottomLeft';
