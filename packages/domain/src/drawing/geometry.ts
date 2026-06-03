@@ -477,6 +477,39 @@ export function chainShapeGeometry(shape: ChainShapeLayout) {
   };
 }
 
+function polygonAreaPx(points: ReadonlyArray<[number, number]>): number {
+  if (points.length < 3) return 0;
+  let twiceArea = 0;
+  for (let i = 0; i < points.length; i += 1) {
+    const [x1, y1] = points[i] as [number, number];
+    const [x2, y2] = points[(i + 1) % points.length] as [number, number];
+    twiceArea += x1 * y2 - x2 * y1;
+  }
+  return Math.abs(twiceArea) / 2;
+}
+
+export function chainShapeAreaSqIn(shape: ChainShapeLayout): number {
+  const first = shape.segments[0];
+  if (!first || first.lengthIn === 0) return 0;
+  const scale = first.w / first.lengthIn; // px per inch
+  if (scale === 0) return 0;
+
+  const { rects, outline } = chainShapeGeometry(shape);
+
+  // outline is a flat number[] of x,y pairs; convert to [number, number][] for Shoelace
+  const outlinePoints: Array<[number, number]> = [];
+  for (let i = 0; i + 1 < outline.length; i += 2) {
+    outlinePoints.push([outline[i] as number, outline[i + 1] as number]);
+  }
+
+  const areaPx =
+    outlinePoints.length >= 3
+      ? polygonAreaPx(outlinePoints)
+      : rects.reduce((total, rect) => total + rect.w * rect.h, 0);
+
+  return roundDrawingInches(areaPx / (scale * scale));
+}
+
 function edgeMidpoint(edge: DrawingShapeEdge) {
   return {
     x: (edge.from[0] + edge.to[0]) / 2,

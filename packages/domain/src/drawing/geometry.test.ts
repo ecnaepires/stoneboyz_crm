@@ -1,8 +1,9 @@
-timport { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vitest";
 import {
   backsplashCornerCandidatesForEdges,
   buildChainFromClicks,
   buildChainFromDragPath,
+  chainShapeAreaSqIn,
   chainShapeGeometry,
   connectEdgesToRectangle,
   mergeDrawingBoundaryEdges,
@@ -491,5 +492,46 @@ describe("connectEdgesToRectangle", () => {
     expect(
       connectEdgesToRectangle({ firstEdge: edge1, secondEdge: edge2, scale: SCALE })
     ).toBeNull();
+  });
+});
+
+describe("chainShapeAreaSqIn", () => {
+  // scale = 3 px/in (w = lengthIn * 3, h = widthIn * 3)
+  it("computes the union area of an L (no double-counted corner)", () => {
+    // Horizontal arm 100x25 at (0,0); vertical arm 25x50 hanging below its left end.
+    // Union = 100*25 + 25*50 = 2500 + 1250 = 3750 sq in (arms meet, no overlap).
+    const shape = {
+      type: "chain" as const,
+      segments: [
+        { x: 0, y: 0, w: 300, h: 75, lengthIn: 100, widthIn: 25, orientation: "horizontal" as const },
+        { x: 0, y: 75, w: 75, h: 150, lengthIn: 25, widthIn: 50, orientation: "vertical" as const }
+      ]
+    };
+    expect(chainShapeAreaSqIn(shape)).toBe(3750);
+  });
+
+  it("does not double-count an overlapping corner square", () => {
+    // Horizontal 100x25 at (0,0); vertical 25x100 at (0,0) overlapping the first 25x25.
+    // Union = 100*25 + 25*100 - 25*25 = 2500 + 2500 - 625 = 4375 sq in.
+    const shape = {
+      type: "chain" as const,
+      segments: [
+        { x: 0, y: 0, w: 300, h: 75, lengthIn: 100, widthIn: 25, orientation: "horizontal" as const },
+        { x: 0, y: 0, w: 75, h: 300, lengthIn: 25, widthIn: 100, orientation: "vertical" as const }
+      ]
+    };
+    expect(chainShapeAreaSqIn(shape)).toBe(4375);
+  });
+
+  it("returns a single rectangle's area when modelled as two abutting halves", () => {
+    // Two 50x25 halves abutting -> 100x25 = 2500 sq in.
+    const shape = {
+      type: "chain" as const,
+      segments: [
+        { x: 0, y: 0, w: 150, h: 75, lengthIn: 50, widthIn: 25, orientation: "horizontal" as const },
+        { x: 150, y: 0, w: 150, h: 75, lengthIn: 50, widthIn: 25, orientation: "horizontal" as const }
+      ]
+    };
+    expect(chainShapeAreaSqIn(shape)).toBe(2500);
   });
 });
