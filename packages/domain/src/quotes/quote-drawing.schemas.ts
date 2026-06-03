@@ -42,6 +42,7 @@ const canvasPieceLayoutSchema = z.object({
   x: z.number(),
   y: z.number(),
   rotation: z.number().default(0),
+  kind: z.enum(["countertop", "backsplash"]).default("countertop"),
   groupId: z.string().uuid().nullable().optional(),
   shape: canvasPieceShapeSchema.nullable().optional(),
 });

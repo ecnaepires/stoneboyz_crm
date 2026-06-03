@@ -204,3 +204,33 @@ describe('canvasLayoutSchema', () => {
     ]);
   });
 });
+
+const PIECE_ID = '00000000-0000-4000-8000-000000000001';
+
+describe('canvasLayoutSchema piece kind', () => {
+  it('preserves an explicit backsplash kind', () => {
+    const parsed = canvasLayoutSchema.parse({
+      pieces: [
+        {
+          pieceId: PIECE_ID,
+          x: 0,
+          y: 0,
+          rotation: 0,
+          kind: 'backsplash',
+          shape: { type: 'chain', segments: [
+            { x: 0, y: 0, w: 300, h: 12, lengthIn: 100, widthIn: 4, orientation: 'horizontal' },
+            { x: 0, y: 0, w: 12, h: 12, lengthIn: 4, widthIn: 4, orientation: 'vertical' }
+          ] }
+        }
+      ]
+    });
+    expect(parsed.pieces[0]?.kind).toBe('backsplash');
+  });
+
+  it('defaults kind to countertop when omitted', () => {
+    const parsed = canvasLayoutSchema.parse({
+      pieces: [{ pieceId: PIECE_ID, x: 0, y: 0, rotation: 0 }]
+    });
+    expect(parsed.pieces[0]?.kind).toBe('countertop');
+  });
+});
