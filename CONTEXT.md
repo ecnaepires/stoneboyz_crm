@@ -26,21 +26,31 @@ The office worker who receives a Templater's finished drawing and its measuremen
 
 A reusable set of charges a Salesperson applies to quotes. A Price List can be edited after it is active; existing quote price lines keep their current amounts unless the Salesperson regenerates pricing for that quote.
 
-## Price List Task
+## Price List Group
 
-A single sellable charge inside a Price List, such as Material, Fabrication, Eased Edge, Bullnose, Sink Cutout, or Faucet Hole. The task is the user-facing thing being charged for, not an internal category or type code.
+A user-facing group of sellable Price List Items, such as Material, Fabrication, Edge, Sink, or Faucet Hole. Groups organize what the Salesperson is choosing and prepare the language for future inventory connections.
 
-Edge profile tasks, such as Eased Edge or Bullnose, are chosen per Sheet and charge only the finished-edge linear footage on Sheets using that edge profile.
+Each Price List Group defines how quote selection works. Material and Edge groups offer many catalog items but allow one selected item per Sheet; Sink groups allow one or more selected items with quantities; Fabrication groups offer many catalog items and apply as a quote-level default with optional Sheet overrides.
 
-A Price List Task can have a zero price. This lets the Salesperson include an edge profile or task in the selectable list without charging extra for it.
+## Price List Item
 
-## Task Catalog
+A single selectable charge inside a Price List Group, such as Uba Tuba, Fabrication, Eased Edge, Bullnose, or 70/30 Sink. The item carries a rate and billing setup; quote pricing multiplies the chosen item's rate by the matching project quantity.
 
-The company-wide set of Price List Task names available to Salespeople. When a Salesperson adds a new task name, it becomes available to the whole team for future Price Lists.
+Edge profile items, such as Eased Edge or Bullnose, are chosen per Sheet and charge only the finished-edge linear footage on Sheets using that edge profile.
+
+A Price List Item can have a zero price. This lets the Salesperson include an edge profile or item in the selectable list without charging extra for it.
+
+## Item Catalog
+
+The company-wide set of Price List Groups and Price List Items available to Salespeople. Adding a new item from inside a Price List saves it both to the current Price List and to the Item Catalog for future reuse.
 
 ## Charge Method
 
-How a Price List Task is measured for billing: by square foot, by linear foot, or by each/unit. The Charge Method determines which quote measurement supplies the task quantity.
+How a Price List Item is measured for billing: by square foot, by linear foot, or by each/unit. The Charge Method determines which quote measurement supplies the item quantity.
+
+## Measurement Basis
+
+The specific quote measurement used as the quantity for a Price List Item, such as countertop square footage, backsplash square footage, combined square footage, finished-edge linear footage, sink count, or faucet-hole count. Salespeople choose the Measurement Basis so different Price Lists can support retail jobs, fabrication-only jobs, and other pricing scenarios.
 
 ## Finished Edge
 
