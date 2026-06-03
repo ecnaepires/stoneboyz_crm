@@ -16,6 +16,7 @@ const resetDatabase = async (app: INestApplication): Promise<void> => {
   const pool = app.get<Pool>(DATABASE_POOL);
 
   await pool.query('DROP TABLE IF EXISTS price_list_items CASCADE;');
+  await pool.query('DROP TABLE IF EXISTS item_catalog CASCADE;');
   await pool.query('DROP TABLE IF EXISTS price_lists CASCADE;');
   await pool.query('DROP TABLE IF EXISTS order_payments CASCADE;');
   await pool.query('DROP TABLE IF EXISTS orders CASCADE;');
@@ -213,7 +214,7 @@ describe('price lists', () => {
     expect(body.status).toBe('active');
   });
 
-  it('rejects updating active price lists', async () => {
+  it('updates active price lists', async () => {
     const created = await createPriceList();
     await fetch(`${priceListUrl(created.body.id as string)}/activate`, {
       method: 'POST',
@@ -223,9 +224,12 @@ describe('price lists', () => {
     const response = await fetch(priceListUrl(created.body.id as string), {
       method: 'PATCH',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ actorUserId: ACTOR_USER_ID, name: 'Nope' })
+      body: JSON.stringify({ actorUserId: ACTOR_USER_ID, name: 'Updated Active' })
     });
-    expect(response.status).toBe(409);
+    const body = await response.json() as Record<string, unknown>;
+
+    expect(response.status).toBe(200);
+    expect(body).toMatchObject({ name: 'Updated Active', status: 'active' });
   });
 
   it('archives draft price lists', async () => {
@@ -285,6 +289,61 @@ describe('price lists', () => {
     const item = await createItem(priceList.body.id as string);
     expect(item.response.status).toBe(201);
     expect(item.body).toMatchObject({ category: 'Materials', itemType: 'material', priceCents: 9500 });
+  });
+
+  it('creates price list items with salesperson pricing fields', async () => {
+    const priceList = await createPriceList();
+    const item = await createItem(priceList.body.id as string, {
+      category: 'material',
+      itemGroup: 'material',
+      name: 'Uba Tuba',
+      unit: 'sqft',
+      chargeMethod: 'square_foot',
+      measurementBasis: 'countertop_sqft',
+      priceCents: 1800
+    });
+
+    expect(item.response.status).toBe(201);
+    expect(item.body).toMatchObject({
+      category: 'material',
+      itemGroup: 'material',
+      name: 'Uba Tuba',
+      unit: 'sqft',
+      chargeMethod: 'square_foot',
+      measurementBasis: 'countertop_sqft',
+      priceCents: 1800
+    });
+    expect(typeof item.body.catalogItemId).toBe('string');
+  });
+
+  it('reuses catalog entries across price lists', async () => {
+    const firstPriceList = await createPriceList({ name: 'Retail' });
+    const firstItem = await createItem(firstPriceList.body.id as string, {
+      category: 'sink_item',
+      itemGroup: 'sink',
+      itemType: 'sink',
+      name: '70/30 Sink',
+      unit: 'ea',
+      chargeMethod: 'each',
+      measurementBasis: 'sink_count',
+      priceCents: 15000
+    });
+
+    const secondPriceList = await createPriceList({ name: 'Contractor' });
+    const secondItem = await createItem(secondPriceList.body.id as string, {
+      category: 'sink_item',
+      itemGroup: 'sink',
+      itemType: 'sink',
+      name: '70/30 Sink',
+      unit: 'ea',
+      chargeMethod: 'each',
+      measurementBasis: 'sink_count',
+      priceCents: 12500
+    });
+
+    expect(firstItem.response.status).toBe(201);
+    expect(secondItem.response.status).toBe(201);
+    expect(secondItem.body.catalogItemId).toBe(firstItem.body.catalogItemId);
   });
 
   it('rejects invalid item payloads', async () => {
@@ -352,15 +411,23 @@ describe('price lists', () => {
     expect(body.data).toHaveLength(0);
   });
 
-  it('rejects item changes once price list is active', async () => {
+  it('allows item changes once price list is active', async () => {
     const priceList = await createPriceList();
+    const item = await createItem(priceList.body.id as string);
     await fetch(`${priceListUrl(priceList.body.id as string)}/activate`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ actorUserId: ACTOR_USER_ID })
     });
-    const item = await createItem(priceList.body.id as string);
-    expect(item.response.status).toBe(409);
+    const response = await fetch(`${itemsUrl(priceList.body.id as string)}/${item.body.id}`, {
+      method: 'PATCH',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ actorUserId: ACTOR_USER_ID, priceCents: 8800 })
+    });
+    const body = await response.json() as Record<string, unknown>;
+
+    expect(response.status).toBe(200);
+    expect(body.priceCents).toBe(8800);
   });
 
   it('returns 404 when creating items for missing price lists', async () => {

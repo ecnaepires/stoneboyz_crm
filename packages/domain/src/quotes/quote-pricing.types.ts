@@ -16,6 +16,17 @@ export interface PriceListItemInput {
   id: string;
   category: string;
   unitPriceCents: number;
+  chargeMethod?: 'square_foot' | 'linear_foot' | 'each' | undefined;
+  measurementBasis?:
+    | 'countertop_sqft'
+    | 'backsplash_sqft'
+    | 'combined_sqft'
+    | 'finished_edge_linft'
+    | 'splash_sqft'
+    | 'sink_count'
+    | 'faucet_hole_count'
+    | 'each'
+    | undefined;
 }
 
 export interface QuoteAreaContext {

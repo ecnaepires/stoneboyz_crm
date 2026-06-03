@@ -1383,10 +1383,18 @@ export interface components {
             id: string;
             /** Format: uuid */
             priceListId: string;
+            /** Format: uuid */
+            catalogItemId: string | null;
+            /** @enum {string} */
+            itemGroup: "material" | "fabrication" | "edge" | "sink" | "faucet_hole" | "splash";
             category: string;
             itemType: string;
             name: string;
             description?: string | null;
+            /** @enum {string} */
+            chargeMethod: "square_foot" | "linear_foot" | "each";
+            /** @enum {string} */
+            measurementBasis: "countertop_sqft" | "backsplash_sqft" | "combined_sqft" | "finished_edge_linft" | "splash_sqft" | "sink_count" | "faucet_hole_count" | "each";
             unit: string;
             priceCents: number;
             sortOrder: number;
@@ -1429,10 +1437,18 @@ export interface components {
             expirationDays?: number | null;
         };
         CreatePriceListItemRequest: {
+            /** Format: uuid */
+            catalogItemId?: string;
+            /** @enum {string} */
+            itemGroup?: "material" | "fabrication" | "edge" | "sink" | "faucet_hole" | "splash";
             category: string;
             itemType: string;
             name: string;
             description?: string;
+            /** @enum {string} */
+            chargeMethod?: "square_foot" | "linear_foot" | "each";
+            /** @enum {string} */
+            measurementBasis?: "countertop_sqft" | "backsplash_sqft" | "combined_sqft" | "finished_edge_linft" | "splash_sqft" | "sink_count" | "faucet_hole_count" | "each";
             unit: string;
             priceCents: number;
             sortOrder?: number;
@@ -1442,10 +1458,18 @@ export interface components {
             hideOnQuote?: boolean;
         };
         UpdatePriceListItemRequest: {
+            /** Format: uuid */
+            catalogItemId?: string | null;
+            /** @enum {string} */
+            itemGroup?: "material" | "fabrication" | "edge" | "sink" | "faucet_hole" | "splash";
             category?: string;
             itemType?: string;
             name?: string;
             description?: string | null;
+            /** @enum {string} */
+            chargeMethod?: "square_foot" | "linear_foot" | "each";
+            /** @enum {string} */
+            measurementBasis?: "countertop_sqft" | "backsplash_sqft" | "combined_sqft" | "finished_edge_linft" | "splash_sqft" | "sink_count" | "faucet_hole_count" | "each";
             unit?: string;
             priceCents?: number;
             sortOrder?: number;

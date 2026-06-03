@@ -142,7 +142,7 @@ export class PriceListsRepository {
       `
         UPDATE price_lists
         SET ${assignments.join(', ')}
-        WHERE id = ${idValue} AND deleted_at IS NULL AND status = 'draft'
+        WHERE id = ${idValue} AND deleted_at IS NULL
         RETURNING *
       `,
       values

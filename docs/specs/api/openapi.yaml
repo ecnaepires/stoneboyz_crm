@@ -416,9 +416,13 @@ components:
       required:
         - id
         - priceListId
+        - catalogItemId
+        - itemGroup
         - category
         - itemType
         - name
+        - chargeMethod
+        - measurementBasis
         - unit
         - priceCents
         - sortOrder
@@ -435,6 +439,13 @@ components:
         priceListId:
           type: string
           format: uuid
+        catalogItemId:
+          type: string
+          format: uuid
+          nullable: true
+        itemGroup:
+          type: string
+          enum: [material, fabrication, edge, sink, faucet_hole, splash]
         category:
           type: string
         itemType:
@@ -444,6 +455,12 @@ components:
         description:
           type: string
           nullable: true
+        chargeMethod:
+          type: string
+          enum: [square_foot, linear_foot, each]
+        measurementBasis:
+          type: string
+          enum: [countertop_sqft, backsplash_sqft, combined_sqft, finished_edge_linft, splash_sqft, sink_count, faucet_hole_count, each]
         unit:
           type: string
         priceCents:
@@ -543,6 +560,12 @@ components:
       type: object
       required: [category, itemType, name, unit, priceCents]
       properties:
+        catalogItemId:
+          type: string
+          format: uuid
+        itemGroup:
+          type: string
+          enum: [material, fabrication, edge, sink, faucet_hole, splash]
         category:
           type: string
         itemType:
@@ -551,6 +574,12 @@ components:
           type: string
         description:
           type: string
+        chargeMethod:
+          type: string
+          enum: [square_foot, linear_foot, each]
+        measurementBasis:
+          type: string
+          enum: [countertop_sqft, backsplash_sqft, combined_sqft, finished_edge_linft, splash_sqft, sink_count, faucet_hole_count, each]
         unit:
           type: string
         priceCents:
@@ -569,6 +598,13 @@ components:
     UpdatePriceListItemRequest:
       type: object
       properties:
+        catalogItemId:
+          type: string
+          format: uuid
+          nullable: true
+        itemGroup:
+          type: string
+          enum: [material, fabrication, edge, sink, faucet_hole, splash]
         category:
           type: string
         itemType:
@@ -578,6 +614,12 @@ components:
         description:
           type: string
           nullable: true
+        chargeMethod:
+          type: string
+          enum: [square_foot, linear_foot, each]
+        measurementBasis:
+          type: string
+          enum: [countertop_sqft, backsplash_sqft, combined_sqft, finished_edge_linft, splash_sqft, sink_count, faucet_hole_count, each]
         unit:
           type: string
         priceCents:

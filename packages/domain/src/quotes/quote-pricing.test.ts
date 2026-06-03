@@ -100,4 +100,51 @@ describe('generatePriceLines', () => {
     expect(lines.find((line) => line.category === 'material')?.quantity).toBe(35);
     expect(lines.find((line) => line.category === 'fabrication')?.quantity).toBe(35);
   });
+
+  it('uses an item measurement basis when present', () => {
+    const totalsWithBacksplash = {
+      ...kitchenTotals,
+      countertopSqFt: 30,
+      backsplashSqFt: 5,
+      combinedSqFt: 35
+    };
+
+    const lines = generatePriceLines(totalsWithBacksplash, {}, [
+      {
+        id: 'price-material',
+        category: 'material',
+        unitPriceCents: 2000,
+        chargeMethod: 'square_foot',
+        measurementBasis: 'countertop_sqft'
+      }
+    ]);
+
+    expect(lines).toHaveLength(1);
+    expect(lines[0]).toMatchObject({
+      category: 'material',
+      quantity: 30,
+      unit: 'sqft',
+      lineTotalCents: 60000
+    });
+  });
+
+  it('uses each-based measurement for sink items', () => {
+    const lines = generatePriceLines(kitchenTotals, {}, [
+      {
+        id: 'price-sink',
+        category: 'sink_item',
+        unitPriceCents: 15000,
+        chargeMethod: 'each',
+        measurementBasis: 'sink_count'
+      }
+    ]);
+
+    expect(lines).toHaveLength(1);
+    expect(lines[0]).toMatchObject({
+      category: 'sink_item',
+      quantity: 1,
+      unit: 'ea',
+      lineTotalCents: 15000
+    });
+  });
 });

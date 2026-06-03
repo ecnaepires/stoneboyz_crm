@@ -118,7 +118,8 @@ const createPriceList = async (): Promise<string> => {
 const createPriceListItem = async (
   priceListId: string,
   category: string,
-  priceCents: number
+  priceCents: number,
+  overrides: Record<string, unknown> = {}
 ): Promise<Record<string, unknown>> => {
   const response = await fetch(itemsUrl(priceListId), {
     method: 'POST',
@@ -129,7 +130,8 @@ const createPriceListItem = async (
       itemType: category,
       name: category,
       unit: 'ea',
-      priceCents
+      priceCents,
+      ...overrides
     })
   });
 
@@ -275,6 +277,31 @@ describe('Quote pricing generate and list', () => {
 
     expect(response.status).toBe(200);
     expect(body.data).toEqual([]);
+  });
+
+  it('uses the price list item measurement basis when generating lines', async () => {
+    const customPriceListId = await createPriceList();
+    await createPriceListItem(customPriceListId, 'material', 2000, {
+      unit: 'linft',
+      chargeMethod: 'linear_foot',
+      measurementBasis: 'finished_edge_linft'
+    });
+    await setQuotePriceList(quoteId, customPriceListId);
+
+    const response = await fetch(`${pricingUrl(quoteId, areaId)}/generate`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' }
+    });
+    const body = await response.json() as { data: Array<Record<string, unknown>> };
+
+    expect(response.status).toBe(200);
+    expect(body.data).toHaveLength(1);
+    expect(body.data[0]).toMatchObject({
+      category: 'material',
+      quantity: 14.333333333333334,
+      unit: 'linft',
+      lineTotalCents: Math.round(14.333333333333334 * 2000)
+    });
   });
 });
 

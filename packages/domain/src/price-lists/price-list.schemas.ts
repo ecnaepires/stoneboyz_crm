@@ -1,7 +1,15 @@
 import { z } from 'zod';
-import { PRICE_LIST_STATUS_VALUES } from './price-list.constants.js';
+import {
+  PRICE_LIST_CHARGE_METHOD_VALUES,
+  PRICE_LIST_ITEM_GROUP_VALUES,
+  PRICE_LIST_MEASUREMENT_BASIS_VALUES,
+  PRICE_LIST_STATUS_VALUES
+} from './price-list.constants.js';
 
 export const priceListStatusSchema = z.enum(PRICE_LIST_STATUS_VALUES);
+export const priceListItemGroupSchema = z.enum(PRICE_LIST_ITEM_GROUP_VALUES);
+export const priceListChargeMethodSchema = z.enum(PRICE_LIST_CHARGE_METHOD_VALUES);
+export const priceListMeasurementBasisSchema = z.enum(PRICE_LIST_MEASUREMENT_BASIS_VALUES);
 
 export const createPriceListSchema = z.object({
   name: z.string().min(1),
@@ -37,10 +45,14 @@ export const listPriceListsSchema = z.object({
 });
 
 export const createPriceListItemSchema = z.object({
+  catalogItemId: z.string().uuid().optional(),
+  itemGroup: priceListItemGroupSchema.optional(),
   category: z.string().min(1),
   itemType: z.string().min(1),
   name: z.string().min(1),
   description: z.string().min(1).optional(),
+  chargeMethod: priceListChargeMethodSchema.optional(),
+  measurementBasis: priceListMeasurementBasisSchema.optional(),
   unit: z.string().min(1),
   priceCents: z.number().int().min(0),
   sortOrder: z.number().int().default(0),
@@ -51,10 +63,14 @@ export const createPriceListItemSchema = z.object({
 });
 
 export const updatePriceListItemSchema = z.object({
+  catalogItemId: z.string().uuid().nullable().optional(),
+  itemGroup: priceListItemGroupSchema.optional(),
   category: z.string().min(1).optional(),
   itemType: z.string().min(1).optional(),
   name: z.string().min(1).optional(),
   description: z.string().min(1).nullable().optional(),
+  chargeMethod: priceListChargeMethodSchema.optional(),
+  measurementBasis: priceListMeasurementBasisSchema.optional(),
   unit: z.string().min(1).optional(),
   priceCents: z.number().int().min(0).optional(),
   sortOrder: z.number().int().optional(),

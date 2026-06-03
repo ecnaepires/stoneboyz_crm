@@ -26,6 +26,41 @@ const toOptionalNullableNumber = (value: FormDataEntryValue | null) => {
 
 const toCents = (value: FormDataEntryValue | null) => Math.round(Number(value || 0) * 100);
 const toBoolean = (value: FormDataEntryValue | null) => value === 'on';
+type ItemGroup = 'material' | 'fabrication' | 'edge' | 'sink' | 'faucet_hole' | 'splash';
+type ChargeMethod = 'square_foot' | 'linear_foot' | 'each';
+type MeasurementBasis =
+  | 'countertop_sqft'
+  | 'backsplash_sqft'
+  | 'combined_sqft'
+  | 'finished_edge_linft'
+  | 'splash_sqft'
+  | 'sink_count'
+  | 'faucet_hole_count'
+  | 'each';
+
+const ITEM_GROUPS = ['material', 'fabrication', 'edge', 'sink', 'faucet_hole', 'splash'] as const;
+const CHARGE_METHODS = ['square_foot', 'linear_foot', 'each'] as const;
+const MEASUREMENT_BASES = [
+  'countertop_sqft',
+  'backsplash_sqft',
+  'combined_sqft',
+  'finished_edge_linft',
+  'splash_sqft',
+  'sink_count',
+  'faucet_hole_count',
+  'each',
+] as const;
+
+const oneOf = <T extends readonly string[]>(values: T, value: FormDataEntryValue | null, fallback: T[number]): T[number] => {
+  const stringValue = typeof value === 'string' ? value : '';
+  return values.includes(stringValue) ? stringValue as T[number] : fallback;
+};
+
+const unitForChargeMethod = (chargeMethod: string) => {
+  if (chargeMethod === 'linear_foot') return 'linft';
+  if (chargeMethod === 'each') return 'ea';
+  return 'sqft';
+};
 
 export async function createPriceListAction(formData: FormData) {
   const client = await getApiClientWithAuth();
@@ -93,13 +128,19 @@ export async function archivePriceListAction(priceListId: string) {
 export async function createPriceListItemAction(priceListId: string, formData: FormData) {
   const client = await getApiClientWithAuth();
   const description = toOptionalString(formData.get('description'));
+  const itemGroup: ItemGroup = oneOf(ITEM_GROUPS, formData.get('itemGroup'), 'material');
+  const chargeMethod: ChargeMethod = oneOf(CHARGE_METHODS, formData.get('chargeMethod'), 'square_foot');
+  const measurementBasis: MeasurementBasis = oneOf(MEASUREMENT_BASES, formData.get('measurementBasis'), 'combined_sqft');
   const { error } = await client.POST('/price-lists/{priceListId}/items', {
     params: { path: { priceListId } },
     body: {
+      itemGroup,
       category: formData.get('category') as string,
-      itemType: formData.get('itemType') as string,
+      itemType: itemGroup,
       name: formData.get('name') as string,
-      unit: formData.get('unit') as string,
+      chargeMethod,
+      measurementBasis,
+      unit: unitForChargeMethod(chargeMethod),
       priceCents: toCents(formData.get('price')),
       sortOrder: Number(formData.get('sortOrder') || 0),
       taxable: toBoolean(formData.get('taxable')),
@@ -115,11 +156,29 @@ export async function createPriceListItemAction(priceListId: string, formData: F
 
 export async function updatePriceListItemAction(priceListId: string, itemId: string, formData: FormData) {
   const client = await getApiClientWithAuth();
+  const name = toOptionalString(formData.get('name'));
+  const itemGroup: ItemGroup | undefined = formData.has('itemGroup')
+    ? oneOf(ITEM_GROUPS, formData.get('itemGroup'), 'material')
+    : undefined;
+  const category = toOptionalString(formData.get('category'));
+  const chargeMethod: ChargeMethod | undefined = formData.has('chargeMethod')
+    ? oneOf(CHARGE_METHODS, formData.get('chargeMethod'), 'square_foot')
+    : undefined;
+  const measurementBasis: MeasurementBasis | undefined = formData.has('measurementBasis')
+    ? oneOf(MEASUREMENT_BASES, formData.get('measurementBasis'), 'combined_sqft')
+    : undefined;
   const { error } = await client.PATCH('/price-lists/{priceListId}/items/{itemId}', {
     params: { path: { priceListId, itemId } },
     body: {
+      ...(name ? { name } : {}),
+      ...(itemGroup ? { itemGroup, itemType: itemGroup } : {}),
+      ...(category ? { category } : {}),
+      ...(chargeMethod ? { chargeMethod } : {}),
+      ...(measurementBasis ? { measurementBasis } : {}),
+      ...(chargeMethod ? { unit: unitForChargeMethod(chargeMethod) } : {}),
       sortOrder: Number(formData.get('sortOrder') || 0),
       priceCents: toCents(formData.get('price')),
+      hideOnQuote: toBoolean(formData.get('hideOnQuote')),
     },
   });
   if (error) throw new Error('Failed to update item: ' + JSON.stringify(error));

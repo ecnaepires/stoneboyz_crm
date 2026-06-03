@@ -45,8 +45,7 @@ export class PriceListsService {
   }
 
   async update(priceListId: string, input: UpdatePriceListInput): Promise<PriceList> {
-    const current = await this.ensurePriceListExists(priceListId);
-    if (current.status !== 'draft') throw this.invalidTransition('Only draft price lists can be updated');
+    await this.ensurePriceListExists(priceListId);
 
     const priceList = await this.priceListsRepository.update(priceListId, input);
     if (priceList === null) throw new NotFoundException({ code: 'NOT_FOUND', message: 'Price list not found' });

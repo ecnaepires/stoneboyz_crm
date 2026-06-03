@@ -46,7 +46,9 @@ export class QuotePricingService {
     const priceListItems: PriceListItemInput[] = (await this.priceListItemsRepository.list(quote.priceListId)).map((item) => ({
       id: item.id,
       category: item.category,
-      unitPriceCents: item.priceCents
+      unitPriceCents: item.priceCents,
+      chargeMethod: item.chargeMethod,
+      measurementBasis: item.measurementBasis
     }));
     const measurementTotals = await this.quoteAreasRepository.pricingMeasurementTotalsForArea(areaId);
     const lines = generatePriceLines(measurementTotals, { material: area.material, color: area.color }, priceListItems);
