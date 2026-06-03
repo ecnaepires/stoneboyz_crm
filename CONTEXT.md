@@ -32,13 +32,23 @@ A single sellable charge inside a Price List, such as Material, Fabrication, Eas
 
 Edge profile tasks, such as Eased Edge or Bullnose, are chosen per Sheet and charge only the finished-edge linear footage on Sheets using that edge profile.
 
+A Price List Task can have a zero price. This lets the Salesperson include an edge profile or task in the selectable list without charging extra for it.
+
+## Task Catalog
+
+The company-wide set of Price List Task names available to Salespeople. When a Salesperson adds a new task name, it becomes available to the whole team for future Price Lists.
+
 ## Charge Method
 
 How a Price List Task is measured for billing: by square foot, by linear foot, or by each/unit. The Charge Method determines which quote measurement supplies the task quantity.
 
 ## Finished Edge
 
-Any countertop edge that is not a wall edge. A wall edge sits against the wall and receives no fabrication; every other edge treatment (eased, appliance, mitered, waterfall, additional finished) is a finished edge and contributes to finished-edge linear footage. The distinction is binary for measurement: wall edge or finished edge.
+Any countertop edge that is not a wall edge. A wall edge sits against the wall and receives no fabrication; every other edge treatment (eased, appliance, mitered, waterfall, additional finished) is a finished edge and contributes to finished-edge linear footage. The distinction is binary for measurement: wall edge or finished edge. Splash polishing also counts: a splash contributes the part of its outline that is neither against the wall nor against the counter (its top run plus its two sides).
+
+## Square Footage
+
+The full slab area of a piece. Counter pieces and backsplash pieces are measured by square footage only; the polished top face of the slab is not a separately measured fabrication. Sink and faucet cutouts do not reduce square footage — a piece is measured as its full rectangle. Only fabricated edges are measured by linear foot; the slab face is not.
 
 ## Splash (edge treatment)
 
