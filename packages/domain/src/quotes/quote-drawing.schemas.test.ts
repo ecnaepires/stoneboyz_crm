@@ -234,3 +234,23 @@ describe('canvasLayoutSchema piece kind', () => {
     expect(parsed.pieces[0]?.kind).toBe('countertop');
   });
 });
+
+describe('canvasLayoutSchema sink counts', () => {
+  const SINK_ID = '00000000-0000-4000-8000-000000000002';
+
+  it('preserves quantity and faucet hole count', () => {
+    const parsed = canvasLayoutSchema.parse({
+      sinks: [{ sinkId: SINK_ID, pieceId: null, x: 0, y: 0, rotation: 0, quantity: 2, faucetHoleCount: 3 }]
+    });
+    expect(parsed.sinks[0]?.quantity).toBe(2);
+    expect(parsed.sinks[0]?.faucetHoleCount).toBe(3);
+  });
+
+  it('defaults quantity to 1 and faucet holes to 0', () => {
+    const parsed = canvasLayoutSchema.parse({
+      sinks: [{ sinkId: SINK_ID, pieceId: null, x: 0, y: 0, rotation: 0 }]
+    });
+    expect(parsed.sinks[0]?.quantity).toBe(1);
+    expect(parsed.sinks[0]?.faucetHoleCount).toBe(0);
+  });
+});

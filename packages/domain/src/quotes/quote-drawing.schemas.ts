@@ -53,6 +53,8 @@ const canvasSinkLayoutSchema = z.object({
   x: z.number(),
   y: z.number(),
   rotation: z.number().default(0),
+  quantity: z.number().int().positive().default(1),
+  faucetHoleCount: z.number().int().min(0).default(0),
 });
 
 const canvasCornerLayoutSchema = z.object({
