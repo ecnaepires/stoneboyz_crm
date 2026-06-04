@@ -1299,8 +1299,28 @@ export interface components {
             /** Format: uuid */
             customerId: string;
             customerName: string;
+            /** @description Computed quote value (subtotal + tax − discount), in cents. */
+            valueCents: number;
             /** Format: date-time */
             createdAt: string;
+        };
+        /** @description Open quote counts by status, for the pipeline breakdown. */
+        QuotePipeline: {
+            draft: number;
+            sent: number;
+            accepted: number;
+            rejected: number;
+        };
+        RevenuePoint: {
+            /**
+             * Format: date
+             * @description First day of the month in ISO date form, e.g. "2026-01-01".
+             */
+            month: string;
+            /** @description Total value of quotes created that month, in cents. */
+            quotesCents: number;
+            /** @description Total value of orders sold that month, in cents. */
+            ordersCents: number;
         };
         DashboardStats: {
             activeCustomers: number;
@@ -1313,6 +1333,9 @@ export interface components {
                 totalCents: number;
             };
             eventsThisWeek: number;
+            pipeline: components["schemas"]["QuotePipeline"];
+            /** @description Last 6 months of quote and order revenue, oldest first. */
+            revenueSeries: components["schemas"]["RevenuePoint"][];
             recentQuotes: components["schemas"]["RecentQuote"][];
         };
         UserProfile: {
