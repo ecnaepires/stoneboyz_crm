@@ -45,6 +45,17 @@ CREATE TABLE IF NOT EXISTS inventory_receipts (
   updated_at timestamptz NOT NULL DEFAULT now()
 );
 
+ALTER TABLE slabs
+  ADD COLUMN IF NOT EXISTS material_color_id uuid,
+  ADD COLUMN IF NOT EXISTS storage_location_id uuid,
+  ADD COLUMN IF NOT EXISTS inventory_receipt_id uuid,
+  ADD COLUMN IF NOT EXISTS tag_code text,
+  ADD COLUMN IF NOT EXISTS kind text NOT NULL DEFAULT 'full_slab',
+  ADD COLUMN IF NOT EXISTS availability text NOT NULL DEFAULT 'available',
+  ADD COLUMN IF NOT EXISTS ownership text NOT NULL DEFAULT 'shop_owned',
+  ADD COLUMN IF NOT EXISTS condition text NOT NULL DEFAULT 'good',
+  ADD COLUMN IF NOT EXISTS hold_reason text;
+
 CREATE TABLE IF NOT EXISTS slab_photos (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   slab_id uuid NOT NULL REFERENCES slabs(id) ON DELETE CASCADE,
@@ -69,7 +80,52 @@ CREATE TABLE IF NOT EXISTS damage_marks (
   CONSTRAINT damage_marks_shape_object CHECK (jsonb_typeof(shape) = 'object')
 );
 
-ALTER TABLE slabs
-  ADD CONSTRAINT slabs_material_color_fk FOREIGN KEY (material_color_id) REFERENCES material_colors(id) ON DELETE SET NULL,
-  ADD CONSTRAINT slabs_storage_location_fk FOREIGN KEY (storage_location_id) REFERENCES storage_locations(id) ON DELETE SET NULL,
-  ADD CONSTRAINT slabs_inventory_receipt_fk FOREIGN KEY (inventory_receipt_id) REFERENCES inventory_receipts(id) ON DELETE SET NULL;
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'slabs_kind_check') THEN
+    ALTER TABLE slabs ADD CONSTRAINT slabs_kind_check CHECK (kind IN ('full_slab', 'remnant'));
+  END IF;
+
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'slabs_availability_check') THEN
+    ALTER TABLE slabs ADD CONSTRAINT slabs_availability_check CHECK (availability IN ('available', 'reserved', 'cut', 'hold', 'archived'));
+  END IF;
+
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'slabs_ownership_check') THEN
+    ALTER TABLE slabs ADD CONSTRAINT slabs_ownership_check CHECK (ownership IN ('shop_owned', 'job_purchased', 'customer_supplied'));
+  END IF;
+
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'slabs_condition_check') THEN
+    ALTER TABLE slabs ADD CONSTRAINT slabs_condition_check CHECK (condition IN ('good', 'minor_damage', 'major_damage'));
+  END IF;
+
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'slabs_tag_code_not_empty') THEN
+    ALTER TABLE slabs ADD CONSTRAINT slabs_tag_code_not_empty CHECK (tag_code IS NULL OR length(trim(tag_code)) > 0);
+  END IF;
+
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'slabs_material_color_fk') THEN
+    ALTER TABLE slabs ADD CONSTRAINT slabs_material_color_fk FOREIGN KEY (material_color_id) REFERENCES material_colors(id) ON DELETE SET NULL;
+  END IF;
+
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'slabs_storage_location_fk') THEN
+    ALTER TABLE slabs ADD CONSTRAINT slabs_storage_location_fk FOREIGN KEY (storage_location_id) REFERENCES storage_locations(id) ON DELETE SET NULL;
+  END IF;
+
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'slabs_inventory_receipt_fk') THEN
+    ALTER TABLE slabs ADD CONSTRAINT slabs_inventory_receipt_fk FOREIGN KEY (inventory_receipt_id) REFERENCES inventory_receipts(id) ON DELETE SET NULL;
+  END IF;
+END $$;
+
+CREATE UNIQUE INDEX IF NOT EXISTS slabs_tag_code_unique_idx
+  ON slabs (tag_code)
+  WHERE tag_code IS NOT NULL AND deleted_at IS NULL;
+
+CREATE INDEX IF NOT EXISTS slabs_kind_availability_idx
+  ON slabs (kind, availability, updated_at DESC)
+  WHERE deleted_at IS NULL;
+
+ALTER TABLE "user"
+  DROP CONSTRAINT IF EXISTS user_role_check;
+
+ALTER TABLE "user"
+  ADD CONSTRAINT user_role_check
+  CHECK (role IN ('admin', 'salesperson', 'templater', 'cutter', 'fabricator', 'installer', 'service_tech', 'inventory_manager'));
