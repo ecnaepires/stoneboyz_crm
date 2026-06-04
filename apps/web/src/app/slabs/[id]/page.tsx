@@ -2,7 +2,8 @@ import Link from 'next/link';
 import { cookies } from 'next/headers';
 import { Button } from '@/components/ui/button';
 import { getApiClientWithAuth } from '@/lib/api';
-import { archiveSlabAction, deleteSlabImageAction, uploadSlabImageAction } from '../_actions';
+import { DamageMarker } from './DamageMarker';
+import { archiveSlabAction, createDamageMarkAction, deleteSlabImageAction, uploadSlabImageAction } from '../_actions';
 
 const dollars = (cents: number) => `$${(cents / 100).toFixed(2)}`;
 
@@ -45,6 +46,7 @@ export default async function SlabDetailPage({ params }: { params: Promise<{ id:
   const damageMarks = await getDamageMarks(id);
   const canEdit = slab.status === 'available' || slab.status === 'remnant';
   const uploadWithId = uploadSlabImageAction.bind(null, id);
+  const createDamageWithId = createDamageMarkAction.bind(null, id);
 
   return (
     <div className="space-y-6">
@@ -111,16 +113,11 @@ export default async function SlabDetailPage({ params }: { params: Promise<{ id:
       <section className="rounded-md border p-4">
         <h3 className="mb-3 text-lg font-semibold">Photos</h3>
         {slab.imageUrls && slab.imageUrls.length > 0 ? (
-          <div className="mb-4 flex flex-wrap gap-3">
+          <div className="mb-4 grid gap-5">
             {(slab.imageUrls as string[]).map((url: string) => (
-              <div key={url} className="group relative">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={url}
-                  alt="Slab photo"
-                  className="h-40 w-40 rounded object-cover"
-                />
-                <form action={deleteSlabImageAction.bind(null, id, url)} className="absolute right-1 top-1 opacity-0 group-hover:opacity-100">
+              <div key={url} className="group relative rounded-md border p-3">
+                <DamageMarker imageUrl={url} marks={damageMarks as any} saveAction={createDamageWithId} />
+                <form action={deleteSlabImageAction.bind(null, id, url)} className="absolute right-4 top-4 opacity-0 group-hover:opacity-100">
                   <button
                     type="submit"
                     className="rounded bg-red-600 px-2 py-0.5 text-xs text-white hover:bg-red-700"

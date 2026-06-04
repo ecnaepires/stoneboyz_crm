@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { getApiClientWithAuth } from '@/lib/api';
+import { buildDamageMarkPayload } from './damage-mark-payload';
 
 const toOptionalString = (value: FormDataEntryValue | null) => {
   const stringValue = typeof value === 'string' ? value.trim() : '';
@@ -140,5 +141,27 @@ export async function deleteSlabImageAction(slabId: string, url: string) {
     body: JSON.stringify({ url }),
   });
   if (!res.ok) throw new Error('Failed to delete image');
+  revalidatePath(`/slabs/${slabId}`);
+}
+
+export async function createDamageMarkAction(slabId: string, formData: FormData) {
+  const { cookies } = await import('next/headers');
+  const cookieStore = await cookies();
+  const sessionCookie = cookieStore.get('better-auth.session_token');
+  const baseUrl = process.env.API_BASE_URL;
+  if (!baseUrl) throw new Error('API_BASE_URL not set');
+  const apiOrigin = new URL(baseUrl).origin;
+  const payload = buildDamageMarkPayload(formData);
+
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+  if (sessionCookie) headers['Cookie'] = `better-auth.session_token=${sessionCookie.value}`;
+
+  const res = await fetch(`${apiOrigin}/api/v1/inventory/slabs/${slabId}/damage-marks`, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify(payload),
+  });
+
+  if (!res.ok) throw new Error('Failed to add damage mark');
   revalidatePath(`/slabs/${slabId}`);
 }
