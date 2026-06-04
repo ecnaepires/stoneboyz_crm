@@ -1,5 +1,5 @@
 import { BadRequestException, Body, Controller, Get, HttpCode, Param, Patch, Post } from '@nestjs/common';
-import { overrideGeneratedPriceLineSchema } from '@stoneboyz/domain';
+import { overrideGeneratedPriceLineSchema, upsertQuotePricingSelectionSchema } from '@stoneboyz/domain';
 import { z } from 'zod';
 import { CurrentUser } from '../auth/current-user.decorator.js';
 import { QuotePricingService } from './quote-pricing.service.js';
@@ -49,6 +49,57 @@ const parseLineIds = (
 
   return { parsedCustomerId, parsedQuoteId, parsedAreaId, parsedLineId: parsedLineId.data };
 };
+
+const parseQuoteIds = (
+  customerId: string,
+  quoteId: string
+): { parsedCustomerId: string; parsedQuoteId: string } => {
+  const pc = customerIdSchema.safeParse(customerId);
+  const pq = quoteIdSchema.safeParse(quoteId);
+
+  if (!pc.success || !pq.success) {
+    throw badRequest({
+      ...(!pc.success ? { customerId: ['Invalid UUID'] } : {}),
+      ...(!pq.success ? { quoteId: ['Invalid UUID'] } : {})
+    });
+  }
+
+  return { parsedCustomerId: pc.data, parsedQuoteId: pq.data };
+};
+
+@Controller('customers/:customerId/quotes/:quoteId/pricing-selections')
+export class QuotePricingSelectionsController {
+  constructor(private readonly quotePricingService: QuotePricingService) {}
+
+  @Get()
+  async getPricingSelections(
+    @Param('customerId') customerId: string,
+    @Param('quoteId') quoteId: string
+  ) {
+    const { parsedCustomerId, parsedQuoteId } = parseQuoteIds(customerId, quoteId);
+    return this.quotePricingService.getPricingSelections(parsedCustomerId, parsedQuoteId);
+  }
+
+  @Patch()
+  async upsertPricingSelections(
+    @Param('customerId') customerId: string,
+    @Param('quoteId') quoteId: string,
+    @Body() body: unknown,
+    @CurrentUser() actorUserId: string
+  ) {
+    const { parsedCustomerId, parsedQuoteId } = parseQuoteIds(customerId, quoteId);
+    const parsedBody = upsertQuotePricingSelectionSchema.safeParse(body);
+
+    if (!parsedBody.success) {
+      throw badRequest(formatZodError(parsedBody.error));
+    }
+
+    return this.quotePricingService.upsertPricingSelections(parsedCustomerId, parsedQuoteId, {
+      ...parsedBody.data,
+      actorUserId
+    });
+  }
+}
 
 @Controller('customers/:customerId/quotes/:quoteId/areas/:areaId/pricing')
 export class QuotePricingController {

@@ -327,7 +327,6 @@ export default async function QuoteDetailPage({
           quoteId={quoteId}
           areas={areas}
           isDraft={isDraft}
-          hasPriceList={hasPriceList}
         />
 
         <Card>

@@ -39,8 +39,9 @@ import { QuoteAreasService } from './quotes/quote-areas.service.js';
 import { QuoteMeasurementsController } from './quotes/quote-measurements.controller.js';
 import { QuoteMeasurementsRepository } from './quotes/quote-measurements.repository.js';
 import { QuoteMeasurementsService } from './quotes/quote-measurements.service.js';
-import { QuotePricingController } from './quotes/quote-pricing.controller.js';
+import { QuotePricingController, QuotePricingSelectionsController } from './quotes/quote-pricing.controller.js';
 import { QuotePricingRepository } from './quotes/quote-pricing.repository.js';
+import { QuotePricingSelectionsRepository } from './quotes/quote-pricing-selections.repository.js';
 import { QuotePricingService } from './quotes/quote-pricing.service.js';
 import { QuoteDrawingController } from './quotes/quote-drawing.controller.js';
 import { QuoteDrawingRepository } from './quotes/quote-drawing.repository.js';
@@ -88,6 +89,7 @@ import { TagsModule } from "./tags/tags.module.js";
     QuotesController,
     QuoteAreasController,
     QuoteMeasurementsController,
+    QuotePricingSelectionsController,
     QuotePricingController,
     QuoteDrawingController,
     OrdersController
@@ -114,6 +116,7 @@ import { TagsModule } from "./tags/tags.module.js";
     QuoteMeasurementsService,
     PriceListItemsRepository,
     QuotePricingRepository,
+    QuotePricingSelectionsRepository,
     QuotePricingService,
     QuoteDrawingRepository,
     QuoteDrawingService,

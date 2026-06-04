@@ -1488,6 +1488,98 @@ components:
           minLength: 1
           nullable: true
 
+    QuoteAreaPricingSelection:
+      type: object
+      required: [areaId, materialItemId, edgeItemId, splashItemId, fabricationItemId]
+      properties:
+        areaId:
+          type: string
+          format: uuid
+        materialItemId:
+          type: string
+          format: uuid
+          nullable: true
+        edgeItemId:
+          type: string
+          format: uuid
+          nullable: true
+        splashItemId:
+          type: string
+          format: uuid
+          nullable: true
+        fabricationItemId:
+          type: string
+          format: uuid
+          nullable: true
+
+    QuotePricingSelection:
+      type: object
+      required: [quoteId, defaultFabricationItemId, sinkItemId, faucetHoleItemId, areas]
+      properties:
+        quoteId:
+          type: string
+          format: uuid
+        defaultFabricationItemId:
+          type: string
+          format: uuid
+          nullable: true
+        sinkItemId:
+          type: string
+          format: uuid
+          nullable: true
+        faucetHoleItemId:
+          type: string
+          format: uuid
+          nullable: true
+        areas:
+          type: array
+          items:
+            $ref: '#/components/schemas/QuoteAreaPricingSelection'
+
+    UpsertQuoteAreaPricingSelectionRequest:
+      type: object
+      required: [areaId]
+      properties:
+        areaId:
+          type: string
+          format: uuid
+        materialItemId:
+          type: string
+          format: uuid
+          nullable: true
+        edgeItemId:
+          type: string
+          format: uuid
+          nullable: true
+        splashItemId:
+          type: string
+          format: uuid
+          nullable: true
+        fabricationItemId:
+          type: string
+          format: uuid
+          nullable: true
+
+    UpsertQuotePricingSelectionRequest:
+      type: object
+      properties:
+        defaultFabricationItemId:
+          type: string
+          format: uuid
+          nullable: true
+        sinkItemId:
+          type: string
+          format: uuid
+          nullable: true
+        faucetHoleItemId:
+          type: string
+          format: uuid
+          nullable: true
+        areas:
+          type: array
+          items:
+            $ref: '#/components/schemas/UpsertQuoteAreaPricingSelectionRequest'
+
     CanvasPieceLayout:
       type: object
       required: [pieceId, x, y, rotation]
@@ -5424,6 +5516,64 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
         '404':
           description: Sink cutout, area, quote, or customer not found.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Quote is not in draft status.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /customers/{customerId}/quotes/{quoteId}/pricing-selections:
+    get:
+      operationId: getQuotePricingSelections
+      summary: Get selected catalog pricing items for a quote
+      parameters:
+        - $ref: '#/components/parameters/CustomerId'
+        - $ref: '#/components/parameters/QuoteId'
+      responses:
+        '200':
+          description: Pricing selections returned.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/QuotePricingSelection'
+        '404':
+          description: Quote or customer not found.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    patch:
+      operationId: upsertQuotePricingSelections
+      summary: Save selected catalog pricing items for a quote
+      parameters:
+        - $ref: '#/components/parameters/CustomerId'
+        - $ref: '#/components/parameters/QuoteId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpsertQuotePricingSelectionRequest'
+      responses:
+        '200':
+          description: Pricing selections saved.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/QuotePricingSelection'
+        '400':
+          description: Invalid request.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Quote, customer, or area not found.
           content:
             application/json:
               schema:

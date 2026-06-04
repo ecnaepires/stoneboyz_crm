@@ -38,3 +38,35 @@ export type GeneratedPriceLineInput = Pick<
   GeneratedPriceLine,
   'category' | 'label' | 'quantity' | 'unit' | 'unitPriceCents' | 'lineTotalCents' | 'priceListItemId' | 'sortOrder'
 >;
+
+export interface QuoteAreaPricingSelection {
+  areaId: string;
+  materialItemId: string | null;
+  edgeItemId: string | null;
+  splashItemId: string | null;
+  fabricationItemId: string | null;
+}
+
+export interface QuotePricingSelection {
+  quoteId: string;
+  defaultFabricationItemId: string | null;
+  sinkItemId: string | null;
+  faucetHoleItemId: string | null;
+  areas: QuoteAreaPricingSelection[];
+}
+
+export interface UpsertQuoteAreaPricingSelectionInput {
+  areaId: string;
+  materialItemId?: string | null | undefined;
+  edgeItemId?: string | null | undefined;
+  splashItemId?: string | null | undefined;
+  fabricationItemId?: string | null | undefined;
+}
+
+export interface UpsertQuotePricingSelectionInput {
+  actorUserId: string;
+  defaultFabricationItemId?: string | null | undefined;
+  sinkItemId?: string | null | undefined;
+  faucetHoleItemId?: string | null | undefined;
+  areas?: UpsertQuoteAreaPricingSelectionInput[] | undefined;
+}

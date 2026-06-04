@@ -1,6 +1,7 @@
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
+import { Select } from '@/components/ui/select';
 import {
   Table,
   TableBody,
@@ -10,8 +11,10 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { getApiClientWithAuth } from '@/lib/api';
-import { generatePricingAction, overridePricingLineAction } from '../_actions';
+import { generatePricingAction, overridePricingLineAction, savePricingSelectionsAction } from '../_actions';
 import type { QuoteAreaWithMeasurementTotals } from './MeasurementsCard';
+
+type PriceListItemGroup = 'material' | 'fabrication' | 'edge' | 'sink' | 'faucet_hole' | 'splash';
 
 type GeneratedPriceLine = {
   id: string;
@@ -32,11 +35,55 @@ type GeneratedPriceLine = {
   updatedAt: string;
 };
 
+type CatalogPriceList = {
+  id: string;
+  name: string;
+  status: string;
+  items?: CatalogPriceListItem[];
+};
+
+type CatalogPriceListItem = {
+  id: string;
+  priceListId: string;
+  itemGroup: PriceListItemGroup;
+  category: string;
+  name: string;
+  chargeMethod: 'square_foot' | 'linear_foot' | 'each';
+  measurementBasis:
+    | 'countertop_sqft'
+    | 'backsplash_sqft'
+    | 'combined_sqft'
+    | 'finished_edge_linft'
+    | 'splash_sqft'
+    | 'sink_count'
+    | 'faucet_hole_count'
+    | 'each';
+  unit: string;
+  priceCents: number;
+  sortOrder: number;
+  hideOnQuote: boolean;
+  priceListName?: string;
+};
+
+type QuotePricingSelection = {
+  quoteId: string;
+  defaultFabricationItemId: string | null;
+  sinkItemId: string | null;
+  faucetHoleItemId: string | null;
+  areas: Array<{
+    areaId: string;
+    materialItemId: string | null;
+    edgeItemId: string | null;
+    splashItemId: string | null;
+    fabricationItemId: string | null;
+  }>;
+};
+
 type PricingReadClient = {
   GET: <T>(
     path: string,
-    options: { params: { path: Record<string, string> } }
-  ) => Promise<{ data?: { data: T[] }; error?: unknown }>;
+    options?: { params?: { path?: Record<string, string>; query?: Record<string, unknown> } }
+  ) => Promise<{ data?: T; error?: unknown }>;
 };
 
 interface PricingCardProps {
@@ -44,16 +91,33 @@ interface PricingCardProps {
   quoteId: string;
   areas: QuoteAreaWithMeasurementTotals[];
   isDraft: boolean;
-  hasPriceList: boolean;
 }
 
 const money = (cents: number) => `$${(cents / 100).toFixed(2)}`;
+const measurementNumber = (value: number) => value.toLocaleString(undefined, { maximumFractionDigits: 2 });
 
 const formatCategory = (value: string) =>
   value
     .split('_')
     .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
     .join(' ');
+
+const chargeLabel = (value: CatalogPriceListItem['chargeMethod']) => {
+  if (value === 'square_foot') return 'sq ft';
+  if (value === 'linear_foot') return 'lin ft';
+  return 'each';
+};
+
+const optionLabel = (item: CatalogPriceListItem) =>
+  `${item.name} - ${money(item.priceCents)} / ${chargeLabel(item.chargeMethod)}${item.priceListName ? ` (${item.priceListName})` : ''}`;
+
+const emptySelection = (quoteId: string): QuotePricingSelection => ({
+  quoteId,
+  defaultFabricationItemId: null,
+  sinkItemId: null,
+  faucetHoleItemId: null,
+  areas: [],
+});
 
 async function getAreaPricingLines(customerId: string, quoteId: string, areaId: string) {
   const client = (await getApiClientWithAuth()) as unknown as PricingReadClient;
@@ -68,17 +132,72 @@ async function getAreaPricingLines(customerId: string, quoteId: string, areaId: 
     throw new Error('Failed to load generated pricing');
   }
 
-  return data?.data ?? [];
+  return (data as { data?: GeneratedPriceLine[] } | undefined)?.data ?? [];
 }
 
-export async function PricingCard({ customerId, quoteId, areas, isDraft, hasPriceList }: PricingCardProps) {
-  const linesByArea = new Map(
-    hasPriceList
-      ? await Promise.all(
-          areas.map(async (area) => [area.id, await getAreaPricingLines(customerId, quoteId, area.id)] as const)
-        )
-      : []
+async function getPricingSelection(customerId: string, quoteId: string) {
+  const client = (await getApiClientWithAuth()) as unknown as PricingReadClient;
+  const { data, error } = await client.GET<QuotePricingSelection>(
+    '/customers/{customerId}/quotes/{quoteId}/pricing-selections',
+    {
+      params: { path: { customerId, quoteId } },
+    }
   );
+
+  if (error) {
+    throw new Error('Failed to load pricing selections');
+  }
+
+  return data ?? emptySelection(quoteId);
+}
+
+async function getCatalogItems() {
+  const client = (await getApiClientWithAuth()) as unknown as PricingReadClient;
+  const { data, error } = await client.GET<{ data: CatalogPriceList[] }>('/price-lists', {
+    params: { query: { limit: 50, includeArchived: false } },
+  });
+
+  if (error) {
+    throw new Error('Failed to load price lists');
+  }
+
+  const priceLists = data?.data ?? [];
+  const details = await Promise.all(
+    priceLists.map(async (priceList) => {
+      const result = await client.GET<CatalogPriceList>('/price-lists/{priceListId}', {
+        params: { path: { priceListId: priceList.id } },
+      });
+      if (result.error) throw new Error('Failed to load price list items');
+      return result.data;
+    })
+  );
+
+  return details
+    .flatMap((priceList) => {
+      if (!priceList) return [];
+      return (priceList.items ?? []).map((item) => ({
+        ...item,
+        priceListName: priceList.name,
+      }));
+    })
+    .filter((item) => !item.hideOnQuote)
+    .sort((a, b) => a.itemGroup.localeCompare(b.itemGroup) || a.sortOrder - b.sortOrder || a.name.localeCompare(b.name));
+}
+
+export async function PricingCard({ customerId, quoteId, areas, isDraft }: PricingCardProps) {
+  const [catalogItems, selection, lineEntries] = await Promise.all([
+    getCatalogItems(),
+    getPricingSelection(customerId, quoteId),
+    Promise.all(areas.map(async (area) => [area.id, await getAreaPricingLines(customerId, quoteId, area.id)] as const)),
+  ]);
+  const linesByArea = new Map(
+    lineEntries
+  );
+  const itemsByGroup = new Map<PriceListItemGroup, CatalogPriceListItem[]>();
+  for (const group of ['material', 'fabrication', 'edge', 'sink', 'faucet_hole', 'splash'] as PriceListItemGroup[]) {
+    itemsByGroup.set(group, catalogItems.filter((item) => item.itemGroup === group));
+  }
+  const areaSelectionById = new Map(selection.areas.map((area) => [area.areaId, area]));
   const grandTotal = Array.from(linesByArea.values()).reduce(
     (sum, lines) => sum + lines.reduce((areaSum, line) => areaSum + (line.overridePriceCents ?? line.lineTotalCents), 0),
     0
@@ -92,10 +211,122 @@ export async function PricingCard({ customerId, quoteId, areas, isDraft, hasPric
       <CardContent>
         {areas.length === 0 ? (
           <p className="text-sm text-muted-foreground">Add an area before generating pricing.</p>
-        ) : !hasPriceList ? (
-          <p className="text-sm text-muted-foreground">Assign a price list to this quote to generate pricing.</p>
         ) : (
           <div className="space-y-4">
+            <form action={savePricingSelectionsAction.bind(null, customerId, quoteId)} className="space-y-4 rounded-md border p-3">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <h3 className="font-medium">Pricing Setup</h3>
+                <div className="flex flex-wrap gap-2">
+                  <Button asChild variant="outline" size="sm">
+                    <a href="/price-lists">Manage Items</a>
+                  </Button>
+                  {isDraft && (
+                    <Button type="submit" size="sm">
+                      Save Setup
+                    </Button>
+                  )}
+                </div>
+              </div>
+
+              {catalogItems.length === 0 ? (
+                <p className="text-sm text-muted-foreground">No price items available.</p>
+              ) : (
+                <>
+                  <div className="grid gap-3 md:grid-cols-3">
+                    <label className="space-y-1 text-sm">
+                      <span className="font-medium">Default Fabrication</span>
+                      <Select name="defaultFabricationItemId" defaultValue={selection.defaultFabricationItemId ?? ''} disabled={!isDraft}>
+                        <option value="">None</option>
+                        {(itemsByGroup.get('fabrication') ?? []).map((item) => (
+                          <option key={item.id} value={item.id}>{optionLabel(item)}</option>
+                        ))}
+                      </Select>
+                    </label>
+                    <label className="space-y-1 text-sm">
+                      <span className="font-medium">Sink</span>
+                      <Select name="sinkItemId" defaultValue={selection.sinkItemId ?? ''} disabled={!isDraft}>
+                        <option value="">None</option>
+                        {(itemsByGroup.get('sink') ?? []).map((item) => (
+                          <option key={item.id} value={item.id}>{optionLabel(item)}</option>
+                        ))}
+                      </Select>
+                    </label>
+                    <label className="space-y-1 text-sm">
+                      <span className="font-medium">Faucet Holes</span>
+                      <Select name="faucetHoleItemId" defaultValue={selection.faucetHoleItemId ?? ''} disabled={!isDraft}>
+                        <option value="">None</option>
+                        {(itemsByGroup.get('faucet_hole') ?? []).map((item) => (
+                          <option key={item.id} value={item.id}>{optionLabel(item)}</option>
+                        ))}
+                      </Select>
+                    </label>
+                  </div>
+
+                  <div className="overflow-x-auto">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Area</TableHead>
+                          <TableHead>Measurements</TableHead>
+                          <TableHead>Material</TableHead>
+                          <TableHead>Edge</TableHead>
+                          <TableHead>Splash</TableHead>
+                          <TableHead>Fabrication</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {areas.map((area) => {
+                          const areaSelection = areaSelectionById.get(area.id);
+                          const totals = area.measurementTotals;
+
+                          return (
+                            <TableRow key={area.id}>
+                              <TableCell className="font-medium">{area.name}</TableCell>
+                              <TableCell className="text-xs text-muted-foreground">
+                                {measurementNumber(totals.combinedSqFt)} sq ft / {measurementNumber(totals.finishedEdgeLinFt)} lin ft / {totals.sinkCutoutCount} sinks
+                              </TableCell>
+                              <TableCell>
+                                <Select name={`area:${area.id}:materialItemId`} defaultValue={areaSelection?.materialItemId ?? ''} disabled={!isDraft} className="min-w-56">
+                                  <option value="">None</option>
+                                  {(itemsByGroup.get('material') ?? []).map((item) => (
+                                    <option key={item.id} value={item.id}>{optionLabel(item)}</option>
+                                  ))}
+                                </Select>
+                              </TableCell>
+                              <TableCell>
+                                <Select name={`area:${area.id}:edgeItemId`} defaultValue={areaSelection?.edgeItemId ?? ''} disabled={!isDraft} className="min-w-56">
+                                  <option value="">None</option>
+                                  {(itemsByGroup.get('edge') ?? []).map((item) => (
+                                    <option key={item.id} value={item.id}>{optionLabel(item)}</option>
+                                  ))}
+                                </Select>
+                              </TableCell>
+                              <TableCell>
+                                <Select name={`area:${area.id}:splashItemId`} defaultValue={areaSelection?.splashItemId ?? ''} disabled={!isDraft} className="min-w-56">
+                                  <option value="">None</option>
+                                  {(itemsByGroup.get('splash') ?? []).map((item) => (
+                                    <option key={item.id} value={item.id}>{optionLabel(item)}</option>
+                                  ))}
+                                </Select>
+                              </TableCell>
+                              <TableCell>
+                                <Select name={`area:${area.id}:fabricationItemId`} defaultValue={areaSelection?.fabricationItemId ?? ''} disabled={!isDraft} className="min-w-56">
+                                  <option value="">Use default</option>
+                                  {(itemsByGroup.get('fabrication') ?? []).map((item) => (
+                                    <option key={item.id} value={item.id}>{optionLabel(item)}</option>
+                                  ))}
+                                </Select>
+                              </TableCell>
+                            </TableRow>
+                          );
+                        })}
+                      </TableBody>
+                    </Table>
+                  </div>
+                </>
+              )}
+            </form>
+
             {areas.map((area) => {
               const lines = linesByArea.get(area.id) ?? [];
               const areaSubtotal = lines.reduce(

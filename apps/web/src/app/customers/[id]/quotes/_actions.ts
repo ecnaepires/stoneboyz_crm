@@ -416,6 +416,83 @@ export async function generatePricingAction(
   revalidatePath(`/customers/${customerId}/quotes/${quoteId}`);
 }
 
+export async function savePricingSelectionsAction(
+  customerId: string,
+  quoteId: string,
+  formData: FormData,
+) {
+  const client =
+    (await getApiClientWithAuth()) as unknown as PricingMutationClient;
+  const areas = new Map<
+    string,
+    {
+      areaId: string;
+      materialItemId: string | null;
+      edgeItemId: string | null;
+      splashItemId: string | null;
+      fabricationItemId: string | null;
+    }
+  >();
+
+  for (const [key, value] of formData.entries()) {
+    if (!key.startsWith("area:") || typeof value !== "string") continue;
+
+    const [, areaId, field] = key.split(":");
+    if (
+      !areaId ||
+      !field ||
+      ![
+        "materialItemId",
+        "edgeItemId",
+        "splashItemId",
+        "fabricationItemId",
+      ].includes(field)
+    ) {
+      continue;
+    }
+
+    const current = areas.get(areaId) ?? {
+      areaId,
+      materialItemId: null,
+      edgeItemId: null,
+      splashItemId: null,
+      fabricationItemId: null,
+    };
+    current[
+      field as
+        | "materialItemId"
+        | "edgeItemId"
+        | "splashItemId"
+        | "fabricationItemId"
+    ] =
+      value.trim() ? value : null;
+    areas.set(areaId, current);
+  }
+
+  const { error } = await client.PATCH(
+    "/customers/{customerId}/quotes/{quoteId}/pricing-selections",
+    {
+      params: { path: { customerId, quoteId } },
+      body: {
+        defaultFabricationItemId: toOptionalNullableString(
+          formData.get("defaultFabricationItemId"),
+        ),
+        sinkItemId: toOptionalNullableString(formData.get("sinkItemId")),
+        faucetHoleItemId: toOptionalNullableString(
+          formData.get("faucetHoleItemId"),
+        ),
+        areas: Array.from(areas.values()),
+      },
+    },
+  );
+
+  if (error) {
+    throw new Error("Failed to save pricing selections");
+  }
+
+  revalidatePath(`/customers/${customerId}/quotes/${quoteId}`);
+}
+
 export async function overridePricingLineAction(
   customerId: string,
   quoteId: string,

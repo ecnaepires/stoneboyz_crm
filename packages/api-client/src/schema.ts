@@ -967,6 +967,24 @@ export interface paths {
         patch: operations["updateQuoteAreaSink"];
         trace?: never;
     };
+    "/customers/{customerId}/quotes/{quoteId}/pricing-selections": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get selected catalog pricing items for a quote */
+        get: operations["getQuotePricingSelections"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Save selected catalog pricing items for a quote */
+        patch: operations["upsertQuotePricingSelections"];
+        trace?: never;
+    };
     "/customers/{customerId}/quotes/{quoteId}/areas/{areaId}/pricing": {
         parameters: {
             query?: never;
@@ -1841,6 +1859,50 @@ export interface components {
         OverrideGeneratedPriceLineBody: {
             overridePriceCents?: number | null;
             overrideReason?: string | null;
+        };
+        QuoteAreaPricingSelection: {
+            /** Format: uuid */
+            areaId: string;
+            /** Format: uuid */
+            materialItemId: string | null;
+            /** Format: uuid */
+            edgeItemId: string | null;
+            /** Format: uuid */
+            splashItemId: string | null;
+            /** Format: uuid */
+            fabricationItemId: string | null;
+        };
+        QuotePricingSelection: {
+            /** Format: uuid */
+            quoteId: string;
+            /** Format: uuid */
+            defaultFabricationItemId: string | null;
+            /** Format: uuid */
+            sinkItemId: string | null;
+            /** Format: uuid */
+            faucetHoleItemId: string | null;
+            areas: components["schemas"]["QuoteAreaPricingSelection"][];
+        };
+        UpsertQuoteAreaPricingSelectionRequest: {
+            /** Format: uuid */
+            areaId: string;
+            /** Format: uuid */
+            materialItemId?: string | null;
+            /** Format: uuid */
+            edgeItemId?: string | null;
+            /** Format: uuid */
+            splashItemId?: string | null;
+            /** Format: uuid */
+            fabricationItemId?: string | null;
+        };
+        UpsertQuotePricingSelectionRequest: {
+            /** Format: uuid */
+            defaultFabricationItemId?: string | null;
+            /** Format: uuid */
+            sinkItemId?: string | null;
+            /** Format: uuid */
+            faucetHoleItemId?: string | null;
+            areas?: components["schemas"]["UpsertQuoteAreaPricingSelectionRequest"][];
         };
         CanvasPieceLayout: {
             /** Format: uuid */
@@ -5839,6 +5901,94 @@ export interface operations {
                 };
             };
             /** @description Sink cutout, area, quote, or customer not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Quote is not in draft status. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getQuotePricingSelections: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                customerId: components["parameters"]["CustomerId"];
+                /** @description UUID of the quote */
+                quoteId: components["parameters"]["QuoteId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Pricing selections returned. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["QuotePricingSelection"];
+                };
+            };
+            /** @description Quote or customer not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    upsertQuotePricingSelections: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                customerId: components["parameters"]["CustomerId"];
+                /** @description UUID of the quote */
+                quoteId: components["parameters"]["QuoteId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpsertQuotePricingSelectionRequest"];
+            };
+        };
+        responses: {
+            /** @description Pricing selections saved. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["QuotePricingSelection"];
+                };
+            };
+            /** @description Invalid request. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Quote, customer, or area not found. */
             404: {
                 headers: {
                     [name: string]: unknown;

@@ -57,6 +57,9 @@ const measurementsUrl = (
 const pricingUrl = (quoteId: string, areaId: string, customerId = SEEDED_CUSTOMER_ID): string =>
   `${baseUrl}/api/v1/customers/${customerId}/quotes/${quoteId}/areas/${areaId}/pricing`;
 
+const pricingSelectionsUrl = (quoteId: string, customerId = SEEDED_CUSTOMER_ID): string =>
+  `${baseUrl}/api/v1/customers/${customerId}/quotes/${quoteId}/pricing-selections`;
+
 const drawingUrl = (quoteId: string, areaId: string, customerId = SEEDED_CUSTOMER_ID): string =>
   `${areasUrl(quoteId, customerId)}/${areaId}/drawing`;
 
@@ -308,6 +311,77 @@ describe('Quote pricing generate and list', () => {
       unit: 'linft',
       lineTotalCents: Math.round(15 * 2000)
     });
+  });
+
+  it('generates pricing from quote selections and drawing measurements', async () => {
+    const catalogPriceListId = await createPriceList();
+    const material = await createPriceListItem(catalogPriceListId, 'material', 1800, {
+      itemGroup: 'material',
+      unit: 'sqft',
+      chargeMethod: 'square_foot',
+      measurementBasis: 'countertop_sqft',
+      name: 'Uba Tuba'
+    });
+    const fabrication = await createPriceListItem(catalogPriceListId, 'fabrication', 2000, {
+      itemGroup: 'fabrication',
+      unit: 'sqft',
+      chargeMethod: 'square_foot',
+      measurementBasis: 'countertop_sqft',
+      name: 'Retail Fabrication'
+    });
+    const edge = await createPriceListItem(catalogPriceListId, 'finished_edge', 1400, {
+      itemGroup: 'edge',
+      unit: 'linft',
+      chargeMethod: 'linear_foot',
+      measurementBasis: 'finished_edge_linft',
+      name: 'Bullnose'
+    });
+    const splash = await createPriceListItem(catalogPriceListId, 'splash', 1200, {
+      itemGroup: 'splash',
+      unit: 'sqft',
+      chargeMethod: 'square_foot',
+      measurementBasis: 'splash_sqft',
+      name: 'Standard Splash'
+    });
+    const sink = await createPriceListItem(catalogPriceListId, 'sink_item', 15000, {
+      itemGroup: 'sink',
+      unit: 'ea',
+      chargeMethod: 'each',
+      measurementBasis: 'sink_count',
+      name: '70/30 Sink'
+    });
+
+    const selectionResponse = await fetch(pricingSelectionsUrl(quoteId), {
+      method: 'PATCH',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        defaultFabricationItemId: fabrication['id'],
+        sinkItemId: sink['id'],
+        areas: [{ areaId, materialItemId: material['id'], edgeItemId: edge['id'], splashItemId: splash['id'] }]
+      })
+    });
+
+    expect(selectionResponse.status).toBe(200);
+
+    const response = await fetch(`${pricingUrl(quoteId, areaId)}/generate`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' }
+    });
+    const body = await response.json() as { data: Array<Record<string, unknown>> };
+
+    expect(response.status).toBe(200);
+    expect(body.data.map((line) => [
+      line['category'],
+      line['label'],
+      line['quantity'],
+      line['lineTotalCents']
+    ])).toEqual([
+      ['material', 'Uba Tuba', 35.708, Math.round(35.708 * 1800)],
+      ['fabrication', 'Retail Fabrication', 35.708, Math.round(35.708 * 2000)],
+      ['finished_edge', 'Bullnose', 15, Math.round(15 * 1400)],
+      ['splash', 'Standard Splash', 2.778, Math.round(2.778 * 1200)],
+      ['sink_item', '70/30 Sink', 1, 15000]
+    ]);
   });
 });
 

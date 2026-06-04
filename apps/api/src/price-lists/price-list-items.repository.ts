@@ -144,6 +144,20 @@ export class PriceListItemsRepository {
     return row === undefined ? null : mapPriceListItemRow(row);
   }
 
+  async findManyByIds(itemIds: string[]): Promise<Map<string, PriceListItem>> {
+    if (itemIds.length === 0) return new Map();
+
+    const result = await this.pool.query<PriceListItemRow>(
+      `SELECT * FROM price_list_items WHERE id = ANY($1::uuid[])`,
+      [itemIds]
+    );
+
+    return new Map(result.rows.map((row) => {
+      const item = mapPriceListItemRow(row);
+      return [item.id, item];
+    }));
+  }
+
   async update(priceListId: string, itemId: string, input: UpdatePriceListItemInput): Promise<PriceListItem | null> {
     const values: unknown[] = [];
     const assignments: string[] = [];
