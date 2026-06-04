@@ -9,6 +9,11 @@ const toOptionalString = (value: FormDataEntryValue | null) => {
   return stringValue ? stringValue : undefined;
 };
 
+const toOptionalNullableStringOrUndefined = (value: FormDataEntryValue | null) => {
+  const stringValue = typeof value === 'string' ? value.trim() : '';
+  return stringValue ? stringValue : undefined;
+};
+
 const toOptionalNullableString = (value: FormDataEntryValue | null) => {
   const stringValue = typeof value === 'string' ? value.trim() : '';
   return stringValue ? stringValue : null;
@@ -23,9 +28,18 @@ export async function createSlabAction(formData: FormData) {
   const bundleNumber = toOptionalString(formData.get('bundleNumber'));
   const warehouseLocation = toOptionalString(formData.get('warehouseLocation'));
   const notes = toOptionalString(formData.get('notes'));
+  const materialColorId = toOptionalNullableStringOrUndefined(formData.get('materialColorId'));
+  const storageLocationId = toOptionalNullableStringOrUndefined(formData.get('storageLocationId'));
+  const inventoryReceiptId = toOptionalNullableStringOrUndefined(formData.get('inventoryReceiptId'));
+  const tagCode = toOptionalString(formData.get('tagCode'));
+  const holdReason = toOptionalString(formData.get('holdReason'));
 
   const { data, error } = await client.POST('/inventory/slabs', {
     body: {
+      kind: (formData.get('kind') as string) || 'full_slab',
+      availability: (formData.get('availability') as string) || 'available',
+      ownership: (formData.get('ownership') as string) || 'shop_owned',
+      condition: (formData.get('condition') as string) || 'good',
       stoneType: formData.get('stoneType') as string,
       finish: formData.get('finish') as 'polished' | 'honed' | 'brushed' | 'leathered' | 'sandblasted',
       qualityGrade: formData.get('qualityGrade') as 'A' | 'B' | 'C',
@@ -36,8 +50,13 @@ export async function createSlabAction(formData: FormData) {
       ...(lotNumber ? { lotNumber } : {}),
       ...(bundleNumber ? { bundleNumber } : {}),
       ...(warehouseLocation ? { warehouseLocation } : {}),
+      ...(materialColorId ? { materialColorId } : {}),
+      ...(storageLocationId ? { storageLocationId } : {}),
+      ...(inventoryReceiptId ? { inventoryReceiptId } : {}),
+      ...(tagCode ? { tagCode } : {}),
+      ...(holdReason ? { holdReason } : {}),
       ...(notes ? { notes } : {}),
-    },
+    } as any,
   });
 
   if (error) throw new Error('Failed to create slab: ' + JSON.stringify(error));
