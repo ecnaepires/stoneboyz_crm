@@ -1,6 +1,8 @@
 import { Inject, Injectable } from '@nestjs/common';
 import {
   calculateMeasurementAreaTotals,
+  measurementTotalsFromLayout,
+  type CanvasLayout,
   type CounterPieceInput,
   type CreateQuoteAreaInput,
   type EdgeSegmentInput,
@@ -204,71 +206,23 @@ export class QuoteAreasRepository {
   }
 
   private async measurementTotalsForAreas(rows: QuoteAreaRow[]): Promise<Map<string, QuoteMeasurementAreaTotals>> {
-    const areaIds = rows.map((row) => row.id);
     const totals = new Map<string, QuoteMeasurementAreaTotals>();
-
+    const areaIds = rows.map((row) => row.id);
     if (areaIds.length === 0) {
       return totals;
     }
 
-    const [piecesResult, edgesResult, sinksResult] = await Promise.all([
-      this.pool.query<CounterPieceRow>('SELECT * FROM counter_pieces WHERE quote_area_id = ANY($1::uuid[])', [areaIds]),
-      this.pool.query<EdgeSegmentRow>('SELECT * FROM edge_segments WHERE quote_area_id = ANY($1::uuid[])', [areaIds]),
-      this.pool.query<SinkCutoutRow>('SELECT * FROM sink_cutouts WHERE quote_area_id = ANY($1::uuid[])', [areaIds])
-    ]);
+    const layouts = await this.pool.query<{ quote_area_id: string; layout: CanvasLayout | string }>(
+      `SELECT DISTINCT ON (quote_area_id) quote_area_id, layout
+         FROM drawing_revisions
+        WHERE quote_area_id = ANY($1::uuid[])
+        ORDER BY quote_area_id, revision_number DESC`,
+      [areaIds]
+    );
 
-    for (const row of rows) {
-      const pieces: CounterPieceInput[] = piecesResult.rows
-        .filter((piece) => piece.quote_area_id === row.id)
-        .map((piece) => {
-          const input: CounterPieceInput = {
-            lengthIn: Number(piece.length_in),
-            widthIn: Number(piece.width_in),
-            quantity: piece.quantity,
-            kind: piece.kind === "backsplash" ? "backsplash" : "countertop"
-          };
-
-          if (piece.name !== null) {
-            input.name = piece.name;
-          }
-
-          return input;
-        });
-      const edges: EdgeSegmentInput[] = edgesResult.rows
-        .filter((edge) => edge.quote_area_id === row.id)
-        .map((edge) => {
-          const input: EdgeSegmentInput = {
-            lengthIn: Number(edge.length_in),
-            treatment: edge.treatment
-          };
-
-          if (edge.splash_height_in !== null) {
-            input.splashHeightIn = Number(edge.splash_height_in);
-          }
-
-          return input;
-        });
-      const sinks: SinkCutoutInput[] = sinksResult.rows
-        .filter((sink) => sink.quote_area_id === row.id)
-        .map((sink) => {
-          const input: SinkCutoutInput = {
-            quantity: sink.quantity,
-            sinkType: sink.sink_type,
-            shape: sink.shape,
-            cutoutLengthIn: Number(sink.cutout_length_in),
-            cutoutWidthIn: Number(sink.cutout_width_in),
-            faucetHoleCount: sink.faucet_hole_count,
-            centerline: sink.centerline
-          };
-
-          if (sink.model !== null) {
-            input.model = sink.model;
-          }
-
-          return input;
-        });
-
-      totals.set(row.id, calculateMeasurementAreaTotals({ name: row.name, pieces, edges, sinks }));
+    for (const row of layouts.rows) {
+      const layout = (typeof row.layout === 'string' ? JSON.parse(row.layout) : row.layout) as CanvasLayout;
+      totals.set(row.quote_area_id, measurementTotalsFromLayout(layout));
     }
 
     return totals;

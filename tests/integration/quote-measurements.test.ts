@@ -17,17 +17,9 @@ const MISSING_ID = '99999999-9999-4999-8999-999999999999';
 const resetDatabase = async (app: INestApplication): Promise<void> => {
   const pool = app.get<Pool>(DATABASE_POOL);
 
-  await pool.query('DROP TABLE IF EXISTS sink_cutouts CASCADE;');
-  await pool.query('DROP TABLE IF EXISTS edge_segments CASCADE;');
-  await pool.query('DROP TABLE IF EXISTS counter_pieces CASCADE;');
-  await pool.query('DROP TABLE IF EXISTS quote_line_items CASCADE;');
-  await pool.query('DROP TABLE IF EXISTS quote_areas CASCADE;');
-  await pool.query('DROP TABLE IF EXISTS quotes CASCADE;');
-  await pool.query('DROP TABLE IF EXISTS projects CASCADE;');
-  await pool.query('DROP TABLE IF EXISTS customer_notes CASCADE;');
-  await pool.query('DROP TABLE IF EXISTS customer_addresses CASCADE;');
-  await pool.query('DROP TABLE IF EXISTS customer_contacts CASCADE;');
-  await pool.query('DROP TABLE IF EXISTS customers CASCADE;');
+  // Full schema reset — drift-proof against tables added by other modules.
+  // Migrations recreate everything (including `CREATE EXTENSION IF NOT EXISTS pgcrypto`).
+  await pool.query('DROP SCHEMA public CASCADE; CREATE SCHEMA public;');
 
   const migrationsDir = join(process.cwd(), 'db/migrations');
   const migrationFiles = (await readdir(migrationsDir))
@@ -58,6 +50,33 @@ const measurementsUrl = (
   kind: 'pieces' | 'edges' | 'sinks',
   customerId = SEEDED_CUSTOMER_ID
 ): string => `${areasUrl(quoteId, customerId)}/${areaId}/${kind}`;
+
+const drawingUrl = (quoteId: string, areaId: string, customerId = SEEDED_CUSTOMER_ID): string =>
+  `${areasUrl(quoteId, customerId)}/${areaId}/drawing`;
+
+const saveDrawing = async (quoteId: string, areaId: string, layout: unknown): Promise<Response> =>
+  fetch(drawingUrl(quoteId, areaId), {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ layout })
+  });
+
+const PIECE_A = '00000000-0000-4000-8000-0000000000a1';
+const PIECE_B = '00000000-0000-4000-8000-0000000000a2';
+const SINK_A = '00000000-0000-4000-8000-0000000000b1';
+
+// A rectangle modelled as two abutting horizontal halves (schema requires >=2 chain segments).
+const twoSegRect = (lengthIn: number, widthIn: number) => {
+  const half = lengthIn / 2;
+  const scale = 3;
+  return {
+    type: 'chain',
+    segments: [
+      { x: 0, y: 0, w: half * scale, h: widthIn * scale, lengthIn: half, widthIn, orientation: 'horizontal' },
+      { x: half * scale, y: 0, w: half * scale, h: widthIn * scale, lengthIn: half, widthIn, orientation: 'horizontal' }
+    ]
+  };
+};
 
 const createQuote = async (customerId = SEEDED_CUSTOMER_ID): Promise<string> => {
   const res = await fetch(quotesUrl(customerId), {
@@ -366,39 +385,20 @@ describe('Quote measurement golden acceptance scenario', () => {
   it('returns the expected Kitchen measurement totals on quote detail', async () => {
     const { quoteId, areaId } = await createQuoteWithArea({ name: 'Kitchen' });
 
-    await fetch(measurementsUrl(quoteId, areaId, 'pieces'), {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ name: 'Sink run', lengthIn: 100, widthIn: 25.5 })
-    });
-    await fetch(measurementsUrl(quoteId, areaId, 'pieces'), {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ name: 'Island', lengthIn: 72, widthIn: 36 })
-    });
-    await fetch(measurementsUrl(quoteId, areaId, 'edges'), {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ lengthIn: 100, treatment: 'finished', splashHeightIn: 4 })
-    });
-    await fetch(measurementsUrl(quoteId, areaId, 'edges'), {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ lengthIn: 72, treatment: 'finished' })
-    });
-    await fetch(measurementsUrl(quoteId, areaId, 'sinks'), {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({
-        model: '3018',
-        sinkType: 'undermount',
-        shape: 'rectangle',
-        cutoutLengthIn: 29,
-        cutoutWidthIn: 18,
-        faucetHoleCount: 1,
-        centerline: 'center'
-      })
-    });
+    const layout = {
+      pieces: [
+        { pieceId: PIECE_A, x: 0, y: 0, rotation: 0, kind: 'countertop', shape: twoSegRect(100, 25.5) },
+        { pieceId: PIECE_B, x: 0, y: 0, rotation: 0, kind: 'countertop', shape: twoSegRect(72, 36) }
+      ],
+      edges: [
+        { pieceId: PIECE_A, edge: 'top', treatment: 'finished' }
+      ],
+      sinks: [
+        { sinkId: SINK_A, pieceId: PIECE_A, x: 0, y: 0, rotation: 0, quantity: 1, faucetHoleCount: 1 }
+      ]
+    };
+    const saved = await saveDrawing(quoteId, areaId, layout);
+    expect(saved.status).toBe(201);
 
     const response = await fetch(`${quotesUrl()}/${quoteId}`);
     const body = await response.json() as Record<string, unknown>;
@@ -409,11 +409,11 @@ describe('Quote measurement golden acceptance scenario', () => {
     expect(kitchen?.['name']).toBe('Kitchen');
     expect(kitchen?.['measurementTotals']).toEqual({
       pieceCount: 2,
-      countertopSqFt: 35.708,
+      countertopSqFt: 35.708,      // (100*25.5 + 72*36) / 144
       backsplashSqFt: 0,
       combinedSqFt: 35.708,
-      finishedEdgeLinFt: 14.333,
-      splashSqFt: 2.778,
+      finishedEdgeLinFt: 8.333,    // PIECE_A 'top' finished, bbox X extent = 100in / 12
+      splashSqFt: 0,
       sinkCutoutCount: 1,
       faucetHoleCount: 1
     });
