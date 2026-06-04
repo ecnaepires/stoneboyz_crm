@@ -134,7 +134,7 @@ export default async function SlabDetailPage({ params }: { params: Promise<{ id:
         ) : (
           <p className="mb-4 text-sm text-muted-foreground">No photos yet.</p>
         )}
-        <form action={uploadWithId} encType="multipart/form-data" className="flex items-center gap-3">
+        <form action={uploadWithId} className="flex items-center gap-3">
           <input
             type="file"
             name="image"
