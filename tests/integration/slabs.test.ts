@@ -16,11 +16,25 @@ const ACTOR_USER_ID = '22222222-2222-4222-8222-222222222222';
 const resetDatabase = async (app: INestApplication): Promise<void> => {
   const pool = app.get<Pool>(DATABASE_POOL);
 
+  await pool.query('DROP TABLE IF EXISTS damage_marks CASCADE;');
+  await pool.query('DROP TABLE IF EXISTS slab_photos CASCADE;');
+  await pool.query('DROP TABLE IF EXISTS inventory_receipts CASCADE;');
+  await pool.query('DROP TABLE IF EXISTS storage_locations CASCADE;');
+  await pool.query('DROP TABLE IF EXISTS material_color_aliases CASCADE;');
+  await pool.query('DROP TABLE IF EXISTS material_colors CASCADE;');
+  await pool.query('DROP TABLE IF EXISTS quote_pricing_selections CASCADE;');
+  await pool.query('DROP TABLE IF EXISTS quote_sheet_pricing_selections CASCADE;');
+  await pool.query('DROP TABLE IF EXISTS generated_price_lines CASCADE;');
+  await pool.query('DROP TABLE IF EXISTS price_list_items CASCADE;');
+  await pool.query('DROP TABLE IF EXISTS item_catalog CASCADE;');
+  await pool.query('DROP TABLE IF EXISTS price_lists CASCADE;');
   await pool.query('DROP TABLE IF EXISTS project_slabs CASCADE;');
   await pool.query('DROP TABLE IF EXISTS quote_line_items CASCADE;');
+  await pool.query('DROP TABLE IF EXISTS quote_areas CASCADE;');
   await pool.query('DROP TABLE IF EXISTS quotes CASCADE;');
   await pool.query('DROP TABLE IF EXISTS slabs CASCADE;');
   await pool.query('DROP TABLE IF EXISTS projects CASCADE;');
+  await pool.query('DROP TABLE IF EXISTS scheduled_events CASCADE;');
   await pool.query('DROP TABLE IF EXISTS customer_notes CASCADE;');
   await pool.query('DROP TABLE IF EXISTS customer_addresses CASCADE;');
   await pool.query('DROP TABLE IF EXISTS customer_contacts CASCADE;');
@@ -122,8 +136,14 @@ describe('slabs', () => {
     expect(created.body).toMatchObject({
       stoneType: 'Granite Black Galaxy',
       status: 'available',
+      kind: 'full_slab',
+      availability: 'available',
+      ownership: 'shop_owned',
+      condition: 'good',
       costCents: 120000
     });
+    expect(typeof created.body.tagCode).toBe('string');
+    expect((created.body.tagCode as string).startsWith('S-')).toBe(true);
 
     const response = await fetch(slabsUrl());
     const body = await response.json() as Record<string, unknown>;

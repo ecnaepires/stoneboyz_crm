@@ -3,6 +3,15 @@ import type { ProjectSlab, Slab } from '@stoneboyz/domain';
 export interface SlabRow {
   id: string;
   parent_slab_id: string | null;
+  material_color_id: string | null;
+  storage_location_id: string | null;
+  inventory_receipt_id: string | null;
+  tag_code: string | null;
+  kind: Slab['kind'];
+  availability: Slab['availability'];
+  ownership: Slab['ownership'];
+  condition: Slab['condition'];
+  hold_reason: string | null;
   stone_type: string;
   finish: Slab['finish'];
   quality_grade: Slab['qualityGrade'];
@@ -37,6 +46,15 @@ const toIso = (value: Date): string => value.toISOString();
 export const mapSlabRow = (row: SlabRow): Slab => ({
   id: row.id,
   parentSlabId: row.parent_slab_id,
+  materialColorId: row.material_color_id,
+  storageLocationId: row.storage_location_id,
+  inventoryReceiptId: row.inventory_receipt_id,
+  tagCode: row.tag_code,
+  kind: row.kind,
+  availability: row.availability,
+  ownership: row.ownership,
+  condition: row.condition,
+  holdReason: row.hold_reason,
   stoneType: row.stone_type,
   finish: row.finish,
   qualityGrade: row.quality_grade,

@@ -34,7 +34,10 @@ export class SlabsService {
   }
 
   async create(input: CreateSlabInput): Promise<Slab> {
-    const slab = await this.slabsRepository.create(input);
+    const slab = await this.slabsRepository.create({
+      ...input,
+      tagCode: input.tagCode ?? await this.slabsRepository.nextTagCode()
+    });
     this.eventBus.emit('slab.created', buildSlabEventPayload(slab.id, input.actorUserId));
     return slab;
   }
@@ -221,4 +224,3 @@ export class SlabsService {
     return new ConflictException({ code: message === 'Slab is already cut' ? 'SLAB_ALREADY_CUT' : 'INVALID_TRANSITION', message });
   }
 }
-

@@ -1,13 +1,39 @@
 import { z } from 'zod';
-import { SLAB_FINISH_VALUES, SLAB_QUALITY_GRADE_VALUES, SLAB_STATUS_VALUES } from './slab.constants.js';
+import {
+  DAMAGE_MARK_SEVERITY_VALUES,
+  DAMAGE_MARK_TYPE_VALUES,
+  SLAB_AVAILABILITY_VALUES,
+  SLAB_CONDITION_VALUES,
+  SLAB_FINISH_VALUES,
+  SLAB_KIND_VALUES,
+  SLAB_OWNERSHIP_VALUES,
+  SLAB_QUALITY_GRADE_VALUES,
+  SLAB_STATUS_VALUES
+} from './slab.constants.js';
 
 export const slabStatusSchema = z.enum(SLAB_STATUS_VALUES);
+export const slabKindSchema = z.enum(SLAB_KIND_VALUES);
+export const slabAvailabilitySchema = z.enum(SLAB_AVAILABILITY_VALUES);
+export const slabOwnershipSchema = z.enum(SLAB_OWNERSHIP_VALUES);
+export const slabConditionSchema = z.enum(SLAB_CONDITION_VALUES);
 export const slabFinishSchema = z.enum(SLAB_FINISH_VALUES);
 export const slabQualityGradeSchema = z.enum(SLAB_QUALITY_GRADE_VALUES);
+export const damageMarkTypeSchema = z.enum(DAMAGE_MARK_TYPE_VALUES);
+export const damageMarkSeveritySchema = z.enum(DAMAGE_MARK_SEVERITY_VALUES);
 
 const imageUrlsSchema = z.array(z.string().url()).max(20);
+const nullableUuidSchema = z.string().uuid().nullable();
 
 export const createSlabSchema = z.object({
+  materialColorId: nullableUuidSchema.optional(),
+  storageLocationId: nullableUuidSchema.optional(),
+  inventoryReceiptId: nullableUuidSchema.optional(),
+  tagCode: z.string().min(1).optional(),
+  kind: slabKindSchema.optional(),
+  availability: slabAvailabilitySchema.optional(),
+  ownership: slabOwnershipSchema.default('shop_owned'),
+  condition: slabConditionSchema.default('good'),
+  holdReason: z.string().min(1).nullable().optional(),
   stoneType: z.string().min(1),
   finish: slabFinishSchema,
   qualityGrade: slabQualityGradeSchema,
@@ -23,6 +49,15 @@ export const createSlabSchema = z.object({
 });
 
 export const updateSlabSchema = z.object({
+  materialColorId: nullableUuidSchema.optional(),
+  storageLocationId: nullableUuidSchema.optional(),
+  inventoryReceiptId: nullableUuidSchema.optional(),
+  tagCode: z.string().min(1).optional(),
+  kind: slabKindSchema.optional(),
+  availability: slabAvailabilitySchema.optional(),
+  ownership: slabOwnershipSchema.optional(),
+  condition: slabConditionSchema.optional(),
+  holdReason: z.string().min(1).nullable().optional(),
   stoneType: z.string().min(1).optional(),
   finish: slabFinishSchema.optional(),
   qualityGrade: slabQualityGradeSchema.optional(),
@@ -50,6 +85,12 @@ export const listSlabsSchema = z.object({
   cursor: z.string().min(1).optional(),
   limit: z.number().int().min(1).max(100).default(25),
   status: slabStatusSchema.optional(),
+  kind: slabKindSchema.optional(),
+  availability: slabAvailabilitySchema.optional(),
+  ownership: slabOwnershipSchema.optional(),
+  condition: slabConditionSchema.optional(),
+  materialColorId: z.string().uuid().optional(),
+  storageLocationId: z.string().uuid().optional(),
   stoneType: z.string().min(1).optional(),
   finish: slabFinishSchema.optional()
 });
@@ -57,4 +98,20 @@ export const listSlabsSchema = z.object({
 export const attachProjectSlabSchema = z.object({
   slabId: z.string().uuid(),
   notes: z.string().min(1).optional()
+});
+
+export const damageMarkShapeSchema = z.object({
+  kind: z.enum(['circle', 'polygon', 'freehand']),
+  x: z.number().optional(),
+  y: z.number().optional(),
+  radius: z.number().positive().optional(),
+  points: z.array(z.tuple([z.number(), z.number()])).optional()
+});
+
+export const createDamageMarkSchema = z.object({
+  photoId: z.string().uuid().nullable().optional(),
+  type: damageMarkTypeSchema,
+  severity: damageMarkSeveritySchema.default('minor'),
+  shape: damageMarkShapeSchema,
+  note: z.string().min(1).optional()
 });

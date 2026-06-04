@@ -10,4 +10,4 @@ ALTER TABLE "user"
 
 ALTER TABLE "user"
   ADD CONSTRAINT user_role_check
-  CHECK (role IN ('admin', 'salesperson', 'templater', 'cutter', 'fabricator', 'installer', 'service_tech'));
+  CHECK (role IN ('admin', 'salesperson', 'templater', 'cutter', 'fabricator', 'installer', 'service_tech', 'inventory_manager'));

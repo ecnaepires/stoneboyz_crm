@@ -16,6 +16,15 @@ interface NormalizedListSlabsInput extends Omit<ListSlabsInput, 'limit'> {
 }
 
 const UPDATE_COLUMNS = {
+  materialColorId: 'material_color_id',
+  storageLocationId: 'storage_location_id',
+  inventoryReceiptId: 'inventory_receipt_id',
+  tagCode: 'tag_code',
+  kind: 'kind',
+  availability: 'availability',
+  ownership: 'ownership',
+  condition: 'condition',
+  holdReason: 'hold_reason',
   stoneType: 'stone_type',
   finish: 'finish',
   qualityGrade: 'quality_grade',
@@ -81,6 +90,30 @@ export class SlabsRepository {
       where.push(`status = ${addValue(input.status)}`);
     }
 
+    if (input.kind !== undefined) {
+      where.push(`kind = ${addValue(input.kind)}`);
+    }
+
+    if (input.availability !== undefined) {
+      where.push(`availability = ${addValue(input.availability)}`);
+    }
+
+    if (input.ownership !== undefined) {
+      where.push(`ownership = ${addValue(input.ownership)}`);
+    }
+
+    if (input.condition !== undefined) {
+      where.push(`condition = ${addValue(input.condition)}`);
+    }
+
+    if (input.materialColorId !== undefined) {
+      where.push(`material_color_id = ${addValue(input.materialColorId)}`);
+    }
+
+    if (input.storageLocationId !== undefined) {
+      where.push(`storage_location_id = ${addValue(input.storageLocationId)}`);
+    }
+
     if (input.stoneType !== undefined) {
       where.push(`stone_type = ${addValue(input.stoneType)}`);
     }
@@ -125,6 +158,15 @@ export class SlabsRepository {
       `
         INSERT INTO slabs (
           parent_slab_id,
+          material_color_id,
+          storage_location_id,
+          inventory_receipt_id,
+          tag_code,
+          kind,
+          availability,
+          ownership,
+          condition,
+          hold_reason,
           stone_type,
           finish,
           quality_grade,
@@ -139,11 +181,20 @@ export class SlabsRepository {
           notes,
           status
         )
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12::text[], $13, $14)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21::text[], $22, $23)
         RETURNING *
       `,
       [
         parentSlabId,
+        input.materialColorId ?? null,
+        input.storageLocationId ?? null,
+        input.inventoryReceiptId ?? null,
+        input.tagCode ?? null,
+        input.kind ?? (parentSlabId === null ? 'full_slab' : 'remnant'),
+        input.availability ?? 'available',
+        input.ownership ?? 'shop_owned',
+        input.condition ?? 'good',
+        input.holdReason ?? null,
         input.stoneType,
         input.finish,
         input.qualityGrade,
@@ -156,7 +207,7 @@ export class SlabsRepository {
         input.costCents ?? 0,
         input.imageUrls ?? [],
         input.notes ?? null,
-        parentSlabId === null ? 'available' : 'remnant'
+        parentSlabId === null ? input.availability ?? 'available' : 'remnant'
       ]
     );
 
@@ -255,10 +306,10 @@ export class SlabsRepository {
     const result = await client.query<SlabRow>(
       `
         UPDATE slabs
-        SET status = 'reserved', updated_at = now()
+        SET status = 'reserved', availability = 'reserved', updated_at = now()
         WHERE id = $1
           AND deleted_at IS NULL
-          AND status IN ('available', 'remnant')
+          AND availability = 'available'
         RETURNING *
       `,
       [slabId]
@@ -282,10 +333,10 @@ export class SlabsRepository {
     const result = await client.query<SlabRow>(
       `
         UPDATE slabs
-        SET status = 'available', updated_at = now()
+        SET status = 'available', availability = 'available', updated_at = now()
         WHERE id = $1
           AND deleted_at IS NULL
-          AND status = 'reserved'
+          AND availability = 'reserved'
         RETURNING *
       `,
       [slabId]
@@ -300,10 +351,10 @@ export class SlabsRepository {
     const result = await client.query<SlabRow>(
       `
         UPDATE slabs
-        SET status = 'cut', updated_at = now()
+        SET status = 'cut', availability = 'cut', updated_at = now()
         WHERE id = $1
           AND deleted_at IS NULL
-          AND status IN ('available', 'reserved', 'remnant')
+          AND availability IN ('available', 'reserved', 'hold')
         RETURNING *
       `,
       [slabId]
@@ -350,17 +401,28 @@ export class SlabsRepository {
     const result = await client.query<{ id: string }>(
       `
         UPDATE slabs s
-        SET status = 'available', updated_at = now()
+        SET status = 'available', availability = 'available', updated_at = now()
         FROM quote_line_items qli
         WHERE qli.quote_id = $1
           AND qli.slab_id = s.id
           AND s.deleted_at IS NULL
-          AND s.status = 'reserved'
+          AND s.availability = 'reserved'
         RETURNING s.id
       `,
       [quoteId]
     );
 
     return result.rows.map((row) => row.id);
+  }
+
+  async nextTagCode(client: Queryable = this.pool): Promise<string> {
+    const result = await client.query<{ next: string }>(
+      `
+        SELECT 'S-' || lpad((count(*) + 1)::text, 4, '0') AS next
+        FROM slabs
+      `
+    );
+
+    return result.rows[0]?.next ?? 'S-0001';
   }
 }
