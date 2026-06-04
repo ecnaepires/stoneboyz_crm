@@ -91,6 +91,19 @@ export class ProjectSlabsService {
 
       const result = await this.slabsService.cutWithClient(slabId, input, client);
       await this.projectSlabsRepository.markConsumed(projectId, slabId, input.actorUserId, client);
+      for (const remnant of result.remnants) {
+        if (remnant.ownership !== 'shop_owned') {
+          await this.projectSlabsRepository.attach(
+            projectId,
+            {
+              actorUserId: input.actorUserId,
+              slabId: remnant.id,
+              notes: 'Remnant from cut'
+            },
+            client
+          );
+        }
+      }
       await client.query('COMMIT');
 
       this.eventBus.emit(
@@ -115,4 +128,3 @@ export class ProjectSlabsService {
     }
   }
 }
-

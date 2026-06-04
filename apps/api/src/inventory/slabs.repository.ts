@@ -372,11 +372,31 @@ export class SlabsRepository {
     }
 
     const createdRemnants: Slab[] = [];
+    const sourceSlab = mapSlabRow(row);
     for (const remnant of remnants) {
-      createdRemnants.push(await this.create(remnant, slabId, client));
+      const remnantNumber = createdRemnants.length + 1;
+      const remnantAvailability =
+        sourceSlab.ownership === 'shop_owned'
+          ? remnant.storageLocationId === undefined || remnant.storageLocationId === null
+            ? 'hold'
+            : 'available'
+          : 'reserved';
+
+      createdRemnants.push(
+        await this.create(
+          {
+            ...remnant,
+            ownership: sourceSlab.ownership,
+            availability: remnant.availability ?? remnantAvailability,
+            tagCode: remnant.tagCode ?? `${sourceSlab.tagCode ?? sourceSlab.id}-R${remnantNumber}`
+          },
+          slabId,
+          client
+        )
+      );
     }
 
-    return { slab: mapSlabRow(row), remnants: createdRemnants };
+    return { slab: sourceSlab, remnants: createdRemnants };
   }
 
   async addImageUrl(slabId: string, url: string): Promise<Slab | null> {

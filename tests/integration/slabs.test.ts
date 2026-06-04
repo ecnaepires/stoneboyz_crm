@@ -202,8 +202,62 @@ describe('slabs', () => {
 
     expect(response.status).toBe(200);
     expect((body.slab as Record<string, unknown>).status).toBe('cut');
+    expect((body.slab as Record<string, unknown>).availability).toBe('cut');
     expect(body.remnants).toHaveLength(1);
     expect(((body.remnants as Array<Record<string, unknown>>)[0] as Record<string, unknown>).status).toBe('remnant');
+    expect(((body.remnants as Array<Record<string, unknown>>)[0] as Record<string, unknown>).kind).toBe('remnant');
+    expect(((body.remnants as Array<Record<string, unknown>>)[0] as Record<string, unknown>).availability).toBe('hold');
+    expect(((body.remnants as Array<Record<string, unknown>>)[0] as Record<string, unknown>).ownership).toBe('shop_owned');
+  });
+
+  it('keeps customer supplied remnants held for the job after cut', async () => {
+    const slab = await createSlab({ ownership: 'customer_supplied' });
+    const projectResponse = await fetch(projectsUrl(), {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        actorUserId: ACTOR_USER_ID,
+        customerId: SEEDED_CUSTOMER_ID,
+        title: 'Customer material job',
+        ownerUserId: ACTOR_USER_ID
+      })
+    });
+    const project = await projectResponse.json() as Record<string, unknown>;
+
+    await fetch(projectSlabsUrl(project.id as string), {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ actorUserId: ACTOR_USER_ID, slabId: slab.body.id })
+    });
+
+    const response = await fetch(`${projectSlabsUrl(project.id as string)}/${slab.body.id}/cut`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        actorUserId: ACTOR_USER_ID,
+        remnants: [{
+          stoneType: 'Granite Black Galaxy',
+          finish: 'polished',
+          qualityGrade: 'B',
+          lengthIn: 24,
+          widthIn: 24,
+          thicknessCm: 3
+        }]
+      })
+    });
+    const body = await response.json() as Record<string, unknown>;
+    const remnant = (body.remnants as Array<Record<string, unknown>>)[0]!;
+
+    expect(response.status).toBe(200);
+    expect(remnant).toMatchObject({
+      kind: 'remnant',
+      ownership: 'customer_supplied',
+      availability: 'reserved'
+    });
+
+    const listResponse = await fetch(projectSlabsUrl(project.id as string));
+    const listBody = await listResponse.json() as Record<string, unknown>;
+    expect((listBody.data as Array<Record<string, unknown>>).some((item) => item.id === remnant.id)).toBe(true);
   });
 
   it('attaches, detaches, and cuts slabs in project context', async () => {
