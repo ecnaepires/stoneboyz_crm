@@ -114,6 +114,16 @@ describe('price lists', () => {
     expect(created.body).toMatchObject({ name: 'Contractor Standard', status: 'draft', revision: 1, currencyCode: 'USD' });
   });
 
+  it('allows salespeople to create price lists', async () => {
+    const token = await seedTestSession(app.get(DATABASE_POOL), 'salesperson');
+    setTestAuthToken(token);
+
+    const created = await createPriceList({ name: 'Salesperson Retail' });
+
+    expect(created.response.status).toBe(201);
+    expect(created.body).toMatchObject({ name: 'Salesperson Retail', status: 'draft' });
+  });
+
   it('rejects invalid price list create payloads', async () => {
     const created = await createPriceList({ name: '' });
     expect(created.response.status).toBe(400);
