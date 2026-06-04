@@ -9,6 +9,8 @@ Drawings and measurements stay separate from pricing. The drawing produces squar
 ## Goals
 
 - Maintain reusable pricing by Price Group: Material, Fabrication, Edge, Sink, Faucet Hole, Splash, and future groups.
+- Keep normal Price Item creation simple: name and price only for known countertop groups.
+- Put unusual pricing behavior behind an Admin Item path instead of exposing advanced math to every salesperson.
 - Let a quote select Price Items from those groups instead of selecting one whole Price List.
 - Let each Sheet choose its own Material and Edge items.
 - Let quote-level Fabrication apply by default, with Sheet overrides when needed.
@@ -64,6 +66,38 @@ Each item has:
 - active/hidden status
 - optional sort order
 
+### Preset Price Item Creation
+
+Known countertop groups use fixed pricing rules. A Salesperson should not choose measurement basis, charge method, item type, or backend category when creating these items.
+
+Preset create forms:
+
+| Price Group | Visible Fields | Hidden Rule |
+| --- | --- | --- |
+| Material | name, price | combined square footage at dollars per square foot |
+| Fabrication | name, price | combined square footage at dollars per square foot |
+| Edge | name, price | finished-edge linear footage at dollars per linear foot |
+| Sink | name, price | sink count at dollars each |
+| Faucet Hole | name, price | faucet-hole count at dollars each |
+| Splash | name, price | splash square footage at dollars per square foot |
+
+Backsplash square footage is part of normal Material square footage. It should not appear as a separate material creation option. Splash stays available because the business may charge special splash work, such as full backsplash, as its own selected item.
+
+### Admin Item
+
+Admin Item is the escape hatch for unusual charges. It can expose advanced fields because the system cannot infer the math from a known group.
+
+Admin Item can include:
+
+- name
+- group or custom category
+- charge method: square foot, linear foot, each, or flat price
+- measurement basis when relevant
+- price
+- quote visibility
+
+Normal Salesperson setup should use preset groups first. Admin Item is for special work such as demolition, delivery, brackets, sealer, special finish, or other charges that do not fit the known countertop groups.
+
 ### Quote Pricing Selection
 
 The selected Price Items for a quote.
@@ -87,12 +121,20 @@ Pricing quantity comes from drawing-derived measurements whenever possible.
 
 | Price Group | Typical Measurement Basis | Quantity Source |
 | --- | --- | --- |
-| Material | combined square footage or countertop square footage | Sheet measurement totals |
-| Fabrication | combined square footage or countertop square footage | Quote total or Sheet total |
+| Material | combined square footage | Sheet measurement totals |
+| Fabrication | combined square footage | Quote total or Sheet total |
 | Edge | finished-edge linear footage | Sheet edge measurements |
 | Sink | sink count | Drawing sink count or selected quantity |
 | Faucet Hole | faucet-hole count | Drawing faucet-hole count |
-| Splash | splash square footage or backsplash square footage | Sheet measurement totals |
+| Splash | splash square footage | Sheet measurement totals |
+
+Default preset behavior:
+
+- Material and Fabrication use combined square footage, including backsplash square footage.
+- Edge uses finished-edge linear footage.
+- Sink uses sink count.
+- Faucet Hole uses faucet-hole count.
+- Splash uses splash square footage only when a Splash item is selected.
 
 Generated line formula:
 
@@ -108,6 +150,7 @@ For each Sheet:
 
 - Material selector
 - Edge selector
+- optional Splash selector
 - optional Fabrication override
 - read-only measurement preview: square footage and finished-edge linear footage
 
@@ -151,11 +194,16 @@ Next implementation slice:
 
 ## Validation
 
-- Material selection is required per Sheet before material pricing can generate.
-- Edge selection is required per Sheet before edge pricing can generate.
+- Preset Material creation only asks for name and dollars per square foot.
+- Preset Fabrication creation only asks for name and dollars per square foot.
+- Preset Edge creation only asks for name and dollars per linear foot.
+- Preset Sink creation only asks for name and dollars each.
+- Preset Faucet Hole creation only asks for name and dollars each.
+- Preset Splash creation only asks for name and dollars per square foot.
+- Advanced charge method and measurement basis fields are only shown for Admin Item.
 - Edge items must use linear-foot charge method.
 - Sink items can use drawing sink count or explicit selected quantity.
-- Measurement basis must match charge method.
+- Admin Item measurement basis must match charge method.
 - Generated pricing requires drawing-derived quantities greater than zero.
 
 ## Testing
