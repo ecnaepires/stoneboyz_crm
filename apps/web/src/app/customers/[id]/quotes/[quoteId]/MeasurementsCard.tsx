@@ -24,14 +24,7 @@ type SinkType = 'undermount' | 'drop_in' | 'farm';
 type SinkShape = 'rectangle' | 'oval' | 'double' | '60_40' | '40_60' | '70_30' | '30_70';
 type SinkCenterline = 'none' | 'left' | 'right' | 'center';
 
-type QuoteMeasurementAreaTotals = {
-  pieceCount: number;
-  countertopSqFt: number;
-  finishedEdgeLinFt: number;
-  splashSqFt: number;
-  sinkCutoutCount: number;
-  faucetHoleCount: number;
-};
+type QuoteMeasurementAreaTotals = components['schemas']['QuoteMeasurementAreaTotals'];
 
 export type QuoteAreaWithMeasurementTotals = QuoteArea & {
   measurementTotals: QuoteMeasurementAreaTotals;
@@ -99,6 +92,8 @@ const sinkCenterlines: SinkCenterline[] = ['none', 'left', 'right', 'center'];
 const emptyMeasurementTotals: QuoteMeasurementAreaTotals = {
   pieceCount: 0,
   countertopSqFt: 0,
+  backsplashSqFt: 0,
+  combinedSqFt: 0,
   finishedEdgeLinFt: 0,
   splashSqFt: 0,
   sinkCutoutCount: 0,
@@ -185,6 +180,14 @@ function TotalsGrid({ area }: { area: QuoteAreaWithMeasurementTotals }) {
       <div className="rounded-md border p-2">
         <dt className="text-xs text-muted-foreground">Countertop</dt>
         <dd className="font-medium">{measurementNumber(totals.countertopSqFt)} sq ft</dd>
+      </div>
+      <div className="rounded-md border p-2">
+        <dt className="text-xs text-muted-foreground">Backsplash</dt>
+        <dd className="font-medium">{measurementNumber(totals.backsplashSqFt)} sq ft</dd>
+      </div>
+      <div className="rounded-md border p-2">
+        <dt className="text-xs text-muted-foreground">Combined</dt>
+        <dd className="font-medium">{measurementNumber(totals.combinedSqFt)} sq ft</dd>
       </div>
       <div className="rounded-md border p-2">
         <dt className="text-xs text-muted-foreground">Finished Edge</dt>
