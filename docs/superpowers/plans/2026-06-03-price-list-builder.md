@@ -1,5 +1,7 @@
 # Price List Builder Implementation Plan
 
+> **Superseded for next work:** The first slice was implemented, but the quote-level model changed. Future implementation should follow [Price Catalog And Quote Pricing Selections](../specs/2026-06-04-price-catalog-and-quote-selections-design.md), not the old “one Price List per quote” assumption.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Build the first working Price List Builder slice: editable active price lists, grouped price-list items, company-wide item catalog reuse, and pricing generation that can use item charge method and measurement basis.

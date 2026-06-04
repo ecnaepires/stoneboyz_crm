@@ -22,35 +22,39 @@ The field worker who visits the customer's home and produces the drawing: counte
 
 The office worker who receives a Templater's finished drawing and its measurements and turns them into a priced quote using a price list. Pricing belongs to the Salesperson's surface, not the drawing workspace.
 
+## Pricing Catalog
+
+The company-wide collection of reusable pricing choices. It is organized by Price Group so Salespeople can maintain materials, edges, fabrication, sinks, and other pricing independently instead of creating a full custom price list for each customer.
+
+## Price Group
+
+A family of pricing choices, such as Material, Fabrication, Edge, Sink, Faucet Hole, or Splash. Each Price Group can have its own reusable list of Price Items.
+
+Each Price Group defines how quote selection works. Material and Edge groups offer many catalog items but allow one selected item per Sheet; Sink groups allow one or more selected items with quantities; Fabrication groups offer many catalog items and apply as a quote-level default with optional Sheet overrides.
+
 ## Price List
 
-A reusable set of charges a Salesperson applies to quotes. A Price List can be edited after it is active; existing quote price lines keep their current amounts unless the Salesperson regenerates pricing for that quote.
+A reusable list inside one Price Group, such as a Material Price List, Edge Price List, or Sink Price List. A quote does not apply one full Price List; it selects Price Items from the relevant Price Groups.
 
-## Price List Group
+## Price Item
 
-A user-facing group of sellable Price List Items, such as Material, Fabrication, Edge, Sink, or Faucet Hole. Groups organize what the Salesperson is choosing and prepare the language for future inventory connections.
-
-Each Price List Group defines how quote selection works. Material and Edge groups offer many catalog items but allow one selected item per Sheet; Sink groups allow one or more selected items with quantities; Fabrication groups offer many catalog items and apply as a quote-level default with optional Sheet overrides.
-
-## Price List Item
-
-A single selectable charge inside a Price List Group, such as Uba Tuba, Fabrication, Eased Edge, Bullnose, or 70/30 Sink. The item carries a rate and billing setup; quote pricing multiplies the chosen item's rate by the matching project quantity.
+A single selectable charge inside a Price Group, such as Uba Tuba, Fabrication, Eased Edge, Bullnose, or 70/30 Sink. The item carries a rate and billing setup; quote pricing multiplies the chosen item's rate by the matching drawing-derived quantity.
 
 Edge profile items, such as Eased Edge or Bullnose, are chosen per Sheet and charge only the finished-edge linear footage on Sheets using that edge profile.
 
-A Price List Item can have a zero price. This lets the Salesperson include an edge profile or item in the selectable list without charging extra for it.
+A Price Item can have a zero price. This lets the Salesperson include an edge profile or item in the selectable list without charging extra for it.
 
-## Item Catalog
+## Quote Pricing Selection
 
-The company-wide set of Price List Groups and Price List Items available to Salespeople. Adding a new item from inside a Price List saves it both to the current Price List and to the Item Catalog for future reuse.
+The Salesperson's chosen Price Items for a quote. Quote Pricing Selections combine user choices with drawing-derived quantities: material rates multiply square footage, edge rates multiply finished-edge linear footage, sink rates multiply sink count, and faucet-hole rates multiply faucet-hole count.
 
 ## Charge Method
 
-How a Price List Item is measured for billing: by square foot, by linear foot, or by each/unit. The Charge Method determines which quote measurement supplies the item quantity.
+How a Price Item is measured for billing: by square foot, by linear foot, or by each/unit. The Charge Method determines which quote measurement supplies the item quantity.
 
 ## Measurement Basis
 
-The specific quote measurement used as the quantity for a Price List Item, such as countertop square footage, backsplash square footage, combined square footage, finished-edge linear footage, sink count, or faucet-hole count. Salespeople choose the Measurement Basis so different Price Lists can support retail jobs, fabrication-only jobs, and other pricing scenarios.
+The specific drawing-derived quote measurement used as the quantity for a Price Item, such as countertop square footage, backsplash square footage, combined square footage, finished-edge linear footage, sink count, or faucet-hole count. Salespeople choose the Measurement Basis so different pricing scenarios can support retail jobs, fabrication-only jobs, and custom work.
 
 ## Finished Edge
 

@@ -1,5 +1,7 @@
 # Price List Builder Design
 
+> **Superseded:** Quote pricing no longer applies one whole Price List to a quote. See [Price Catalog And Quote Pricing Selections](./2026-06-04-price-catalog-and-quote-selections-design.md).
+
 ## Context
 
 The current price-list dashboard exposes system-shaped fields (`category`, `type`, `unit`, `sort`) and makes active price lists read-only. Countertop salespeople need a simpler pricing surface: choose what is being sold, choose how it is measured, enter the rate, and let quote pricing multiply rate by measured quantity.
