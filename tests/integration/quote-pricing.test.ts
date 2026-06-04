@@ -17,20 +17,9 @@ const MISSING_ID = '99999999-9999-4999-8999-999999999999';
 const resetDatabase = async (app: INestApplication): Promise<void> => {
   const pool = app.get<Pool>(DATABASE_POOL);
 
-  await pool.query('DROP TABLE IF EXISTS generated_price_lines CASCADE;');
-  await pool.query('DROP TABLE IF EXISTS sink_cutouts CASCADE;');
-  await pool.query('DROP TABLE IF EXISTS edge_segments CASCADE;');
-  await pool.query('DROP TABLE IF EXISTS counter_pieces CASCADE;');
-  await pool.query('DROP TABLE IF EXISTS price_list_items CASCADE;');
-  await pool.query('DROP TABLE IF EXISTS price_lists CASCADE;');
-  await pool.query('DROP TABLE IF EXISTS quote_line_items CASCADE;');
-  await pool.query('DROP TABLE IF EXISTS quote_areas CASCADE;');
-  await pool.query('DROP TABLE IF EXISTS quotes CASCADE;');
-  await pool.query('DROP TABLE IF EXISTS projects CASCADE;');
-  await pool.query('DROP TABLE IF EXISTS customer_notes CASCADE;');
-  await pool.query('DROP TABLE IF EXISTS customer_addresses CASCADE;');
-  await pool.query('DROP TABLE IF EXISTS customer_contacts CASCADE;');
-  await pool.query('DROP TABLE IF EXISTS customers CASCADE;');
+  // Full schema reset — drift-proof against tables added by other modules.
+  // Migrations recreate everything (including `CREATE EXTENSION IF NOT EXISTS pgcrypto`).
+  await pool.query('DROP SCHEMA public CASCADE; CREATE SCHEMA public;');
 
   const migrationsDir = join(process.cwd(), 'db/migrations');
   const migrationFiles = (await readdir(migrationsDir))
@@ -67,6 +56,33 @@ const measurementsUrl = (
 
 const pricingUrl = (quoteId: string, areaId: string, customerId = SEEDED_CUSTOMER_ID): string =>
   `${baseUrl}/api/v1/customers/${customerId}/quotes/${quoteId}/areas/${areaId}/pricing`;
+
+const drawingUrl = (quoteId: string, areaId: string, customerId = SEEDED_CUSTOMER_ID): string =>
+  `${areasUrl(quoteId, customerId)}/${areaId}/drawing`;
+
+const saveDrawing = async (quoteId: string, areaId: string, layout: unknown): Promise<Response> =>
+  fetch(drawingUrl(quoteId, areaId), {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ layout })
+  });
+
+const PIECE_A = '00000000-0000-4000-8000-0000000000a1';
+const PIECE_B = '00000000-0000-4000-8000-0000000000a2';
+const SINK_A = '00000000-0000-4000-8000-0000000000b1';
+
+// A rectangle modelled as two abutting horizontal halves (schema requires >=2 chain segments).
+const twoSegRect = (lengthIn: number, widthIn: number) => {
+  const half = lengthIn / 2;
+  const scale = 3;
+  return {
+    type: 'chain',
+    segments: [
+      { x: 0, y: 0, w: half * scale, h: widthIn * scale, lengthIn: half, widthIn, orientation: 'horizontal' },
+      { x: half * scale, y: 0, w: half * scale, h: widthIn * scale, lengthIn: half, widthIn, orientation: 'horizontal' }
+    ]
+  };
+};
 
 const priceListsUrl = (): string => `${baseUrl}/api/v1/price-lists`;
 const priceListUrl = (priceListId: string): string => `${priceListsUrl()}/${priceListId}`;
@@ -147,38 +163,24 @@ const setQuotePriceList = async (quoteId: string, priceListId: string): Promise<
 };
 
 const createGoldenMeasurements = async (quoteId: string, areaId: string): Promise<void> => {
-  await fetch(measurementsUrl(quoteId, areaId, 'pieces'), {
-    method: 'POST',
-    headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ name: 'Sink run', lengthIn: 100, widthIn: 25.5, quantity: 1 })
-  });
-  await fetch(measurementsUrl(quoteId, areaId, 'pieces'), {
-    method: 'POST',
-    headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ name: 'Island', lengthIn: 72, widthIn: 36, quantity: 1 })
-  });
-  await fetch(measurementsUrl(quoteId, areaId, 'edges'), {
-    method: 'POST',
-    headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ lengthIn: 100, treatment: 'finished', splashHeightIn: 4 })
-  });
-  await fetch(measurementsUrl(quoteId, areaId, 'edges'), {
-    method: 'POST',
-    headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ lengthIn: 72, treatment: 'finished' })
-  });
-  await fetch(measurementsUrl(quoteId, areaId, 'sinks'), {
-    method: 'POST',
-    headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({
-      sinkType: 'undermount',
-      shape: 'rectangle',
-      cutoutLengthIn: 30,
-      cutoutWidthIn: 18,
-      faucetHoleCount: 1,
-      quantity: 1
-    })
-  });
+  // The drawing is the single source of truth (ADR 0003): seed totals by saving a
+  // layout. Sink run + island counters, one splash edge, one plain finished edge,
+  // one sink with one faucet hole.
+  const layout = {
+    pieces: [
+      { pieceId: PIECE_A, x: 0, y: 0, rotation: 0, kind: 'countertop', shape: twoSegRect(100, 25.5) },
+      { pieceId: PIECE_B, x: 0, y: 0, rotation: 0, kind: 'countertop', shape: twoSegRect(72, 36) }
+    ],
+    edges: [
+      { pieceId: PIECE_A, edge: 'top', treatment: 'splash', splashHeightIn: 4 },
+      { pieceId: PIECE_B, edge: 'top', treatment: 'finished' }
+    ],
+    sinks: [
+      { sinkId: SINK_A, pieceId: PIECE_A, x: 0, y: 0, rotation: 0, quantity: 1, faucetHoleCount: 1 }
+    ]
+  };
+  const saved = await saveDrawing(quoteId, areaId, layout);
+  expect(saved.status).toBe(201);
 };
 
 const lineTotalsByCategory = (lines: Array<Record<string, unknown>>): Record<string, unknown> =>
@@ -188,10 +190,14 @@ const expectGoldenLines = (lines: Array<Record<string, unknown>>): void => {
   expect(lines).toHaveLength(6);
   const totals = lineTotalsByCategory(lines);
 
-  expect(totals['material']).toBe(71417);
-  expect(totals['fabrication']).toBe(53563);
-  expect(totals['finished_edge']).toBe(11467);
-  expect(totals['splash']).toBe(3333);
+  // Layout-derived totals (rounded to 3 dp by the domain) priced at the configured rates:
+  // combinedSqFt 35.708 -> material 35.708*2000, fabrication 35.708*1500;
+  // finishedEdgeLinFt 15 (splash outline 100+2*4 + island 72 = 180in/12) -> 15*800;
+  // splashSqFt 2.778 -> 2.778*1200; sink 1 -> 15000; faucet 1 -> 5000.
+  expect(totals['material']).toBe(71416);
+  expect(totals['fabrication']).toBe(53562);
+  expect(totals['finished_edge']).toBe(12000);
+  expect(totals['splash']).toBe(3334);
   expect(totals['sink_cutout']).toBe(15000);
   expect(totals['faucet_hole']).toBe(5000);
 };
@@ -298,9 +304,9 @@ describe('Quote pricing generate and list', () => {
     expect(body.data).toHaveLength(1);
     expect(body.data[0]).toMatchObject({
       category: 'material',
-      quantity: 14.333333333333334,
+      quantity: 15,
       unit: 'linft',
-      lineTotalCents: Math.round(14.333333333333334 * 2000)
+      lineTotalCents: Math.round(15 * 2000)
     });
   });
 });

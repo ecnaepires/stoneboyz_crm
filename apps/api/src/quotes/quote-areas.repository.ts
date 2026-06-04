@@ -1,20 +1,15 @@
 import { Inject, Injectable } from '@nestjs/common';
 import {
-  calculateMeasurementAreaTotals,
   measurementTotalsFromLayout,
   type CanvasLayout,
-  type CounterPieceInput,
   type CreateQuoteAreaInput,
-  type EdgeSegmentInput,
   type QuoteArea,
   type QuoteMeasurementAreaTotals,
-  type SinkCutoutInput,
   type UpdateQuoteAreaInput
 } from '@stoneboyz/domain';
 import type { Pool } from 'pg';
 import { DATABASE_POOL } from '../database.provider.js';
 import { mapQuoteAreaRow, type QuoteAreaRow } from './quote-area.mapper.js';
-import type { CounterPieceRow, EdgeSegmentRow, SinkCutoutRow } from './quote-measurements.mapper.js';
 
 const AREA_SELECT = `
   qa.*,
@@ -168,41 +163,21 @@ export class QuoteAreasRepository {
   }
 
   async pricingMeasurementTotalsForArea(areaId: string): Promise<QuoteMeasurementAreaTotals> {
-    const result = await this.pool.query<{
-      piece_count: string;
-      countertop_sq_ft: string;
-      backsplash_sq_ft: string;
-      combined_sq_ft: string;
-      finished_edge_lin_ft: string;
-      splash_sq_ft: string;
-      sink_cutout_count: string;
-      faucet_hole_count: string;
-    }>(
-      `
-        SELECT
-          COALESCE((SELECT SUM(quantity) FROM counter_pieces WHERE quote_area_id = $1), 0) AS piece_count,
-          COALESCE((SELECT SUM(length_in * width_in * quantity) / 144 FROM counter_pieces WHERE quote_area_id = $1 AND kind <> 'backsplash'), 0) AS countertop_sq_ft,
-          COALESCE((SELECT SUM(length_in * width_in * quantity) / 144 FROM counter_pieces WHERE quote_area_id = $1 AND kind = 'backsplash'), 0) AS backsplash_sq_ft,
-          COALESCE((SELECT SUM(length_in * width_in * quantity) / 144 FROM counter_pieces WHERE quote_area_id = $1), 0) AS combined_sq_ft,
-          COALESCE((SELECT SUM(length_in) / 12 FROM edge_segments WHERE quote_area_id = $1 AND treatment = 'finished'), 0) AS finished_edge_lin_ft,
-          COALESCE((SELECT SUM(length_in * splash_height_in) / 144 FROM edge_segments WHERE quote_area_id = $1 AND splash_height_in IS NOT NULL), 0) AS splash_sq_ft,
-          COALESCE((SELECT SUM(quantity) FROM sink_cutouts WHERE quote_area_id = $1), 0) AS sink_cutout_count,
-          COALESCE((SELECT SUM(quantity * faucet_hole_count) FROM sink_cutouts WHERE quote_area_id = $1), 0) AS faucet_hole_count
-      `,
-      [areaId]
+    // Pricing reads the same layout-derived totals as the quote summary, so the
+    // drawing stays the single source of truth (ADR 0003). No duplicated SQL.
+    const totals = await this.measurementTotalsForAreas([{ id: areaId } as QuoteAreaRow]);
+    return (
+      totals.get(areaId) ?? {
+        pieceCount: 0,
+        countertopSqFt: 0,
+        backsplashSqFt: 0,
+        combinedSqFt: 0,
+        finishedEdgeLinFt: 0,
+        splashSqFt: 0,
+        sinkCutoutCount: 0,
+        faucetHoleCount: 0
+      }
     );
-    const row = result.rows[0];
-
-    return {
-      pieceCount: Number(row?.piece_count ?? 0),
-      countertopSqFt: Number(row?.countertop_sq_ft ?? 0),
-      backsplashSqFt: Number(row?.backsplash_sq_ft ?? 0),
-      combinedSqFt: Number(row?.combined_sq_ft ?? 0),
-      finishedEdgeLinFt: Number(row?.finished_edge_lin_ft ?? 0),
-      splashSqFt: Number(row?.splash_sq_ft ?? 0),
-      sinkCutoutCount: Number(row?.sink_cutout_count ?? 0),
-      faucetHoleCount: Number(row?.faucet_hole_count ?? 0)
-    };
   }
 
   private async measurementTotalsForAreas(rows: QuoteAreaRow[]): Promise<Map<string, QuoteMeasurementAreaTotals>> {
