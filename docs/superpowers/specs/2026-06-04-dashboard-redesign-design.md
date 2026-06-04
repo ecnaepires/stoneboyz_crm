@@ -49,9 +49,11 @@ The J/K visuals need data that does not exist yet. Proposed additions to
 - **`pipeline`** — open-quote counts by status: `{ sent, accepted, draft, rejected }`
   (true totals, not just the recent sample) for the donut.
 - **`RecentQuote.valueCents`** — per-quote value for the table's Value column.
-- **Trend deltas** — period-over-period deltas for the four stat cards, e.g.
-  `openQuotes.deltaPct`, surfaced as ▲/▼ chips and sparklines. (Sparkline series
-  may reuse `revenueSeries` or get their own small arrays — decide in OpenAPI step.)
+- **Trend deltas** — ~~period-over-period deltas + per-card sparklines~~ **DEFERRED**
+  (decided during build, 2026-06-04). Honest deltas need historical snapshots that
+  aren't cheaply available from the current schema, and `revenueSeries` already tells
+  the trend story via the chart. Stat cards ship without delta chips/sparklines rather
+  than fabricate movement. Revisit in a later phase if real history is added.
 
 Open question for the OpenAPI step: does any of this need a new SQL migration, or can
 it all be aggregate queries over existing `quotes`/`orders`/`events` tables? Expectation:

@@ -3,21 +3,56 @@
 @tailwind utilities;
 
 @layer base {
+  /* Porcelain — light theme (default) */
   :root {
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
+    --background: 220 22% 97%;
+    --foreground: 222 32% 11%;
     --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
-    --primary: 222.2 47.4% 11.2%;
-    --primary-foreground: 210 40% 98%;
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 222.2 84% 4.9%;
-    --radius: 0.5rem;
+    --card-foreground: 222 32% 11%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 222 32% 11%;
+    --primary: 245 58% 51%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 220 16% 95%;
+    --secondary-foreground: 222 32% 18%;
+    --muted: 220 16% 95%;
+    --muted-foreground: 220 9% 46%;
+    --accent: 245 58% 51%;
+    --accent-foreground: 0 0% 100%;
+    --border: 220 16% 90%;
+    --input: 220 16% 90%;
+    --ring: 245 58% 51%;
+    /* Brand + data-viz */
+    --sidebar: 0 0% 100%;
+    --sidebar-foreground: 222 32% 11%;
+    --chart-1: 245 58% 51%;
+    --chart-2: 191 91% 37%;
+    --radius: 0.65rem;
+  }
+
+  /* Onyx — dark theme */
+  .dark {
+    --background: 222 24% 6%;
+    --foreground: 220 22% 95%;
+    --card: 222 18% 11%;
+    --card-foreground: 220 22% 95%;
+    --popover: 222 18% 11%;
+    --popover-foreground: 220 22% 95%;
+    --primary: 250 100% 71%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 222 14% 16%;
+    --secondary-foreground: 220 22% 95%;
+    --muted: 222 14% 16%;
+    --muted-foreground: 220 11% 62%;
+    --accent: 250 100% 71%;
+    --accent-foreground: 0 0% 100%;
+    --border: 222 14% 18%;
+    --input: 222 14% 18%;
+    --ring: 250 100% 71%;
+    --sidebar: 222 26% 8%;
+    --sidebar-foreground: 220 22% 95%;
+    --chart-1: 250 100% 71%;
+    --chart-2: 187 85% 53%;
   }
 }
 
@@ -27,5 +62,6 @@
   }
   body {
     @apply bg-background text-foreground;
+    font-feature-settings: 'cv01', 'cv03', 'ss01';
   }
 }
