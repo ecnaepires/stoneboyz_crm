@@ -1,5 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
-import type { CreateSlabInput, ListSlabsInput, Slab, UpdateSlabInput } from '@stoneboyz/domain';
+import type { CreateSlabInput, FindMaterialInput, FindMaterialResult, ListSlabsInput, Slab, UpdateSlabInput } from '@stoneboyz/domain';
 import type { Pool, PoolClient } from 'pg';
 import { DATABASE_POOL } from '../database.provider.js';
 import { mapSlabRow, type SlabRow } from './slab.mapper.js';
@@ -227,6 +227,65 @@ export class SlabsRepository {
     const row = result.rows[0];
 
     return row === undefined ? null : mapSlabRow(row);
+  }
+
+  async findMaterial(input: FindMaterialInput): Promise<FindMaterialResult[]> {
+    const values: unknown[] = [input.minLengthIn, input.minWidthIn];
+    const where = [
+      'deleted_at IS NULL',
+      `((length_in >= $1 AND width_in >= $2) OR (length_in >= $2 AND width_in >= $1))`
+    ];
+
+    const addValue = (value: unknown): string => {
+      values.push(value);
+      return `$${values.length}`;
+    };
+
+    if (input.includeHeld !== true) {
+      where.push(`availability = 'available'`);
+    } else {
+      where.push(`availability IN ('available', 'hold')`);
+    }
+
+    if (input.includeDamaged !== true) {
+      where.push(`condition = 'good'`);
+    }
+
+    if (input.kind !== undefined) {
+      where.push(`kind = ${addValue(input.kind)}`);
+    }
+
+    if (input.materialColorId !== undefined) {
+      where.push(`material_color_id = ${addValue(input.materialColorId)}`);
+    }
+
+    if (input.thicknessCm !== undefined) {
+      where.push(`thickness_cm = ${addValue(input.thicknessCm)}`);
+    }
+
+    if (input.finish !== undefined) {
+      where.push(`finish = ${addValue(input.finish)}`);
+    }
+
+    const result = await this.pool.query<SlabRow>(
+      `
+        SELECT *
+        FROM slabs
+        WHERE ${where.join(' AND ')}
+        ORDER BY ((length_in * width_in) - ($1 * $2)) ASC, updated_at DESC, id ASC
+        LIMIT 50
+      `,
+      values
+    );
+
+    return result.rows.map((row) => {
+      const slab = mapSlabRow(row);
+      const fitsUnrotated = slab.lengthIn >= input.minLengthIn && slab.widthIn >= input.minWidthIn;
+      const fitsRotated = !fitsUnrotated && slab.lengthIn >= input.minWidthIn && slab.widthIn >= input.minLengthIn;
+      const wasteSqFt = Number((((slab.lengthIn * slab.widthIn) - (input.minLengthIn * input.minWidthIn)) / 144).toFixed(3));
+
+      return { slab, fitsRotated, wasteSqFt };
+    });
   }
 
   async update(slabId: string, input: UpdateSlabInput): Promise<Slab | null> {

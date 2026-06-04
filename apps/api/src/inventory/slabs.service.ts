@@ -1,5 +1,14 @@
 import { BadRequestException, ConflictException, Inject, Injectable, NotFoundException } from '@nestjs/common';
-import type { ArchiveSlabInput, CreateSlabInput, CutSlabInput, ListSlabsInput, Slab, UpdateSlabInput } from '@stoneboyz/domain';
+import type {
+  ArchiveSlabInput,
+  CreateSlabInput,
+  CutSlabInput,
+  FindMaterialInput,
+  FindMaterialResult,
+  ListSlabsInput,
+  Slab,
+  UpdateSlabInput
+} from '@stoneboyz/domain';
 import type { Pool, PoolClient } from 'pg';
 import { DATABASE_POOL } from '../database.provider.js';
 import { EventBus } from '../events/event-bus.js';
@@ -44,6 +53,18 @@ export class SlabsService {
 
   async getById(slabId: string): Promise<Slab> {
     return this.ensureSlabExists(slabId);
+  }
+
+  async findMaterial(input: FindMaterialInput): Promise<{ data: Array<Slab & { fitsRotated: boolean; wasteSqFt: number }> }> {
+    const results: FindMaterialResult[] = await this.slabsRepository.findMaterial(input);
+
+    return {
+      data: results.map((result) => ({
+        ...result.slab,
+        fitsRotated: result.fitsRotated,
+        wasteSqFt: result.wasteSqFt
+      }))
+    };
   }
 
   async update(slabId: string, input: UpdateSlabInput): Promise<Slab> {

@@ -95,6 +95,17 @@ export const listSlabsSchema = z.object({
   finish: slabFinishSchema.optional()
 });
 
+export const findMaterialSchema = z.object({
+  minLengthIn: z.coerce.number().positive(),
+  minWidthIn: z.coerce.number().positive(),
+  kind: slabKindSchema.optional(),
+  materialColorId: z.string().uuid().optional(),
+  thicknessCm: z.coerce.number().positive().optional(),
+  finish: slabFinishSchema.optional(),
+  includeHeld: z.coerce.boolean().default(false),
+  includeDamaged: z.coerce.boolean().default(false)
+});
+
 export const attachProjectSlabSchema = z.object({
   slabId: z.string().uuid(),
   notes: z.string().min(1).optional()

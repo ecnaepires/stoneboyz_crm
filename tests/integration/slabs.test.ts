@@ -283,6 +283,23 @@ describe('slabs', () => {
     expect(updated.condition).toBe('minor_damage');
   });
 
+  it('finds available remnants that fit needed dimensions when rotated', async () => {
+    await createSlab({
+      kind: 'remnant',
+      availability: 'available',
+      lengthIn: 30,
+      widthIn: 50,
+      storageLocationId: null
+    });
+
+    const response = await fetch(`${slabsUrl()}/find-material?minLengthIn=48&minWidthIn=24&kind=remnant`);
+    const body = await response.json() as Record<string, unknown>;
+
+    expect(response.status).toBe(200);
+    expect(body.data).toHaveLength(1);
+    expect((body.data as Array<Record<string, unknown>>)[0]).toMatchObject({ fitsRotated: true });
+  });
+
   it('attaches, detaches, and cuts slabs in project context', async () => {
     const slab = await createSlab();
     const projectResponse = await fetch(projectsUrl(), {

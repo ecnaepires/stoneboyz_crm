@@ -18,6 +18,7 @@ import {
   archiveSlabSchema,
   createSlabSchema,
   cutSlabSchema,
+  findMaterialSchema,
   listSlabsSchema,
   updateSlabSchema,
 } from "@stoneboyz/domain";
@@ -82,6 +83,17 @@ export class SlabsController {
     }
 
     return this.slabsService.create({ ...parsedBody.data, actorUserId });
+  }
+
+  @Get("find-material")
+  async findMaterial(@Query() query: Record<string, unknown>) {
+    const parsedQuery = findMaterialSchema.safeParse(query);
+
+    if (!parsedQuery.success) {
+      throw badRequest(formatZodError(parsedQuery.error));
+    }
+
+    return this.slabsService.findMaterial(parsedQuery.data);
   }
 
   @Get(":slabId")

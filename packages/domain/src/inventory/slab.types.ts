@@ -125,6 +125,23 @@ export interface ListSlabsInput {
   finish?: SlabFinish | undefined;
 }
 
+export interface FindMaterialInput {
+  minLengthIn: number;
+  minWidthIn: number;
+  kind?: SlabKind | undefined;
+  materialColorId?: string | undefined;
+  thicknessCm?: number | undefined;
+  finish?: SlabFinish | undefined;
+  includeHeld?: boolean | undefined;
+  includeDamaged?: boolean | undefined;
+}
+
+export interface FindMaterialResult {
+  slab: Slab;
+  fitsRotated: boolean;
+  wasteSqFt: number;
+}
+
 export interface AttachProjectSlabInput {
   actorUserId: string;
   slabId: string;
