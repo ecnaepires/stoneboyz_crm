@@ -326,6 +326,32 @@ describe('price lists', () => {
     expect(typeof item.body.catalogItemId).toBe('string');
   });
 
+  it('creates admin price list items for unusual charges', async () => {
+    const priceList = await createPriceList();
+    const item = await createItem(priceList.body.id as string, {
+      category: 'admin_item',
+      itemGroup: 'admin',
+      itemType: 'admin',
+      name: 'Delivery Fee',
+      unit: 'ea',
+      chargeMethod: 'each',
+      measurementBasis: 'each',
+      priceCents: 25000
+    });
+
+    expect(item.response.status).toBe(201);
+    expect(item.body).toMatchObject({
+      category: 'admin_item',
+      itemGroup: 'admin',
+      itemType: 'admin',
+      name: 'Delivery Fee',
+      unit: 'ea',
+      chargeMethod: 'each',
+      measurementBasis: 'each',
+      priceCents: 25000
+    });
+  });
+
   it('reuses catalog entries across price lists', async () => {
     const firstPriceList = await createPriceList({ name: 'Retail' });
     const firstItem = await createItem(firstPriceList.body.id as string, {

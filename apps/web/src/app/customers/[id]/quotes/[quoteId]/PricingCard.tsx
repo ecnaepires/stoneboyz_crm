@@ -14,7 +14,7 @@ import { getApiClientWithAuth } from '@/lib/api';
 import { generatePricingAction, overridePricingLineAction, savePricingSelectionsAction } from '../_actions';
 import type { QuoteAreaWithMeasurementTotals } from './MeasurementsCard';
 
-type PriceListItemGroup = 'material' | 'fabrication' | 'edge' | 'sink' | 'faucet_hole' | 'splash';
+type PriceListItemGroup = 'material' | 'fabrication' | 'edge' | 'sink' | 'faucet_hole' | 'splash' | 'admin';
 
 type GeneratedPriceLine = {
   id: string;

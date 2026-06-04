@@ -1404,7 +1404,7 @@ export interface components {
             /** Format: uuid */
             catalogItemId: string | null;
             /** @enum {string} */
-            itemGroup: "material" | "fabrication" | "edge" | "sink" | "faucet_hole" | "splash";
+            itemGroup: "material" | "fabrication" | "edge" | "sink" | "faucet_hole" | "splash" | "admin";
             category: string;
             itemType: string;
             name: string;
@@ -1458,7 +1458,7 @@ export interface components {
             /** Format: uuid */
             catalogItemId?: string;
             /** @enum {string} */
-            itemGroup?: "material" | "fabrication" | "edge" | "sink" | "faucet_hole" | "splash";
+            itemGroup?: "material" | "fabrication" | "edge" | "sink" | "faucet_hole" | "splash" | "admin";
             category: string;
             itemType: string;
             name: string;
@@ -1479,7 +1479,7 @@ export interface components {
             /** Format: uuid */
             catalogItemId?: string | null;
             /** @enum {string} */
-            itemGroup?: "material" | "fabrication" | "edge" | "sink" | "faucet_hole" | "splash";
+            itemGroup?: "material" | "fabrication" | "edge" | "sink" | "faucet_hole" | "splash" | "admin";
             category?: string;
             itemType?: string;
             name?: string;

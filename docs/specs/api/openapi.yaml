@@ -445,7 +445,7 @@ components:
           nullable: true
         itemGroup:
           type: string
-          enum: [material, fabrication, edge, sink, faucet_hole, splash]
+          enum: [material, fabrication, edge, sink, faucet_hole, splash, admin]
         category:
           type: string
         itemType:
@@ -565,7 +565,7 @@ components:
           format: uuid
         itemGroup:
           type: string
-          enum: [material, fabrication, edge, sink, faucet_hole, splash]
+          enum: [material, fabrication, edge, sink, faucet_hole, splash, admin]
         category:
           type: string
         itemType:
@@ -604,7 +604,7 @@ components:
           nullable: true
         itemGroup:
           type: string
-          enum: [material, fabrication, edge, sink, faucet_hole, splash]
+          enum: [material, fabrication, edge, sink, faucet_hole, splash, admin]
         category:
           type: string
         itemType:

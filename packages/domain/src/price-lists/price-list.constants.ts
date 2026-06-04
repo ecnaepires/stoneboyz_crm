@@ -1,6 +1,6 @@
 export const PRICE_LIST_STATUS_VALUES = ['draft', 'active', 'archived'] as const;
 
-export const PRICE_LIST_ITEM_GROUP_VALUES = ['material', 'fabrication', 'edge', 'sink', 'faucet_hole', 'splash'] as const;
+export const PRICE_LIST_ITEM_GROUP_VALUES = ['material', 'fabrication', 'edge', 'sink', 'faucet_hole', 'splash', 'admin'] as const;
 
 export const PRICE_LIST_CHARGE_METHOD_VALUES = ['square_foot', 'linear_foot', 'each'] as const;
 

@@ -26,7 +26,10 @@ const toOptionalNullableNumber = (value: FormDataEntryValue | null) => {
 
 const toCents = (value: FormDataEntryValue | null) => Math.round(Number(value || 0) * 100);
 const toBoolean = (value: FormDataEntryValue | null) => value === 'on';
-type ItemGroup = 'material' | 'fabrication' | 'edge' | 'sink' | 'faucet_hole' | 'splash';
+const formBoolean = (formData: FormData, fieldName: string, fallback: boolean) =>
+  formData.has(fieldName) ? toBoolean(formData.get(fieldName)) : fallback;
+
+type ItemGroup = 'material' | 'fabrication' | 'edge' | 'sink' | 'faucet_hole' | 'splash' | 'admin';
 type ChargeMethod = 'square_foot' | 'linear_foot' | 'each';
 type MeasurementBasis =
   | 'countertop_sqft'
@@ -38,7 +41,7 @@ type MeasurementBasis =
   | 'faucet_hole_count'
   | 'each';
 
-const ITEM_GROUPS = ['material', 'fabrication', 'edge', 'sink', 'faucet_hole', 'splash'] as const;
+const ITEM_GROUPS = ['material', 'fabrication', 'edge', 'sink', 'faucet_hole', 'splash', 'admin'] as const;
 const CHARGE_METHODS = ['square_foot', 'linear_foot', 'each'] as const;
 const MEASUREMENT_BASES = [
   'countertop_sqft',
@@ -131,22 +134,24 @@ export async function createPriceListItemAction(priceListId: string, formData: F
   const itemGroup: ItemGroup = oneOf(ITEM_GROUPS, formData.get('itemGroup'), 'material');
   const chargeMethod: ChargeMethod = oneOf(CHARGE_METHODS, formData.get('chargeMethod'), 'square_foot');
   const measurementBasis: MeasurementBasis = oneOf(MEASUREMENT_BASES, formData.get('measurementBasis'), 'combined_sqft');
+  const category = toOptionalString(formData.get('category')) ?? 'admin_item';
+  const itemType = toOptionalString(formData.get('itemType')) ?? itemGroup;
   const { error } = await client.POST('/price-lists/{priceListId}/items', {
     params: { path: { priceListId } },
     body: {
       itemGroup,
-      category: formData.get('category') as string,
-      itemType: itemGroup,
+      category,
+      itemType,
       name: formData.get('name') as string,
       chargeMethod,
       measurementBasis,
       unit: unitForChargeMethod(chargeMethod),
       priceCents: toCents(formData.get('price')),
       sortOrder: Number(formData.get('sortOrder') || 0),
-      taxable: toBoolean(formData.get('taxable')),
-      allowDiscount: toBoolean(formData.get('allowDiscount')),
-      editableOnQuote: toBoolean(formData.get('editableOnQuote')),
-      hideOnQuote: toBoolean(formData.get('hideOnQuote')),
+      taxable: formBoolean(formData, 'taxable', true),
+      allowDiscount: formBoolean(formData, 'allowDiscount', true),
+      editableOnQuote: formBoolean(formData, 'editableOnQuote', true),
+      hideOnQuote: formBoolean(formData, 'hideOnQuote', false),
       ...(description ? { description } : {}),
     },
   });
