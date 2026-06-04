@@ -260,6 +260,29 @@ describe('slabs', () => {
     expect((listBody.data as Array<Record<string, unknown>>).some((item) => item.id === remnant.id)).toBe(true);
   });
 
+  it('records damage marks and promotes condition to minor damage', async () => {
+    const slab = await createSlab();
+
+    const response = await fetch(`${slabsUrl()}/${slab.body.id}/damage-marks`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        type: 'scratch',
+        severity: 'minor',
+        shape: { kind: 'circle', x: 10, y: 20, radius: 12 },
+        note: 'top right scratch'
+      })
+    });
+    const mark = await response.json() as Record<string, unknown>;
+
+    expect(response.status).toBe(201);
+    expect(mark).toMatchObject({ type: 'scratch', severity: 'minor' });
+
+    const slabResponse = await fetch(`${slabsUrl()}/${slab.body.id}`);
+    const updated = await slabResponse.json() as Record<string, unknown>;
+    expect(updated.condition).toBe('minor_damage');
+  });
+
   it('attaches, detaches, and cuts slabs in project context', async () => {
     const slab = await createSlab();
     const projectResponse = await fetch(projectsUrl(), {
