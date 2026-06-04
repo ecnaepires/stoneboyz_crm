@@ -15,9 +15,9 @@ export interface SlabRow {
   stone_type: string;
   finish: Slab['finish'];
   quality_grade: Slab['qualityGrade'];
-  length_in: number;
-  width_in: number;
-  thickness_cm: number;
+  length_in: number | string;
+  width_in: number | string;
+  thickness_cm: number | string;
   lot_number: string | null;
   bundle_number: string | null;
   warehouse_location: string | null;
@@ -42,38 +42,44 @@ export interface ProjectSlabRow {
 }
 
 const toIso = (value: Date): string => value.toISOString();
+const toNumber = (value: number | string): number => Number(value);
 
-export const mapSlabRow = (row: SlabRow): Slab => ({
-  id: row.id,
-  parentSlabId: row.parent_slab_id,
-  materialColorId: row.material_color_id,
-  storageLocationId: row.storage_location_id,
-  inventoryReceiptId: row.inventory_receipt_id,
-  tagCode: row.tag_code,
-  kind: row.kind,
-  availability: row.availability,
-  ownership: row.ownership,
-  condition: row.condition,
-  holdReason: row.hold_reason,
-  stoneType: row.stone_type,
-  finish: row.finish,
-  qualityGrade: row.quality_grade,
-  lengthIn: row.length_in,
-  widthIn: row.width_in,
-  thicknessCm: row.thickness_cm,
-  sqFt: Number(((row.length_in * row.width_in) / 144).toFixed(3)),
-  lotNumber: row.lot_number,
-  bundleNumber: row.bundle_number,
-  warehouseLocation: row.warehouse_location,
-  costCents: row.cost_cents,
-  imageUrls: row.image_urls,
-  notes: row.notes,
-  status: row.status,
-  archivedAt: row.deleted_at === null ? null : toIso(row.deleted_at),
-  archivedByUserId: row.deleted_by_user_id,
-  createdAt: toIso(row.created_at),
-  updatedAt: toIso(row.updated_at)
-});
+export const mapSlabRow = (row: SlabRow): Slab => {
+  const lengthIn = toNumber(row.length_in);
+  const widthIn = toNumber(row.width_in);
+
+  return {
+    id: row.id,
+    parentSlabId: row.parent_slab_id,
+    materialColorId: row.material_color_id,
+    storageLocationId: row.storage_location_id,
+    inventoryReceiptId: row.inventory_receipt_id,
+    tagCode: row.tag_code,
+    kind: row.kind,
+    availability: row.availability,
+    ownership: row.ownership,
+    condition: row.condition,
+    holdReason: row.hold_reason,
+    stoneType: row.stone_type,
+    finish: row.finish,
+    qualityGrade: row.quality_grade,
+    lengthIn,
+    widthIn,
+    thicknessCm: toNumber(row.thickness_cm),
+    sqFt: Number(((lengthIn * widthIn) / 144).toFixed(3)),
+    lotNumber: row.lot_number,
+    bundleNumber: row.bundle_number,
+    warehouseLocation: row.warehouse_location,
+    costCents: row.cost_cents,
+    imageUrls: row.image_urls,
+    notes: row.notes,
+    status: row.status,
+    archivedAt: row.deleted_at === null ? null : toIso(row.deleted_at),
+    archivedByUserId: row.deleted_by_user_id,
+    createdAt: toIso(row.created_at),
+    updatedAt: toIso(row.updated_at)
+  };
+};
 
 export const mapProjectSlabRow = (row: ProjectSlabRow): ProjectSlab => ({
   id: row.id,
