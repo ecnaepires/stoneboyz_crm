@@ -364,7 +364,7 @@ describe('Quote drawing revisions', () => {
     const { quoteId, areaId } = await createQuoteWithArea();
     const firstLayout = {
       layout: {
-        pieces: [{ pieceId: '33333333-3333-4333-8333-333333333333', x: 10, y: 20, rotation: 0 }],
+        pieces: [{ pieceId: '33333333-3333-4333-8333-333333333333', x: 10, y: 20, rotation: 0, kind: 'countertop' }],
         sinks: [],
         corners: [],
         edges: [],
