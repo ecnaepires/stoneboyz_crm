@@ -2,9 +2,15 @@ import { BadRequestException, Body, Controller, Delete, Get, HttpCode, Param, Po
 import { attachProjectSlabSchema, cutSlabSchema, transitionQuoteSchema } from '@stoneboyz/domain';
 import { z } from 'zod';
 import { CurrentUser } from '../auth/current-user.decorator.js';
+import { Roles } from '../auth/roles.decorator.js';
 import { ProjectSlabsService } from './project-slabs.service.js';
 
 const idSchema = z.string().uuid();
+const reassignSchema = z.object({
+  targetCustomerId: z.string().uuid(),
+  targetProjectId: z.string().uuid(),
+  reason: z.string().min(1)
+});
 
 const formatZodError = (error: z.ZodError): Record<string, string[]> => z.flattenError(error).fieldErrors;
 
@@ -77,6 +83,29 @@ export class ProjectSlabsController {
       ...parsedBody.data,
       actorUserId,
       remnants: parsedBody.data.remnants?.map((remnant) => ({ ...remnant, actorUserId }))
+    });
+  }
+
+  @Post(':slabId/reassign')
+  @HttpCode(200)
+  @Roles('admin', 'inventory_manager')
+  async reassign(
+    @Param('customerId') customerId: string,
+    @Param('projectId') projectId: string,
+    @Param('slabId') slabId: string,
+    @Body() body: unknown,
+    @CurrentUser() actorUserId: string
+  ) {
+    const ids = this.parseIds(customerId, projectId, slabId);
+    const parsedBody = reassignSchema.safeParse(body);
+
+    if (!parsedBody.success) {
+      throw badRequest(formatZodError(parsedBody.error));
+    }
+
+    return this.projectSlabsService.reassign(ids.customerId, ids.projectId, ids.slabId as string, {
+      ...parsedBody.data,
+      actorUserId
     });
   }
 

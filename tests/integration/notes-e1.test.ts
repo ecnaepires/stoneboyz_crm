@@ -15,19 +15,7 @@ const ACTOR_USER_ID = '22222222-2222-4222-8222-222222222222';
 const resetDatabase = async (app: INestApplication): Promise<void> => {
   const pool = app.get<Pool>(DATABASE_POOL);
 
-  await pool.query('DROP TABLE IF EXISTS activity_notes CASCADE;');
-  await pool.query('DROP TABLE IF EXISTS quote_notes CASCADE;');
-  await pool.query('DROP TABLE IF EXISTS job_notes CASCADE;');
-  await pool.query('DROP TABLE IF EXISTS order_payments CASCADE;');
-  await pool.query('DROP TABLE IF EXISTS orders CASCADE;');
-  await pool.query('DROP TABLE IF EXISTS quote_line_items CASCADE;');
-  await pool.query('DROP TABLE IF EXISTS quote_areas CASCADE;');
-  await pool.query('DROP TABLE IF EXISTS quotes CASCADE;');
-  await pool.query('DROP TABLE IF EXISTS projects CASCADE;');
-  await pool.query('DROP TABLE IF EXISTS customer_notes CASCADE;');
-  await pool.query('DROP TABLE IF EXISTS customer_addresses CASCADE;');
-  await pool.query('DROP TABLE IF EXISTS customer_contacts CASCADE;');
-  await pool.query('DROP TABLE IF EXISTS customers CASCADE;');
+  await pool.query('DROP SCHEMA public CASCADE; CREATE SCHEMA public;');
 
   const migrationsDir = join(process.cwd(), 'db/migrations');
   const migrationFiles = (await readdir(migrationsDir))
@@ -105,6 +93,8 @@ describe('Notes E1', () => {
 
   beforeEach(async () => {
     await resetDatabase(app);
+    const _token = await seedTestSession(app.get(DATABASE_POOL));
+    setTestAuthToken(_token);
   });
 
   afterAll(async () => {

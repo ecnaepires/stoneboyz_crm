@@ -10,3 +10,6 @@ coverage/
 .turbo/
 .env.test
 output/moraware-recordings/.superpowers/
+.superpowers/
+.worktrees/
+apps/api/uploads/

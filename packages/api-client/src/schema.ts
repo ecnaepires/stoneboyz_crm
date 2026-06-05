@@ -39,6 +39,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/inventory/slabs/find-material": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Find available slabs that fit the requested dimensions */
+        get: operations["findMaterial"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/price-lists": {
         parameters: {
             query?: never;
@@ -317,6 +334,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/inventory/slabs/{slabId}/release-to-shop": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Release restricted material to shop stock (inventory manager / admin) */
+        post: operations["releaseSlabToShop"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/inventory/slabs/{slabId}/audit": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List the audit trail for a slab */
+        get: operations["listSlabAuditEvents"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/customers/{customerId}/projects/{projectId}/slabs": {
         parameters: {
             query?: never;
@@ -363,6 +414,23 @@ export interface paths {
         put?: never;
         /** Cut a slab from project context */
         post: operations["cutProjectSlab"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/customers/{customerId}/projects/{projectId}/slabs/{slabId}/reassign": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Reassign a slab from this job to another (inventory manager / admin) */
+        post: operations["reassignProjectSlab"];
         delete?: never;
         options?: never;
         head?: never;
@@ -2227,17 +2295,42 @@ export interface components {
         SlabFinish: "polished" | "honed" | "brushed" | "leathered" | "sandblasted";
         /** @enum {string} */
         SlabQualityGrade: "A" | "B" | "C";
+        /** @enum {string} */
+        SlabKind: "full_slab" | "remnant";
+        /** @enum {string} */
+        SlabAvailability: "available" | "reserved" | "cut" | "hold" | "archived";
+        /** @enum {string} */
+        SlabOwnership: "shop_owned" | "job_purchased" | "customer_supplied";
+        /** @enum {string} */
+        SlabCondition: "good" | "minor_damage" | "major_damage";
+        /** @enum {string} */
+        SlabAuditAction: "reserved" | "released" | "reassigned" | "released_to_shop" | "cut";
         Slab: {
             /** Format: uuid */
             id: string;
             /** Format: uuid */
             parentSlabId?: string | null;
+            /** Format: uuid */
+            ownerCustomerId?: string | null;
+            /** Format: uuid */
+            materialColorId?: string | null;
+            /** Format: uuid */
+            storageLocationId?: string | null;
+            /** Format: uuid */
+            inventoryReceiptId?: string | null;
+            tagCode?: string | null;
+            kind: components["schemas"]["SlabKind"];
+            availability: components["schemas"]["SlabAvailability"];
+            ownership: components["schemas"]["SlabOwnership"];
+            condition: components["schemas"]["SlabCondition"];
+            holdReason?: string | null;
             stoneType: string;
             finish: components["schemas"]["SlabFinish"];
             qualityGrade: components["schemas"]["SlabQualityGrade"];
             lengthIn: number;
             widthIn: number;
             thicknessCm: number;
+            sqFt?: number;
             lotNumber?: string | null;
             bundleNumber?: string | null;
             warehouseLocation?: string | null;
@@ -2261,6 +2354,20 @@ export interface components {
             lengthIn: number;
             widthIn: number;
             thicknessCm: number;
+            kind?: components["schemas"]["SlabKind"];
+            availability?: components["schemas"]["SlabAvailability"];
+            ownership?: components["schemas"]["SlabOwnership"];
+            /** Format: uuid */
+            ownerCustomerId?: string | null;
+            condition?: components["schemas"]["SlabCondition"];
+            holdReason?: string | null;
+            /** Format: uuid */
+            materialColorId?: string | null;
+            /** Format: uuid */
+            storageLocationId?: string | null;
+            /** Format: uuid */
+            inventoryReceiptId?: string | null;
+            tagCode?: string;
             lotNumber?: string;
             bundleNumber?: string;
             warehouseLocation?: string;
@@ -2276,6 +2383,20 @@ export interface components {
             lengthIn?: number;
             widthIn?: number;
             thicknessCm?: number;
+            kind?: components["schemas"]["SlabKind"];
+            availability?: components["schemas"]["SlabAvailability"];
+            ownership?: components["schemas"]["SlabOwnership"];
+            /** Format: uuid */
+            ownerCustomerId?: string | null;
+            condition?: components["schemas"]["SlabCondition"];
+            holdReason?: string | null;
+            /** Format: uuid */
+            materialColorId?: string | null;
+            /** Format: uuid */
+            storageLocationId?: string | null;
+            /** Format: uuid */
+            inventoryReceiptId?: string | null;
+            tagCode?: string;
             lotNumber?: string | null;
             bundleNumber?: string | null;
             warehouseLocation?: string | null;
@@ -2309,6 +2430,43 @@ export interface components {
             /** Format: uuid */
             slabId: string;
             notes?: string;
+        };
+        ReassignProjectSlabRequest: {
+            /** Format: uuid */
+            targetCustomerId: string;
+            /** Format: uuid */
+            targetProjectId: string;
+            reason: string;
+        };
+        ReleaseToShopRequest: {
+            reason: string;
+        };
+        SlabAuditEvent: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            slabId: string;
+            /** Format: uuid */
+            actorUserId?: string | null;
+            action: components["schemas"]["SlabAuditAction"];
+            /** Format: uuid */
+            fromProjectId?: string | null;
+            /** Format: uuid */
+            toProjectId?: string | null;
+            reason?: string | null;
+            /** Format: date-time */
+            createdAt: string;
+        };
+        SlabAuditEventsResponse: {
+            data: components["schemas"]["SlabAuditEvent"][];
+        };
+        FindMaterialResult: {
+            slab: components["schemas"]["Slab"];
+            fitsRotated: boolean;
+            wasteSqFt: number;
+        };
+        FindMaterialResponse: {
+            data: components["schemas"]["FindMaterialResult"][];
         };
         PaginatedSlabsResponse: {
             data: components["schemas"]["Slab"][];
@@ -2491,6 +2649,13 @@ export interface operations {
                 cursor?: components["parameters"]["Cursor"];
                 limit?: components["parameters"]["Limit"];
                 status?: components["schemas"]["SlabStatus"];
+                kind?: components["schemas"]["SlabKind"];
+                availability?: components["schemas"]["SlabAvailability"];
+                ownership?: components["schemas"]["SlabOwnership"];
+                ownerCustomerId?: string;
+                condition?: components["schemas"]["SlabCondition"];
+                materialColorId?: string;
+                storageLocationId?: string;
                 stoneType?: string;
                 finish?: components["schemas"]["SlabFinish"];
             };
@@ -2540,6 +2705,35 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    findMaterial: {
+        parameters: {
+            query: {
+                minLengthIn: number;
+                minWidthIn: number;
+                kind?: components["schemas"]["SlabKind"];
+                materialColorId?: string;
+                thicknessCm?: number;
+                finish?: components["schemas"]["SlabFinish"];
+                includeHeld?: boolean;
+                includeDamaged?: boolean;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Matching slabs returned. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FindMaterialResponse"];
                 };
             };
         };
@@ -3232,6 +3426,83 @@ export interface operations {
             };
         };
     };
+    releaseSlabToShop: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description UUID of the slab */
+                slabId: components["parameters"]["SlabId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReleaseToShopRequest"];
+            };
+        };
+        responses: {
+            /** @description Slab released to shop stock. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Slab"];
+                };
+            };
+            /** @description Invalid request. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Caller is not an inventory manager or admin. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Slab cannot be released in its current state. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    listSlabAuditEvents: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description UUID of the slab */
+                slabId: components["parameters"]["SlabId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Audit events returned newest first. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SlabAuditEventsResponse"];
+                };
+            };
+        };
+    };
     listProjectSlabs: {
         parameters: {
             query?: never;
@@ -3339,6 +3610,62 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["CutSlabResponse"];
+                };
+            };
+        };
+    };
+    reassignProjectSlab: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                customerId: components["parameters"]["CustomerId"];
+                projectId: components["parameters"]["ProjectId"];
+                /** @description UUID of the slab */
+                slabId: components["parameters"]["SlabId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReassignProjectSlabRequest"];
+            };
+        };
+        responses: {
+            /** @description Slab reassigned to the target job. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProjectSlab"];
+                };
+            };
+            /** @description Invalid request. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Caller is not an inventory manager or admin. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Reassignment violates ownership rules. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
         };

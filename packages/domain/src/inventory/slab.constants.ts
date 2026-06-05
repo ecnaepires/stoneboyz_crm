@@ -1,4 +1,10 @@
 export const SLAB_STATUS_VALUES = ['available', 'reserved', 'cut', 'remnant'] as const;
+export const SLAB_KIND_VALUES = ['full_slab', 'remnant'] as const;
+export const SLAB_AVAILABILITY_VALUES = ['available', 'reserved', 'cut', 'hold', 'archived'] as const;
+export const SLAB_OWNERSHIP_VALUES = ['shop_owned', 'job_purchased', 'customer_supplied'] as const;
+export const SLAB_CONDITION_VALUES = ['good', 'minor_damage', 'major_damage'] as const;
+export const DAMAGE_MARK_TYPE_VALUES = ['scratch', 'chip', 'crack', 'stain', 'other'] as const;
+export const DAMAGE_MARK_SEVERITY_VALUES = ['minor', 'major'] as const;
 export const SLAB_FINISH_VALUES = ['polished', 'honed', 'brushed', 'leathered', 'sandblasted'] as const;
 export const SLAB_QUALITY_GRADE_VALUES = ['A', 'B', 'C'] as const;
-
+export const SLAB_AUDIT_ACTION_VALUES = ['reserved', 'released', 'reassigned', 'released_to_shop', 'cut'] as const;

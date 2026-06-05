@@ -3,8 +3,14 @@
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { getApiClientWithAuth } from '@/lib/api';
+import { buildDamageMarkPayload } from './damage-mark-payload';
 
 const toOptionalString = (value: FormDataEntryValue | null) => {
+  const stringValue = typeof value === 'string' ? value.trim() : '';
+  return stringValue ? stringValue : undefined;
+};
+
+const toOptionalNullableStringOrUndefined = (value: FormDataEntryValue | null) => {
   const stringValue = typeof value === 'string' ? value.trim() : '';
   return stringValue ? stringValue : undefined;
 };
@@ -23,9 +29,21 @@ export async function createSlabAction(formData: FormData) {
   const bundleNumber = toOptionalString(formData.get('bundleNumber'));
   const warehouseLocation = toOptionalString(formData.get('warehouseLocation'));
   const notes = toOptionalString(formData.get('notes'));
+  const materialColorId = toOptionalNullableStringOrUndefined(formData.get('materialColorId'));
+  const storageLocationId = toOptionalNullableStringOrUndefined(formData.get('storageLocationId'));
+  const inventoryReceiptId = toOptionalNullableStringOrUndefined(formData.get('inventoryReceiptId'));
+  const tagCode = toOptionalString(formData.get('tagCode'));
+  const holdReason = toOptionalString(formData.get('holdReason'));
+  const ownership = (formData.get('ownership') as string) || 'shop_owned';
+  const ownerCustomerId = toOptionalString(formData.get('ownerCustomerId'));
 
   const { data, error } = await client.POST('/inventory/slabs', {
     body: {
+      kind: (formData.get('kind') as string) || 'full_slab',
+      availability: (formData.get('availability') as string) || 'available',
+      ownership,
+      ...(ownership === 'customer_supplied' && ownerCustomerId ? { ownerCustomerId } : {}),
+      condition: (formData.get('condition') as string) || 'good',
       stoneType: formData.get('stoneType') as string,
       finish: formData.get('finish') as 'polished' | 'honed' | 'brushed' | 'leathered' | 'sandblasted',
       qualityGrade: formData.get('qualityGrade') as 'A' | 'B' | 'C',
@@ -36,8 +54,13 @@ export async function createSlabAction(formData: FormData) {
       ...(lotNumber ? { lotNumber } : {}),
       ...(bundleNumber ? { bundleNumber } : {}),
       ...(warehouseLocation ? { warehouseLocation } : {}),
+      ...(materialColorId ? { materialColorId } : {}),
+      ...(storageLocationId ? { storageLocationId } : {}),
+      ...(inventoryReceiptId ? { inventoryReceiptId } : {}),
+      ...(tagCode ? { tagCode } : {}),
+      ...(holdReason ? { holdReason } : {}),
       ...(notes ? { notes } : {}),
-    },
+    } as any,
   });
 
   if (error) throw new Error('Failed to create slab: ' + JSON.stringify(error));
@@ -121,5 +144,41 @@ export async function deleteSlabImageAction(slabId: string, url: string) {
     body: JSON.stringify({ url }),
   });
   if (!res.ok) throw new Error('Failed to delete image');
+  revalidatePath(`/slabs/${slabId}`);
+}
+
+export async function createDamageMarkAction(slabId: string, formData: FormData) {
+  const { cookies } = await import('next/headers');
+  const cookieStore = await cookies();
+  const sessionCookie = cookieStore.get('better-auth.session_token');
+  const baseUrl = process.env.API_BASE_URL;
+  if (!baseUrl) throw new Error('API_BASE_URL not set');
+  const apiOrigin = new URL(baseUrl).origin;
+  const payload = buildDamageMarkPayload(formData);
+
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+  if (sessionCookie) headers['Cookie'] = `better-auth.session_token=${sessionCookie.value}`;
+
+  const res = await fetch(`${apiOrigin}/api/v1/inventory/slabs/${slabId}/damage-marks`, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify(payload),
+  });
+
+  if (!res.ok) throw new Error('Failed to add damage mark');
+  revalidatePath(`/slabs/${slabId}`);
+}
+
+export async function releaseToShopAction(slabId: string, formData: FormData) {
+  const reason = toOptionalString(formData.get('reason'));
+  if (!reason) throw new Error('A reason is required to release material to shop stock');
+
+  const client = await getApiClientWithAuth();
+  const { error } = await client.POST('/inventory/slabs/{slabId}/release-to-shop', {
+    params: { path: { slabId } },
+    body: { reason },
+  });
+
+  if (error) throw new Error('Failed to release material to shop stock: ' + JSON.stringify(error));
   revalidatePath(`/slabs/${slabId}`);
 }

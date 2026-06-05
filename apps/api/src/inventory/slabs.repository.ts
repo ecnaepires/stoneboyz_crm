@@ -1,5 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
-import type { CreateSlabInput, ListSlabsInput, Slab, UpdateSlabInput } from '@stoneboyz/domain';
+import type { CreateSlabInput, FindMaterialInput, FindMaterialResult, ListSlabsInput, Slab, UpdateSlabInput } from '@stoneboyz/domain';
 import type { Pool, PoolClient } from 'pg';
 import { DATABASE_POOL } from '../database.provider.js';
 import { mapSlabRow, type SlabRow } from './slab.mapper.js';
@@ -16,6 +16,16 @@ interface NormalizedListSlabsInput extends Omit<ListSlabsInput, 'limit'> {
 }
 
 const UPDATE_COLUMNS = {
+  materialColorId: 'material_color_id',
+  storageLocationId: 'storage_location_id',
+  inventoryReceiptId: 'inventory_receipt_id',
+  tagCode: 'tag_code',
+  kind: 'kind',
+  availability: 'availability',
+  ownership: 'ownership',
+  ownerCustomerId: 'owner_customer_id',
+  condition: 'condition',
+  holdReason: 'hold_reason',
   stoneType: 'stone_type',
   finish: 'finish',
   qualityGrade: 'quality_grade',
@@ -81,6 +91,34 @@ export class SlabsRepository {
       where.push(`status = ${addValue(input.status)}`);
     }
 
+    if (input.kind !== undefined) {
+      where.push(`kind = ${addValue(input.kind)}`);
+    }
+
+    if (input.availability !== undefined) {
+      where.push(`availability = ${addValue(input.availability)}`);
+    }
+
+    if (input.ownership !== undefined) {
+      where.push(`ownership = ${addValue(input.ownership)}`);
+    }
+
+    if (input.ownerCustomerId !== undefined) {
+      where.push(`owner_customer_id = ${addValue(input.ownerCustomerId)}`);
+    }
+
+    if (input.condition !== undefined) {
+      where.push(`condition = ${addValue(input.condition)}`);
+    }
+
+    if (input.materialColorId !== undefined) {
+      where.push(`material_color_id = ${addValue(input.materialColorId)}`);
+    }
+
+    if (input.storageLocationId !== undefined) {
+      where.push(`storage_location_id = ${addValue(input.storageLocationId)}`);
+    }
+
     if (input.stoneType !== undefined) {
       where.push(`stone_type = ${addValue(input.stoneType)}`);
     }
@@ -125,6 +163,15 @@ export class SlabsRepository {
       `
         INSERT INTO slabs (
           parent_slab_id,
+          material_color_id,
+          storage_location_id,
+          inventory_receipt_id,
+          tag_code,
+          kind,
+          availability,
+          ownership,
+          condition,
+          hold_reason,
           stone_type,
           finish,
           quality_grade,
@@ -137,13 +184,23 @@ export class SlabsRepository {
           cost_cents,
           image_urls,
           notes,
-          status
+          status,
+          owner_customer_id
         )
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12::text[], $13, $14)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21::text[], $22, $23, $24)
         RETURNING *
       `,
       [
         parentSlabId,
+        input.materialColorId ?? null,
+        input.storageLocationId ?? null,
+        input.inventoryReceiptId ?? null,
+        input.tagCode ?? null,
+        input.kind ?? (parentSlabId === null ? 'full_slab' : 'remnant'),
+        input.availability ?? 'available',
+        input.ownership ?? 'shop_owned',
+        input.condition ?? 'good',
+        input.holdReason ?? null,
         input.stoneType,
         input.finish,
         input.qualityGrade,
@@ -156,7 +213,8 @@ export class SlabsRepository {
         input.costCents ?? 0,
         input.imageUrls ?? [],
         input.notes ?? null,
-        parentSlabId === null ? 'available' : 'remnant'
+        parentSlabId === null ? input.availability ?? 'available' : 'remnant',
+        input.ownerCustomerId ?? null
       ]
     );
 
@@ -176,6 +234,65 @@ export class SlabsRepository {
     const row = result.rows[0];
 
     return row === undefined ? null : mapSlabRow(row);
+  }
+
+  async findMaterial(input: FindMaterialInput): Promise<FindMaterialResult[]> {
+    const values: unknown[] = [input.minLengthIn, input.minWidthIn];
+    const where = [
+      'deleted_at IS NULL',
+      `((length_in >= $1 AND width_in >= $2) OR (length_in >= $2 AND width_in >= $1))`
+    ];
+
+    const addValue = (value: unknown): string => {
+      values.push(value);
+      return `$${values.length}`;
+    };
+
+    if (input.includeHeld !== true) {
+      where.push(`availability = 'available'`);
+    } else {
+      where.push(`availability IN ('available', 'hold')`);
+    }
+
+    if (input.includeDamaged !== true) {
+      where.push(`condition = 'good'`);
+    }
+
+    if (input.kind !== undefined) {
+      where.push(`kind = ${addValue(input.kind)}`);
+    }
+
+    if (input.materialColorId !== undefined) {
+      where.push(`material_color_id = ${addValue(input.materialColorId)}`);
+    }
+
+    if (input.thicknessCm !== undefined) {
+      where.push(`thickness_cm = ${addValue(input.thicknessCm)}`);
+    }
+
+    if (input.finish !== undefined) {
+      where.push(`finish = ${addValue(input.finish)}`);
+    }
+
+    const result = await this.pool.query<SlabRow>(
+      `
+        SELECT *
+        FROM slabs
+        WHERE ${where.join(' AND ')}
+        ORDER BY ((length_in * width_in) - ($1 * $2)) ASC, updated_at DESC, id ASC
+        LIMIT 50
+      `,
+      values
+    );
+
+    return result.rows.map((row) => {
+      const slab = mapSlabRow(row);
+      const fitsUnrotated = slab.lengthIn >= input.minLengthIn && slab.widthIn >= input.minWidthIn;
+      const fitsRotated = !fitsUnrotated && slab.lengthIn >= input.minWidthIn && slab.widthIn >= input.minLengthIn;
+      const wasteSqFt = Number((((slab.lengthIn * slab.widthIn) - (input.minLengthIn * input.minWidthIn)) / 144).toFixed(3));
+
+      return { slab, fitsRotated, wasteSqFt };
+    });
   }
 
   async update(slabId: string, input: UpdateSlabInput): Promise<Slab | null> {
@@ -255,10 +372,10 @@ export class SlabsRepository {
     const result = await client.query<SlabRow>(
       `
         UPDATE slabs
-        SET status = 'reserved', updated_at = now()
+        SET status = 'reserved', availability = 'reserved', updated_at = now()
         WHERE id = $1
           AND deleted_at IS NULL
-          AND status IN ('available', 'remnant')
+          AND availability = 'available'
         RETURNING *
       `,
       [slabId]
@@ -282,10 +399,27 @@ export class SlabsRepository {
     const result = await client.query<SlabRow>(
       `
         UPDATE slabs
-        SET status = 'available', updated_at = now()
+        SET status = 'available', availability = 'available', updated_at = now()
         WHERE id = $1
           AND deleted_at IS NULL
-          AND status = 'reserved'
+          AND availability = 'reserved'
+        RETURNING *
+      `,
+      [slabId]
+    );
+
+    const row = result.rows[0];
+
+    return row === undefined ? null : mapSlabRow(row);
+  }
+
+  async releaseToShopStock(slabId: string, client: Queryable = this.pool): Promise<Slab | null> {
+    const result = await client.query<SlabRow>(
+      `
+        UPDATE slabs
+        SET ownership = 'shop_owned', owner_customer_id = NULL, availability = 'available', status = 'available', updated_at = now()
+        WHERE id = $1
+          AND deleted_at IS NULL
         RETURNING *
       `,
       [slabId]
@@ -300,10 +434,10 @@ export class SlabsRepository {
     const result = await client.query<SlabRow>(
       `
         UPDATE slabs
-        SET status = 'cut', updated_at = now()
+        SET status = 'cut', availability = 'cut', updated_at = now()
         WHERE id = $1
           AND deleted_at IS NULL
-          AND status IN ('available', 'reserved', 'remnant')
+          AND availability IN ('available', 'reserved', 'hold')
         RETURNING *
       `,
       [slabId]
@@ -321,11 +455,32 @@ export class SlabsRepository {
     }
 
     const createdRemnants: Slab[] = [];
+    const sourceSlab = mapSlabRow(row);
     for (const remnant of remnants) {
-      createdRemnants.push(await this.create(remnant, slabId, client));
+      const remnantNumber = createdRemnants.length + 1;
+      const remnantAvailability =
+        sourceSlab.ownership === 'shop_owned'
+          ? remnant.storageLocationId === undefined || remnant.storageLocationId === null
+            ? 'hold'
+            : 'available'
+          : 'reserved';
+
+      createdRemnants.push(
+        await this.create(
+          {
+            ...remnant,
+            ownership: sourceSlab.ownership,
+            ownerCustomerId: sourceSlab.ownerCustomerId,
+            availability: remnant.availability ?? remnantAvailability,
+            tagCode: remnant.tagCode ?? `${sourceSlab.tagCode ?? sourceSlab.id}-R${remnantNumber}`
+          },
+          slabId,
+          client
+        )
+      );
     }
 
-    return { slab: mapSlabRow(row), remnants: createdRemnants };
+    return { slab: sourceSlab, remnants: createdRemnants };
   }
 
   async addImageUrl(slabId: string, url: string): Promise<Slab | null> {
@@ -350,17 +505,28 @@ export class SlabsRepository {
     const result = await client.query<{ id: string }>(
       `
         UPDATE slabs s
-        SET status = 'available', updated_at = now()
+        SET status = 'available', availability = 'available', updated_at = now()
         FROM quote_line_items qli
         WHERE qli.quote_id = $1
           AND qli.slab_id = s.id
           AND s.deleted_at IS NULL
-          AND s.status = 'reserved'
+          AND s.availability = 'reserved'
         RETURNING s.id
       `,
       [quoteId]
     );
 
     return result.rows.map((row) => row.id);
+  }
+
+  async nextTagCode(client: Queryable = this.pool): Promise<string> {
+    const result = await client.query<{ next: string }>(
+      `
+        SELECT 'S-' || lpad((count(*) + 1)::text, 4, '0') AS next
+        FROM slabs
+      `
+    );
+
+    return result.rows[0]?.next ?? 'S-0001';
   }
 }

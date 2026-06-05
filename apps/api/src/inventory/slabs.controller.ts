@@ -18,6 +18,7 @@ import {
   archiveSlabSchema,
   createSlabSchema,
   cutSlabSchema,
+  findMaterialSchema,
   listSlabsSchema,
   updateSlabSchema,
 } from "@stoneboyz/domain";
@@ -25,12 +26,14 @@ import * as multer from "multer";
 import * as path from "path";
 import { z } from "zod";
 import { CurrentUser } from "../auth/current-user.decorator.js";
+import { Roles } from "../auth/roles.decorator.js";
 import { StorageService } from "../storage/storage.service.js";
 import { SlabsService } from "./slabs.service.js";
 
 const memStorage = multer.memoryStorage();
 
 const slabIdSchema = z.string().uuid();
+const releaseToShopSchema = z.object({ reason: z.string().min(1) });
 
 const parseLimit = (value: unknown): unknown => {
   if (typeof value !== "string") {
@@ -82,6 +85,17 @@ export class SlabsController {
     }
 
     return this.slabsService.create({ ...parsedBody.data, actorUserId });
+  }
+
+  @Get("find-material")
+  async findMaterial(@Query() query: Record<string, unknown>) {
+    const parsedQuery = findMaterialSchema.safeParse(query);
+
+    if (!parsedQuery.success) {
+      throw badRequest(formatZodError(parsedQuery.error));
+    }
+
+    return this.slabsService.findMaterial(parsedQuery.data);
   }
 
   @Get(":slabId")
@@ -147,6 +161,27 @@ export class SlabsController {
         actorUserId,
       })),
     });
+  }
+
+  @Post(":slabId/release-to-shop")
+  @HttpCode(200)
+  @Roles("admin", "inventory_manager")
+  async releaseToShop(
+    @Param("slabId") slabId: string,
+    @Body() body: unknown,
+    @CurrentUser() actorUserId: string,
+  ) {
+    const parsedBody = releaseToShopSchema.safeParse(body);
+
+    if (!parsedBody.success) {
+      throw badRequest(formatZodError(parsedBody.error));
+    }
+
+    return this.slabsService.releaseToShop(
+      this.parseSlabId(slabId),
+      actorUserId,
+      parsedBody.data.reason,
+    );
   }
 
   @Post(":slabId/images")

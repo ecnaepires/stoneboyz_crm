@@ -87,3 +87,116 @@ export async function deleteJobNoteAction(customerId: string, projectId: string,
 
   revalidatePath(`/projects/${projectId}`);
 }
+
+type ProjectSlabMutationClient = {
+  POST: (
+    path: '/customers/{customerId}/projects/{projectId}/slabs',
+    options: { params: { path: { customerId: string; projectId: string } }; body: { slabId: string } }
+  ) => Promise<{ error?: unknown }>;
+  DELETE: (
+    path: '/customers/{customerId}/projects/{projectId}/slabs/{slabId}',
+    options: { params: { path: { customerId: string; projectId: string; slabId: string } }; body: Record<string, never> }
+  ) => Promise<{ error?: unknown }>;
+};
+
+export async function linkSlabToJobAction(customerId: string, projectId: string, slabId: string) {
+  const client = (await getApiClientWithAuth()) as unknown as ProjectSlabMutationClient;
+
+  const { error } = await client.POST('/customers/{customerId}/projects/{projectId}/slabs', {
+    params: { path: { customerId, projectId } },
+    body: { slabId },
+  });
+
+  if (error) {
+    throw new Error('Failed to link slab: ' + JSON.stringify(error));
+  }
+
+  revalidatePath(`/projects/${projectId}`);
+}
+
+export async function detachSlabFromJobAction(customerId: string, projectId: string, slabId: string) {
+  const client = (await getApiClientWithAuth()) as unknown as ProjectSlabMutationClient;
+
+  const { error } = await client.DELETE('/customers/{customerId}/projects/{projectId}/slabs/{slabId}', {
+    params: { path: { customerId, projectId, slabId } },
+    body: {},
+  });
+
+  if (error) {
+    throw new Error('Failed to detach slab: ' + JSON.stringify(error));
+  }
+
+  revalidatePath(`/projects/${projectId}`);
+}
+
+type CustomerProjectsClient = {
+  GET: (
+    path: '/customers/{customerId}/projects',
+    options: { params: { path: { customerId: string } } }
+  ) => Promise<{ data?: { data?: Array<{ id: string; title: string }> } }>;
+};
+
+export async function listCustomerProjectsAction(
+  customerId: string
+): Promise<Array<{ id: string; title: string }>> {
+  const client = (await getApiClientWithAuth()) as unknown as CustomerProjectsClient;
+  const { data } = await client.GET('/customers/{customerId}/projects', {
+    params: { path: { customerId } },
+  });
+  return (data?.data ?? []).map((project) => ({ id: project.id, title: project.title }));
+}
+
+export async function reassignSlabAction(
+  sourceCustomerId: string,
+  sourceProjectId: string,
+  slabId: string,
+  formData: FormData
+) {
+  const targetCustomerId = (formData.get('targetCustomerId') as string)?.trim();
+  const targetProjectId = (formData.get('targetProjectId') as string)?.trim();
+  const reason = (formData.get('reason') as string)?.trim();
+  if (!targetCustomerId || !targetProjectId) throw new Error('Choose a target job');
+  if (!reason) throw new Error('A reason is required to reassign material');
+
+  const client = await getApiClientWithAuth();
+  const { error } = await client.POST(
+    '/customers/{customerId}/projects/{projectId}/slabs/{slabId}/reassign',
+    {
+      params: { path: { customerId: sourceCustomerId, projectId: sourceProjectId, slabId } },
+      body: { targetCustomerId, targetProjectId, reason },
+    }
+  );
+
+  if (error) {
+    throw new Error('Failed to reassign slab: ' + JSON.stringify(error));
+  }
+
+  revalidatePath(`/projects/${sourceProjectId}`);
+}
+
+export interface FindMaterialRow {
+  id: string;
+  tagCode: string | null;
+  stoneType: string;
+  lengthIn: number;
+  widthIn: number;
+  ownership: string;
+}
+
+export async function findMaterialForJobAction(
+  minLengthIn: number,
+  minWidthIn: number
+): Promise<FindMaterialRow[]> {
+  const client = await getApiClientWithAuth();
+  const { data } = await client.GET('/inventory/slabs/find-material', {
+    params: { query: { minLengthIn, minWidthIn } },
+  });
+  return (data?.data ?? []).map((result) => ({
+    id: result.slab.id,
+    tagCode: result.slab.tagCode ?? null,
+    stoneType: result.slab.stoneType,
+    lengthIn: result.slab.lengthIn,
+    widthIn: result.slab.widthIn,
+    ownership: result.slab.ownership,
+  }));
+}

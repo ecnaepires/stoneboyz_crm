@@ -1,9 +1,19 @@
 import { BadRequestException, ConflictException, Inject, Injectable, NotFoundException } from '@nestjs/common';
-import type { ArchiveSlabInput, CreateSlabInput, CutSlabInput, ListSlabsInput, Slab, UpdateSlabInput } from '@stoneboyz/domain';
+import type {
+  ArchiveSlabInput,
+  CreateSlabInput,
+  CutSlabInput,
+  FindMaterialInput,
+  FindMaterialResult,
+  ListSlabsInput,
+  Slab,
+  UpdateSlabInput
+} from '@stoneboyz/domain';
 import type { Pool, PoolClient } from 'pg';
 import { DATABASE_POOL } from '../database.provider.js';
 import { EventBus } from '../events/event-bus.js';
 import { buildSlabCutPayload, buildSlabEventPayload, buildSlabReservedPayload, buildSlabUpdatedPayload } from './slab-events.js';
+import { InventorySupportRepository } from './inventory-support.repository.js';
 import { InvalidSlabCursorError, InvalidSlabStatusError, SlabsRepository } from './slabs.repository.js';
 
 @Injectable()
@@ -11,6 +21,7 @@ export class SlabsService {
   constructor(
     @Inject(DATABASE_POOL) private readonly pool: Pool,
     private readonly slabsRepository: SlabsRepository,
+    private readonly inventorySupportRepository: InventorySupportRepository,
     private readonly eventBus: EventBus
   ) {}
 
@@ -34,13 +45,28 @@ export class SlabsService {
   }
 
   async create(input: CreateSlabInput): Promise<Slab> {
-    const slab = await this.slabsRepository.create(input);
+    const slab = await this.slabsRepository.create({
+      ...input,
+      tagCode: input.tagCode ?? await this.slabsRepository.nextTagCode()
+    });
     this.eventBus.emit('slab.created', buildSlabEventPayload(slab.id, input.actorUserId));
     return slab;
   }
 
   async getById(slabId: string): Promise<Slab> {
     return this.ensureSlabExists(slabId);
+  }
+
+  async findMaterial(input: FindMaterialInput): Promise<{ data: Array<Slab & { fitsRotated: boolean; wasteSqFt: number }> }> {
+    const results: FindMaterialResult[] = await this.slabsRepository.findMaterial(input);
+
+    return {
+      data: results.map((result) => ({
+        ...result.slab,
+        fitsRotated: result.fitsRotated,
+        wasteSqFt: result.wasteSqFt
+      }))
+    };
   }
 
   async update(slabId: string, input: UpdateSlabInput): Promise<Slab> {
@@ -123,6 +149,35 @@ export class SlabsService {
     }
   }
 
+  async releaseToShop(slabId: string, actorUserId: string, reason: string): Promise<Slab> {
+    const client = await this.pool.connect();
+
+    try {
+      await client.query('BEGIN');
+      const current = await this.slabsRepository.findById(slabId, client);
+
+      if (current === null) {
+        throw new NotFoundException({ code: 'NOT_FOUND', message: 'Slab not found' });
+      }
+
+      const updated = await this.slabsRepository.releaseToShopStock(slabId, client);
+      await this.inventorySupportRepository.insertAuditEvent(
+        { slabId, actorUserId, action: 'released_to_shop', reason },
+        client
+      );
+      await client.query('COMMIT');
+
+      this.eventBus.emit('slab.released', buildSlabReservedPayload(slabId, actorUserId));
+
+      return updated as Slab;
+    } catch (error) {
+      await client.query('ROLLBACK');
+      throw error;
+    } finally {
+      client.release();
+    }
+  }
+
   async cutWithClient(slabId: string, input: CutSlabInput, client: PoolClient): Promise<{ slab: Slab; remnants: Slab[] }> {
     const result = await this.slabsRepository.cut(slabId, input.remnants ?? [], client);
 
@@ -165,13 +220,34 @@ export class SlabsService {
     }
 
     await this.reserveWithClient(slabId, actorUserId, client, undefined, projectId);
+    await this.inventorySupportRepository.insertAuditEvent(
+      { slabId, actorUserId, action: 'reserved', toProjectId: projectId },
+      client
+    );
   }
 
   async releaseForProject(slabId: string, projectId: string, actorUserId: string, client: PoolClient): Promise<void> {
+    const current = await this.slabsRepository.findById(slabId, client);
+
+    if (current === null) {
+      throw new NotFoundException({ code: 'NOT_FOUND', message: 'Slab not found' });
+    }
+
+    if (current.ownership !== 'shop_owned') {
+      throw new ConflictException({
+        code: 'INVALID_TRANSITION',
+        message: 'Restricted material must be released to shop stock by an inventory manager'
+      });
+    }
+
     const released = await this.slabsRepository.release(slabId, client);
 
     if (released !== null) {
       this.eventBus.emit('slab.released', buildSlabReservedPayload(slabId, actorUserId, undefined, projectId));
+      await this.inventorySupportRepository.insertAuditEvent(
+        { slabId, actorUserId, action: 'released', fromProjectId: projectId },
+        client
+      );
     }
   }
 
@@ -221,4 +297,3 @@ export class SlabsService {
     return new ConflictException({ code: message === 'Slab is already cut' ? 'SLAB_ALREADY_CUT' : 'INVALID_TRANSITION', message });
   }
 }
-
