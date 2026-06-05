@@ -34,12 +34,15 @@ export async function createSlabAction(formData: FormData) {
   const inventoryReceiptId = toOptionalNullableStringOrUndefined(formData.get('inventoryReceiptId'));
   const tagCode = toOptionalString(formData.get('tagCode'));
   const holdReason = toOptionalString(formData.get('holdReason'));
+  const ownership = (formData.get('ownership') as string) || 'shop_owned';
+  const ownerCustomerId = toOptionalString(formData.get('ownerCustomerId'));
 
   const { data, error } = await client.POST('/inventory/slabs', {
     body: {
       kind: (formData.get('kind') as string) || 'full_slab',
       availability: (formData.get('availability') as string) || 'available',
-      ownership: (formData.get('ownership') as string) || 'shop_owned',
+      ownership,
+      ...(ownership === 'customer_supplied' && ownerCustomerId ? { ownerCustomerId } : {}),
       condition: (formData.get('condition') as string) || 'good',
       stoneType: formData.get('stoneType') as string,
       finish: formData.get('finish') as 'polished' | 'honed' | 'brushed' | 'leathered' | 'sandblasted',
@@ -163,5 +166,28 @@ export async function createDamageMarkAction(slabId: string, formData: FormData)
   });
 
   if (!res.ok) throw new Error('Failed to add damage mark');
+  revalidatePath(`/slabs/${slabId}`);
+}
+
+export async function releaseToShopAction(slabId: string, formData: FormData) {
+  const { cookies } = await import('next/headers');
+  const cookieStore = await cookies();
+  const sessionCookie = cookieStore.get('better-auth.session_token');
+  const baseUrl = process.env.API_BASE_URL;
+  if (!baseUrl) throw new Error('API_BASE_URL not set');
+  const apiOrigin = new URL(baseUrl).origin;
+  const reason = toOptionalString(formData.get('reason'));
+  if (!reason) throw new Error('A reason is required to release material to shop stock');
+
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+  if (sessionCookie) headers['Cookie'] = `better-auth.session_token=${sessionCookie.value}`;
+
+  const res = await fetch(`${apiOrigin}/api/v1/inventory/slabs/${slabId}/release-to-shop`, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({ reason }),
+  });
+
+  if (!res.ok) throw new Error('Failed to release material to shop stock');
   revalidatePath(`/slabs/${slabId}`);
 }

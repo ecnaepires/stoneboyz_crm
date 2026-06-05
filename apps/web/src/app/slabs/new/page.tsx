@@ -1,9 +1,15 @@
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Select } from '@/components/ui/select';
+import { getApiClientWithAuth } from '@/lib/api';
 import { createSlabAction } from '../_actions';
+import { OwnershipFields } from './OwnershipFields';
 
-export default function NewSlabPage() {
+export default async function NewSlabPage() {
+  const client = await getApiClientWithAuth();
+  const { data } = await client.GET('/customers', {});
+  const customers = (data?.data ?? []).map((customer) => ({ id: customer.id, name: customer.name }));
+
   return (
     <div className="max-w-2xl">
       <div className="mb-6 flex items-center justify-between">
@@ -21,11 +27,7 @@ export default function NewSlabPage() {
             <option value="reserved">Reserved</option>
             <option value="hold">Hold</option>
           </Select>
-          <Select name="ownership" required defaultValue="shop_owned" className="h-10">
-            <option value="shop_owned">Shop owned</option>
-            <option value="job_purchased">Job purchased</option>
-            <option value="customer_supplied">Customer supplied</option>
-          </Select>
+          <OwnershipFields customers={customers} />
           <Select name="condition" required defaultValue="good" className="h-10">
             <option value="good">Good</option>
             <option value="minor_damage">Minor damage</option>

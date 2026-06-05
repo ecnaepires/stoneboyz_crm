@@ -17,6 +17,7 @@ import {
 import { archiveProjectAction } from '../_actions';
 import { addJobNoteAction, deleteJobNoteAction, updateChecklistAction, type ChecklistField } from './_actions';
 import { ChecklistToggle } from './checklist-toggle';
+import { JobSlabsPanel } from './JobSlabsPanel';
 import { getApiClientWithAuth } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -592,6 +593,13 @@ export default async function ProjectDetailPage({ params }: ProjectDetailPagePro
       <Card>
         <SectionTitle icon={FileText} title="Files" />
         <CardContent className="p-4 text-sm text-muted-foreground">No files uploaded yet.</CardContent>
+      </Card>
+
+      <Card>
+        <SectionTitle icon={PackageOpen} title="Job Slabs" />
+        <CardContent className="p-4">
+          <JobSlabsPanel customerId={project.customerId} projectId={id} />
+        </CardContent>
       </Card>
 
       <Card>

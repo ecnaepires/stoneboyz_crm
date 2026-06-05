@@ -3,7 +3,7 @@ import { cookies } from 'next/headers';
 import { Button } from '@/components/ui/button';
 import { getApiClientWithAuth } from '@/lib/api';
 import { DamageMarker } from './DamageMarker';
-import { archiveSlabAction, createDamageMarkAction, deleteSlabImageAction, uploadSlabImageAction } from '../_actions';
+import { archiveSlabAction, createDamageMarkAction, deleteSlabImageAction, releaseToShopAction, uploadSlabImageAction } from '../_actions';
 
 const dollars = (cents: number) => `$${(cents / 100).toFixed(2)}`;
 
@@ -34,6 +34,22 @@ const getDamageMarks = async (slabId: string) => {
   return body.data ?? [];
 };
 
+const getAuditEvents = async (slabId: string) => {
+  const cookieStore = await cookies();
+  const sessionCookie = cookieStore.get('better-auth.session_token');
+  const baseUrl = process.env.API_BASE_URL;
+  if (!baseUrl) return [];
+  const headers: Record<string, string> = {};
+  if (sessionCookie) headers.Cookie = `better-auth.session_token=${sessionCookie.value}`;
+  const response = await fetch(`${new URL(baseUrl).origin}/api/v1/inventory/slabs/${slabId}/audit`, {
+    headers,
+    cache: 'no-store',
+  });
+  if (!response.ok) return [];
+  const body = await response.json() as { data?: Array<Record<string, unknown>> };
+  return body.data ?? [];
+};
+
 export default async function SlabDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const client = await getApiClientWithAuth();
@@ -44,7 +60,9 @@ export default async function SlabDetailPage({ params }: { params: Promise<{ id:
   if (error || !data) return <div className="text-red-600">Failed to load slab: {JSON.stringify(error)}</div>;
   const slab = data as any;
   const damageMarks = await getDamageMarks(id);
-  const canEdit = slab.status === 'available' || slab.status === 'remnant';
+  const auditEvents = await getAuditEvents(id);
+  const canEdit = slab.availability === 'available';
+  const isRestricted = slab.ownership === 'job_purchased' || slab.ownership === 'customer_supplied';
   const uploadWithId = uploadSlabImageAction.bind(null, id);
   const createDamageWithId = createDamageMarkAction.bind(null, id);
 
@@ -94,6 +112,28 @@ export default async function SlabDetailPage({ params }: { params: Promise<{ id:
         </dl>
       </section>
 
+      {isRestricted && slab.availability !== 'cut' && slab.availability !== 'archived' && (
+        <section className="rounded-md border p-4">
+          <h3 className="mb-1 text-lg font-semibold">Release to Shop Stock</h3>
+          <p className="mb-3 text-sm text-muted-foreground">
+            This is <span className="capitalize">{labelize(slab.ownership)}</span> material. Releasing it makes it shop-owned and available for any job. Requires a reason and is recorded in the audit history.
+          </p>
+          <form action={releaseToShopAction.bind(null, id)} className="flex items-end gap-3">
+            <label className="flex-1 text-sm">
+              <span className="text-muted-foreground">Reason</span>
+              <input
+                type="text"
+                name="reason"
+                required
+                placeholder="e.g. customer abandoned the job"
+                className="mt-1 w-full rounded border px-3 py-1.5 text-sm"
+              />
+            </label>
+            <Button type="submit" size="sm" variant="outline">Release to shop stock</Button>
+          </form>
+        </section>
+      )}
+
       <section className="rounded-md border p-4">
         <h3 className="mb-3 text-lg font-semibold">Damage Marks</h3>
         {damageMarks.length > 0 ? (
@@ -141,6 +181,32 @@ export default async function SlabDetailPage({ params }: { params: Promise<{ id:
           />
           <Button type="submit" size="sm" variant="outline">Upload</Button>
         </form>
+      </section>
+
+      <section className="rounded-md border p-4">
+        <h3 className="mb-3 text-lg font-semibold">Audit History</h3>
+        {auditEvents.length > 0 ? (
+          <ol className="space-y-2 text-sm">
+            {auditEvents.map((event) => (
+              <li key={String(event.id)} className="rounded border px-3 py-2">
+                <div className="flex items-center justify-between">
+                  <span className="font-medium capitalize">{labelize(event.action as string)}</span>
+                  <span className="text-xs text-muted-foreground">{new Date(event.createdAt as string).toLocaleString()}</span>
+                </div>
+                {(event.reason as string | null) && <div className="text-muted-foreground">{event.reason as string}</div>}
+                {(event.fromProjectId || event.toProjectId) ? (
+                  <div className="text-xs text-muted-foreground">
+                    {(event.fromProjectId as string | null) ? `from ${String(event.fromProjectId)}` : ''}
+                    {event.fromProjectId && event.toProjectId ? ' → ' : ''}
+                    {(event.toProjectId as string | null) ? `to ${String(event.toProjectId)}` : ''}
+                  </div>
+                ) : null}
+              </li>
+            ))}
+          </ol>
+        ) : (
+          <p className="text-sm text-muted-foreground">No audit history yet.</p>
+        )}
       </section>
     </div>
   );
