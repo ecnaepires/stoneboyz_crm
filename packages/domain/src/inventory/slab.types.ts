@@ -36,6 +36,7 @@ export interface SlabAuditEvent {
 export interface Slab {
   id: string;
   parentSlabId: string | null;
+  ownerCustomerId: string | null;
   materialColorId: string | null;
   storageLocationId: string | null;
   inventoryReceiptId: string | null;
@@ -80,6 +81,7 @@ export interface CreateSlabInput {
   kind?: SlabKind | undefined;
   availability?: SlabAvailability | undefined;
   ownership?: SlabOwnership | undefined;
+  ownerCustomerId?: string | null | undefined;
   condition?: SlabCondition | undefined;
   holdReason?: string | null | undefined;
   lotNumber?: string | undefined;
@@ -99,6 +101,7 @@ export interface UpdateSlabInput {
   kind?: SlabKind | undefined;
   availability?: SlabAvailability | undefined;
   ownership?: SlabOwnership | undefined;
+  ownerCustomerId?: string | null | undefined;
   condition?: SlabCondition | undefined;
   holdReason?: string | null | undefined;
   stoneType?: string | undefined;
@@ -131,6 +134,7 @@ export interface ListSlabsInput {
   kind?: SlabKind | undefined;
   availability?: SlabAvailability | undefined;
   ownership?: SlabOwnership | undefined;
+  ownerCustomerId?: string | undefined;
   condition?: SlabCondition | undefined;
   materialColorId?: string | undefined;
   storageLocationId?: string | undefined;

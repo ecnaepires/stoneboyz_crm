@@ -133,6 +133,43 @@ describe('slabs', () => {
     expect(body.data).toHaveLength(1);
   });
 
+  it('rejects customer-supplied slab without an owning customer', async () => {
+    const created = await createSlab({ ownership: 'customer_supplied' });
+
+    expect(created.response.status).toBe(400);
+  });
+
+  it('persists the owning customer for customer-supplied slabs', async () => {
+    const created = await createSlab({
+      ownership: 'customer_supplied',
+      ownerCustomerId: SEEDED_CUSTOMER_ID
+    });
+
+    expect(created.response.status).toBe(201);
+    expect(created.body.ownerCustomerId).toBe(SEEDED_CUSTOMER_ID);
+  });
+
+  it('rejects an owning customer on non customer-supplied slabs', async () => {
+    const created = await createSlab({
+      ownership: 'shop_owned',
+      ownerCustomerId: SEEDED_CUSTOMER_ID
+    });
+
+    expect(created.response.status).toBe(400);
+  });
+
+  it('filters slabs by owning customer', async () => {
+    await createSlab();
+    await createSlab({ ownership: 'customer_supplied', ownerCustomerId: SEEDED_CUSTOMER_ID });
+
+    const response = await fetch(`${slabsUrl()}?ownerCustomerId=${SEEDED_CUSTOMER_ID}`);
+    const body = await response.json() as { data: Array<Record<string, unknown>> };
+
+    expect(response.status).toBe(200);
+    expect(body.data).toHaveLength(1);
+    expect(body.data[0]?.ownerCustomerId).toBe(SEEDED_CUSTOMER_ID);
+  });
+
   it('reserves and releases a slab through quote line items', async () => {
     const slab = await createSlab();
     const quote = await createQuote();
@@ -191,7 +228,7 @@ describe('slabs', () => {
   });
 
   it('keeps customer supplied remnants held for the job after cut', async () => {
-    const slab = await createSlab({ ownership: 'customer_supplied' });
+    const slab = await createSlab({ ownership: 'customer_supplied', ownerCustomerId: SEEDED_CUSTOMER_ID });
     const projectResponse = await fetch(projectsUrl(), {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
@@ -393,7 +430,7 @@ describe('slabs', () => {
   });
 
   it('blocks detaching customer-supplied material and keeps it reserved', async () => {
-    const slab = await createSlab({ ownership: 'customer_supplied' });
+    const slab = await createSlab({ ownership: 'customer_supplied', ownerCustomerId: SEEDED_CUSTOMER_ID });
     const project = await createProject('Detach restricted project');
     await attachSlab(project.id as string, slab.body.id);
 
@@ -412,7 +449,7 @@ describe('slabs', () => {
   });
 
   it('releases restricted material to shop stock, flipping ownership and availability', async () => {
-    const slab = await createSlab({ ownership: 'customer_supplied' });
+    const slab = await createSlab({ ownership: 'customer_supplied', ownerCustomerId: SEEDED_CUSTOMER_ID });
 
     const response = await fetch(`${slabsUrl()}/${slab.body.id}/release-to-shop`, {
       method: 'POST',
@@ -441,7 +478,7 @@ describe('slabs', () => {
   });
 
   it('forbids release to shop stock for non-managers', async () => {
-    const slab = await createSlab({ ownership: 'customer_supplied' });
+    const slab = await createSlab({ ownership: 'customer_supplied', ownerCustomerId: SEEDED_CUSTOMER_ID });
 
     const salespersonToken = await seedTestSession(app.get(DATABASE_POOL), 'salesperson');
     setTestAuthToken(salespersonToken);
@@ -505,7 +542,7 @@ describe('slabs', () => {
   });
 
   it('blocks reassigning customer-supplied material to a different customer', async () => {
-    const slab = await createSlab({ ownership: 'customer_supplied' });
+    const slab = await createSlab({ ownership: 'customer_supplied', ownerCustomerId: SEEDED_CUSTOMER_ID });
     const source = await createProject('CS source');
     await attachSlab(source.id as string, slab.body.id);
 
@@ -524,7 +561,7 @@ describe('slabs', () => {
   });
 
   it('allows reassigning customer-supplied material within the same customer', async () => {
-    const slab = await createSlab({ ownership: 'customer_supplied' });
+    const slab = await createSlab({ ownership: 'customer_supplied', ownerCustomerId: SEEDED_CUSTOMER_ID });
     const source = await createProject('CS same source');
     await attachSlab(source.id as string, slab.body.id);
     const target = await createProject('CS same target');

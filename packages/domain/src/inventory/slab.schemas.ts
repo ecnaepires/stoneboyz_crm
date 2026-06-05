@@ -32,6 +32,7 @@ export const createSlabSchema = z.object({
   kind: slabKindSchema.optional(),
   availability: slabAvailabilitySchema.optional(),
   ownership: slabOwnershipSchema.default('shop_owned'),
+  ownerCustomerId: nullableUuidSchema.optional(),
   condition: slabConditionSchema.default('good'),
   holdReason: z.string().min(1).nullable().optional(),
   stoneType: z.string().min(1),
@@ -46,6 +47,21 @@ export const createSlabSchema = z.object({
   costCents: z.number().int().min(0).default(0),
   imageUrls: imageUrlsSchema.default([]),
   notes: z.string().min(1).optional()
+}).superRefine((input, ctx) => {
+  if (input.ownership === 'customer_supplied' && !input.ownerCustomerId) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['ownerCustomerId'],
+      message: 'ownerCustomerId is required for customer-supplied slabs'
+    });
+  }
+  if (input.ownership !== 'customer_supplied' && input.ownerCustomerId) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['ownerCustomerId'],
+      message: 'ownerCustomerId is only allowed for customer-supplied slabs'
+    });
+  }
 });
 
 export const updateSlabSchema = z.object({
@@ -56,6 +72,7 @@ export const updateSlabSchema = z.object({
   kind: slabKindSchema.optional(),
   availability: slabAvailabilitySchema.optional(),
   ownership: slabOwnershipSchema.optional(),
+  ownerCustomerId: nullableUuidSchema.optional(),
   condition: slabConditionSchema.optional(),
   holdReason: z.string().min(1).nullable().optional(),
   stoneType: z.string().min(1).optional(),
@@ -88,6 +105,7 @@ export const listSlabsSchema = z.object({
   kind: slabKindSchema.optional(),
   availability: slabAvailabilitySchema.optional(),
   ownership: slabOwnershipSchema.optional(),
+  ownerCustomerId: z.string().uuid().optional(),
   condition: slabConditionSchema.optional(),
   materialColorId: z.string().uuid().optional(),
   storageLocationId: z.string().uuid().optional(),

@@ -1,6 +1,6 @@
 # Restricted Material Release And Reassignment
 
-Material Ownership controls whether leftover stone can be reused. Two ownerships are restricted — `job_purchased` and `customer_supplied` — versus `shop_owned`, which is free shop stock. This decision fixes what detach, reassign, and release-to-shop-stock do for each ownership, so customer and job material cannot leak into other jobs by accident.
+Material Ownership controls whether leftover stone can be reused. Two ownerships are restricted — `job_purchased` and `customer_supplied` — versus `shop_owned`, which is free shop stock. This decision fixes what attach, detach, reassign, and release-to-shop-stock do for each ownership, so customer and job material cannot leak into other jobs by accident.
 
 ## Decision
 
@@ -18,6 +18,10 @@ Material Ownership controls whether leftover stone can be reused. Two ownerships
 
 - `shop_owned` and `job_purchased`: may move to any Job.
 - `customer_supplied`: may move only to another Job of the **same customer**; moving to a different customer is hard-blocked.
+
+**Owning Customer anchor.** A `customer_supplied` Slab stores its owning Customer in `slabs.owner_customer_id` (nullable; required whenever `ownership = customer_supplied`, null otherwise). Ownership cannot be inferred from a live Job link alone, because a customer-supplied Slab can sit loose in inventory at intake or as a returned remnant with no link to compare against. The stored anchor lets the same-customer rule hold whether or not the Slab is currently linked.
+
+**Attach (link a loose Slab to a Job).** The cross-customer block applies on first attach, not only on reassign: attaching a `customer_supplied` Slab to a Job whose Customer is not its `owner_customer_id` is hard-blocked (`409 INVALID_TRANSITION`). Release to Shop Stock clears `owner_customer_id` when it flips ownership to `shop_owned`.
 
 **Audit:** every reserve, release, reassign, release-to-shop, and cut writes a `slab_audit_events` row in the same transaction as the state change. The in-memory event bus continues to emit alongside it.
 

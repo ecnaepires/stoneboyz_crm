@@ -3,6 +3,7 @@ import type { ProjectSlab, Slab } from '@stoneboyz/domain';
 export interface SlabRow {
   id: string;
   parent_slab_id: string | null;
+  owner_customer_id: string | null;
   material_color_id: string | null;
   storage_location_id: string | null;
   inventory_receipt_id: string | null;
@@ -51,6 +52,7 @@ export const mapSlabRow = (row: SlabRow): Slab => {
   return {
     id: row.id,
     parentSlabId: row.parent_slab_id,
+    ownerCustomerId: row.owner_customer_id,
     materialColorId: row.material_color_id,
     storageLocationId: row.storage_location_id,
     inventoryReceiptId: row.inventory_receipt_id,

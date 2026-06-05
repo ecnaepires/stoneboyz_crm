@@ -23,6 +23,7 @@ const UPDATE_COLUMNS = {
   kind: 'kind',
   availability: 'availability',
   ownership: 'ownership',
+  ownerCustomerId: 'owner_customer_id',
   condition: 'condition',
   holdReason: 'hold_reason',
   stoneType: 'stone_type',
@@ -102,6 +103,10 @@ export class SlabsRepository {
       where.push(`ownership = ${addValue(input.ownership)}`);
     }
 
+    if (input.ownerCustomerId !== undefined) {
+      where.push(`owner_customer_id = ${addValue(input.ownerCustomerId)}`);
+    }
+
     if (input.condition !== undefined) {
       where.push(`condition = ${addValue(input.condition)}`);
     }
@@ -179,9 +184,10 @@ export class SlabsRepository {
           cost_cents,
           image_urls,
           notes,
-          status
+          status,
+          owner_customer_id
         )
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21::text[], $22, $23)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21::text[], $22, $23, $24)
         RETURNING *
       `,
       [
@@ -207,7 +213,8 @@ export class SlabsRepository {
         input.costCents ?? 0,
         input.imageUrls ?? [],
         input.notes ?? null,
-        parentSlabId === null ? input.availability ?? 'available' : 'remnant'
+        parentSlabId === null ? input.availability ?? 'available' : 'remnant',
+        input.ownerCustomerId ?? null
       ]
     );
 
@@ -463,6 +470,7 @@ export class SlabsRepository {
           {
             ...remnant,
             ownership: sourceSlab.ownership,
+            ownerCustomerId: sourceSlab.ownerCustomerId,
             availability: remnant.availability ?? remnantAvailability,
             tagCode: remnant.tagCode ?? `${sourceSlab.tagCode ?? sourceSlab.id}-R${remnantNumber}`
           },

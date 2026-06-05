@@ -7,6 +7,7 @@ import { mapProjectSlabRow, mapSlabRow, type ProjectSlabRow } from './slab.mappe
 interface ProjectSlabJoinedRow extends ProjectSlabRow {
   slab_row_id: string;
   parent_slab_id: string | null;
+  owner_customer_id: string | null;
   material_color_id: string | null;
   storage_location_id: string | null;
   inventory_receipt_id: string | null;
@@ -67,6 +68,7 @@ export class ProjectSlabsRepository {
           ps.created_at,
           s.id AS slab_row_id,
           s.parent_slab_id,
+          s.owner_customer_id,
           s.material_color_id,
           s.storage_location_id,
           s.inventory_receipt_id,
@@ -107,6 +109,7 @@ export class ProjectSlabsRepository {
         mapSlabRow({
           id: row.slab_row_id,
           parent_slab_id: row.parent_slab_id,
+          owner_customer_id: row.owner_customer_id,
           material_color_id: row.material_color_id,
           storage_location_id: row.storage_location_id,
           inventory_receipt_id: row.inventory_receipt_id,

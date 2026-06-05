@@ -23,7 +23,7 @@ A physical label on a Slab or Remnant that identifies the inventory record. A Sl
 
 ## Material Ownership
 
-The party whose rights control whether a Slab or Remnant can be reused. Material Ownership determines whether leftover stone returns to shop stock or stays held for a Job.
+The party whose rights control whether a Slab or Remnant can be reused. Material Ownership determines whether leftover stone returns to shop stock or stays held for a Job. Shop-owned material is free stock; customer-supplied material is anchored to the specific Customer who owns it and may only be linked to that Customer's Jobs; job-purchased material is shop-bought for work but may move between Jobs. A customer-supplied Slab carries its owning Customer even while it sits loose in inventory, so the anchor survives a Slab that is not currently linked to a Job.
 
 ## Material Color
 

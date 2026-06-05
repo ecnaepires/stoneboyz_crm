@@ -9,6 +9,7 @@ describe('slab mapper', () => {
       mapSlabRow({
         id: '11111111-1111-4111-8111-111111111111',
         parent_slab_id: null,
+        owner_customer_id: null,
         material_color_id: null,
         storage_location_id: null,
         inventory_receipt_id: null,
