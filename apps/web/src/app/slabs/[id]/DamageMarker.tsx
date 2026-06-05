@@ -86,6 +86,7 @@ export function DamageMarker({ imageUrl, marks, saveAction }: DamageMarkerProps)
           if (dragStart) dragMarkTo({ x: event.clientX, y: event.clientY });
           setDragStart(null);
         }}
+        onClick={(event) => markAt({ x: event.clientX, y: event.clientY })}
       >
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
@@ -129,6 +130,7 @@ export function DamageMarker({ imageUrl, marks, saveAction }: DamageMarkerProps)
 
       <form
         action={(formData) => {
+          if (!shape) return;
           startTransition(async () => {
             await saveAction(formData);
             setShape(null);
