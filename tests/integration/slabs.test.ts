@@ -516,6 +516,43 @@ describe('slabs', () => {
       body: JSON.stringify({ actorUserId: ACTOR_USER_ID, ...body })
     });
 
+  it('blocks attaching customer-supplied material to a different customer job', async () => {
+    const otherCustomer = await createCustomer('Foreign Owner Co');
+    const slab = await createSlab({ ownership: 'customer_supplied', ownerCustomerId: otherCustomer.id });
+    const project = await createProject('Wrong-customer attach');
+
+    const response = await attachSlab(project.id as string, slab.body.id);
+    expect(response.status).toBe(409);
+
+    const slabAfter = await (await fetch(`${slabsUrl()}/${slab.body.id}`)).json() as Record<string, unknown>;
+    expect(slabAfter.availability).toBe('available');
+
+    const list = await (await fetch(projectSlabsUrl(project.id as string))).json() as Record<string, unknown>;
+    expect(list.data).toHaveLength(0);
+  });
+
+  it('allows attaching customer-supplied material to its owning customer job', async () => {
+    const slab = await createSlab({ ownership: 'customer_supplied', ownerCustomerId: SEEDED_CUSTOMER_ID });
+    const project = await createProject('Owner attach');
+
+    const response = await attachSlab(project.id as string, slab.body.id);
+    expect(response.status).toBe(201);
+  });
+
+  it('clears the owning customer when releasing customer-supplied material to shop stock', async () => {
+    const slab = await createSlab({ ownership: 'customer_supplied', ownerCustomerId: SEEDED_CUSTOMER_ID });
+
+    const response = await fetch(`${slabsUrl()}/${slab.body.id}/release-to-shop`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ reason: 'Customer abandoned the job' })
+    });
+    expect(response.status).toBe(200);
+
+    const slabAfter = await (await fetch(`${slabsUrl()}/${slab.body.id}`)).json() as Record<string, unknown>;
+    expect(slabAfter.ownerCustomerId).toBeNull();
+  });
+
   it('reassigns shop-owned material to another customer job and keeps it reserved', async () => {
     const slab = await createSlab();
     const source = await createProject('Reassign source');

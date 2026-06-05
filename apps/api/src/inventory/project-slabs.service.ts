@@ -46,6 +46,19 @@ export class ProjectSlabsService {
 
     try {
       await client.query('BEGIN');
+
+      const slab = await this.slabsRepository.findById(input.slabId, client);
+      if (slab === null) {
+        throw new NotFoundException({ code: 'NOT_FOUND', message: 'Slab not found' });
+      }
+
+      if (slab.ownership === 'customer_supplied' && slab.ownerCustomerId !== customerId) {
+        throw new ConflictException({
+          code: 'INVALID_TRANSITION',
+          message: 'Customer-supplied material belongs to another customer'
+        });
+      }
+
       await this.slabsService.reserveForProject(input.slabId, projectId, input.actorUserId, client);
       const projectSlab = await this.projectSlabsRepository.attach(projectId, input, client);
       await client.query('COMMIT');

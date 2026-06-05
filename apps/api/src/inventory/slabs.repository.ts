@@ -417,7 +417,7 @@ export class SlabsRepository {
     const result = await client.query<SlabRow>(
       `
         UPDATE slabs
-        SET ownership = 'shop_owned', availability = 'available', status = 'available', updated_at = now()
+        SET ownership = 'shop_owned', owner_customer_id = NULL, availability = 'available', status = 'available', updated_at = now()
         WHERE id = $1
           AND deleted_at IS NULL
         RETURNING *
