@@ -149,6 +149,35 @@ export class SlabsService {
     }
   }
 
+  async releaseToShop(slabId: string, actorUserId: string, reason: string): Promise<Slab> {
+    const client = await this.pool.connect();
+
+    try {
+      await client.query('BEGIN');
+      const current = await this.slabsRepository.findById(slabId, client);
+
+      if (current === null) {
+        throw new NotFoundException({ code: 'NOT_FOUND', message: 'Slab not found' });
+      }
+
+      const updated = await this.slabsRepository.releaseToShopStock(slabId, client);
+      await this.inventorySupportRepository.insertAuditEvent(
+        { slabId, actorUserId, action: 'released_to_shop', reason },
+        client
+      );
+      await client.query('COMMIT');
+
+      this.eventBus.emit('slab.released', buildSlabReservedPayload(slabId, actorUserId));
+
+      return updated as Slab;
+    } catch (error) {
+      await client.query('ROLLBACK');
+      throw error;
+    } finally {
+      client.release();
+    }
+  }
+
   async cutWithClient(slabId: string, input: CutSlabInput, client: PoolClient): Promise<{ slab: Slab; remnants: Slab[] }> {
     const result = await this.slabsRepository.cut(slabId, input.remnants ?? [], client);
 

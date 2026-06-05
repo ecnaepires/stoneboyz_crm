@@ -406,6 +406,23 @@ export class SlabsRepository {
     return row === undefined ? null : mapSlabRow(row);
   }
 
+  async releaseToShopStock(slabId: string, client: Queryable = this.pool): Promise<Slab | null> {
+    const result = await client.query<SlabRow>(
+      `
+        UPDATE slabs
+        SET ownership = 'shop_owned', availability = 'available', status = 'available', updated_at = now()
+        WHERE id = $1
+          AND deleted_at IS NULL
+        RETURNING *
+      `,
+      [slabId]
+    );
+
+    const row = result.rows[0];
+
+    return row === undefined ? null : mapSlabRow(row);
+  }
+
   async cut(slabId: string, remnants: CreateSlabInput[], client: Queryable): Promise<{ slab: Slab | null; remnants: Slab[] }> {
     const result = await client.query<SlabRow>(
       `

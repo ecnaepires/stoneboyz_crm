@@ -410,4 +410,147 @@ describe('slabs', () => {
     const events = (await (await fetch(`${slabsUrl()}/${slab.body.id}/audit`)).json() as Record<string, unknown>).data as Array<Record<string, unknown>>;
     expect(events.some((e) => e.action === 'released')).toBe(false);
   });
+
+  it('releases restricted material to shop stock, flipping ownership and availability', async () => {
+    const slab = await createSlab({ ownership: 'customer_supplied' });
+
+    const response = await fetch(`${slabsUrl()}/${slab.body.id}/release-to-shop`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ reason: 'Customer abandoned the job' })
+    });
+    expect(response.status).toBe(200);
+
+    const slabAfter = await (await fetch(`${slabsUrl()}/${slab.body.id}`)).json() as Record<string, unknown>;
+    expect(slabAfter.ownership).toBe('shop_owned');
+    expect(slabAfter.availability).toBe('available');
+
+    const events = (await (await fetch(`${slabsUrl()}/${slab.body.id}/audit`)).json() as Record<string, unknown>).data as Array<Record<string, unknown>>;
+    expect(events.some((e) => e.action === 'released_to_shop' && e.reason === 'Customer abandoned the job')).toBe(true);
+  });
+
+  it('rejects release to shop stock without a reason', async () => {
+    const slab = await createSlab({ ownership: 'job_purchased' });
+
+    const response = await fetch(`${slabsUrl()}/${slab.body.id}/release-to-shop`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({})
+    });
+    expect(response.status).toBe(400);
+  });
+
+  it('forbids release to shop stock for non-managers', async () => {
+    const slab = await createSlab({ ownership: 'customer_supplied' });
+
+    const salespersonToken = await seedTestSession(app.get(DATABASE_POOL), 'salesperson');
+    setTestAuthToken(salespersonToken);
+
+    const response = await fetch(`${slabsUrl()}/${slab.body.id}/release-to-shop`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ reason: 'trying as salesperson' })
+    });
+    expect(response.status).toBe(403);
+  });
+
+  const createCustomer = async (name: string): Promise<Record<string, unknown>> => {
+    const response = await fetch(`${baseUrl}/api/v1/customers`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ actorUserId: ACTOR_USER_ID, customerKind: 'company', name, companyName: name, status: 'lead', type: 'customer', ownerUserId: ACTOR_USER_ID })
+    });
+    return await response.json() as Record<string, unknown>;
+  };
+
+  const createProjectForCustomer = async (customerId: string, title: string): Promise<Record<string, unknown>> => {
+    const response = await fetch(projectsUrl(), {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ actorUserId: ACTOR_USER_ID, customerId, title, ownerUserId: ACTOR_USER_ID })
+    });
+    return await response.json() as Record<string, unknown>;
+  };
+
+  const reassign = (sourceProjectId: string, slabId: unknown, body: Record<string, unknown>): Promise<Response> =>
+    fetch(`${projectSlabsUrl(sourceProjectId)}/${slabId}/reassign`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ actorUserId: ACTOR_USER_ID, ...body })
+    });
+
+  it('reassigns shop-owned material to another customer job and keeps it reserved', async () => {
+    const slab = await createSlab();
+    const source = await createProject('Reassign source');
+    await attachSlab(source.id as string, slab.body.id);
+
+    const otherCustomer = await createCustomer('Other Stone Co');
+    const target = await createProjectForCustomer(otherCustomer.id as string, 'Reassign target');
+
+    const response = await reassign(source.id as string, slab.body.id, {
+      targetCustomerId: otherCustomer.id,
+      targetProjectId: target.id,
+      reason: 'Overage allocated to other job'
+    });
+    expect(response.status).toBe(200);
+
+    const slabAfter = await (await fetch(`${slabsUrl()}/${slab.body.id}`)).json() as Record<string, unknown>;
+    expect(slabAfter.availability).toBe('reserved');
+
+    const events = (await (await fetch(`${slabsUrl()}/${slab.body.id}/audit`)).json() as Record<string, unknown>).data as Array<Record<string, unknown>>;
+    expect(events.some((e) => e.action === 'reassigned' && e.fromProjectId === source.id && e.toProjectId === target.id)).toBe(true);
+
+    const sourceList = await (await fetch(projectSlabsUrl(source.id as string))).json() as Record<string, unknown>;
+    expect(sourceList.data).toHaveLength(0);
+  });
+
+  it('blocks reassigning customer-supplied material to a different customer', async () => {
+    const slab = await createSlab({ ownership: 'customer_supplied' });
+    const source = await createProject('CS source');
+    await attachSlab(source.id as string, slab.body.id);
+
+    const otherCustomer = await createCustomer('Different Co');
+    const target = await createProjectForCustomer(otherCustomer.id as string, 'CS target');
+
+    const response = await reassign(source.id as string, slab.body.id, {
+      targetCustomerId: otherCustomer.id,
+      targetProjectId: target.id,
+      reason: 'should be blocked'
+    });
+    expect(response.status).toBe(409);
+
+    const sourceList = await (await fetch(projectSlabsUrl(source.id as string))).json() as Record<string, unknown>;
+    expect(sourceList.data).toHaveLength(1);
+  });
+
+  it('allows reassigning customer-supplied material within the same customer', async () => {
+    const slab = await createSlab({ ownership: 'customer_supplied' });
+    const source = await createProject('CS same source');
+    await attachSlab(source.id as string, slab.body.id);
+    const target = await createProject('CS same target');
+
+    const response = await reassign(source.id as string, slab.body.id, {
+      targetCustomerId: SEEDED_CUSTOMER_ID,
+      targetProjectId: target.id,
+      reason: 'moved to other room job'
+    });
+    expect(response.status).toBe(200);
+  });
+
+  it('forbids reassignment for non-managers', async () => {
+    const slab = await createSlab();
+    const source = await createProject('Forbid source');
+    await attachSlab(source.id as string, slab.body.id);
+    const target = await createProject('Forbid target');
+
+    const salespersonToken = await seedTestSession(app.get(DATABASE_POOL), 'salesperson');
+    setTestAuthToken(salespersonToken);
+
+    const response = await reassign(source.id as string, slab.body.id, {
+      targetCustomerId: SEEDED_CUSTOMER_ID,
+      targetProjectId: target.id,
+      reason: 'as salesperson'
+    });
+    expect(response.status).toBe(403);
+  });
 });
