@@ -24,6 +24,9 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Build domain package
+        run: pnpm -C packages/domain build
+
       - name: Typecheck domain
         run: pnpm typecheck
 
@@ -69,6 +72,9 @@ jobs:
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+
+      - name: Build domain package
+        run: pnpm -C packages/domain build
 
       - name: Reset test database
         run: pnpm db:test:reset
