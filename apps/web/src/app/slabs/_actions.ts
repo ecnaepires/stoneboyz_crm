@@ -170,24 +170,15 @@ export async function createDamageMarkAction(slabId: string, formData: FormData)
 }
 
 export async function releaseToShopAction(slabId: string, formData: FormData) {
-  const { cookies } = await import('next/headers');
-  const cookieStore = await cookies();
-  const sessionCookie = cookieStore.get('better-auth.session_token');
-  const baseUrl = process.env.API_BASE_URL;
-  if (!baseUrl) throw new Error('API_BASE_URL not set');
-  const apiOrigin = new URL(baseUrl).origin;
   const reason = toOptionalString(formData.get('reason'));
   if (!reason) throw new Error('A reason is required to release material to shop stock');
 
-  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-  if (sessionCookie) headers['Cookie'] = `better-auth.session_token=${sessionCookie.value}`;
-
-  const res = await fetch(`${apiOrigin}/api/v1/inventory/slabs/${slabId}/release-to-shop`, {
-    method: 'POST',
-    headers,
-    body: JSON.stringify({ reason }),
+  const client = await getApiClientWithAuth();
+  const { error } = await client.POST('/inventory/slabs/{slabId}/release-to-shop', {
+    params: { path: { slabId } },
+    body: { reason },
   });
 
-  if (!res.ok) throw new Error('Failed to release material to shop stock');
+  if (error) throw new Error('Failed to release material to shop stock: ' + JSON.stringify(error));
   revalidatePath(`/slabs/${slabId}`);
 }

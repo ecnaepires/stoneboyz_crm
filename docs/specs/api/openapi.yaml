@@ -2310,9 +2310,29 @@ components:
       type: string
       enum: [A, B, C]
 
+    SlabKind:
+      type: string
+      enum: [full_slab, remnant]
+
+    SlabAvailability:
+      type: string
+      enum: [available, reserved, cut, hold, archived]
+
+    SlabOwnership:
+      type: string
+      enum: [shop_owned, job_purchased, customer_supplied]
+
+    SlabCondition:
+      type: string
+      enum: [good, minor_damage, major_damage]
+
+    SlabAuditAction:
+      type: string
+      enum: [reserved, released, reassigned, released_to_shop, cut]
+
     Slab:
       type: object
-      required: [id, stoneType, finish, qualityGrade, lengthIn, widthIn, thicknessCm, costCents, imageUrls, status, createdAt, updatedAt]
+      required: [id, kind, availability, ownership, condition, stoneType, finish, qualityGrade, lengthIn, widthIn, thicknessCm, costCents, imageUrls, status, createdAt, updatedAt]
       properties:
         id:
           type: string
@@ -2320,6 +2340,36 @@ components:
         parentSlabId:
           type: string
           format: uuid
+          nullable: true
+        ownerCustomerId:
+          type: string
+          format: uuid
+          nullable: true
+        materialColorId:
+          type: string
+          format: uuid
+          nullable: true
+        storageLocationId:
+          type: string
+          format: uuid
+          nullable: true
+        inventoryReceiptId:
+          type: string
+          format: uuid
+          nullable: true
+        tagCode:
+          type: string
+          nullable: true
+        kind:
+          $ref: '#/components/schemas/SlabKind'
+        availability:
+          $ref: '#/components/schemas/SlabAvailability'
+        ownership:
+          $ref: '#/components/schemas/SlabOwnership'
+        condition:
+          $ref: '#/components/schemas/SlabCondition'
+        holdReason:
+          type: string
           nullable: true
         stoneType:
           type: string
@@ -2336,6 +2386,8 @@ components:
         thicknessCm:
           type: number
           minimum: 1
+        sqFt:
+          type: number
         lotNumber:
           type: string
           nullable: true
@@ -2394,6 +2446,35 @@ components:
         thicknessCm:
           type: number
           minimum: 1
+        kind:
+          $ref: '#/components/schemas/SlabKind'
+        availability:
+          $ref: '#/components/schemas/SlabAvailability'
+        ownership:
+          $ref: '#/components/schemas/SlabOwnership'
+        ownerCustomerId:
+          type: string
+          format: uuid
+          nullable: true
+        condition:
+          $ref: '#/components/schemas/SlabCondition'
+        holdReason:
+          type: string
+          nullable: true
+        materialColorId:
+          type: string
+          format: uuid
+          nullable: true
+        storageLocationId:
+          type: string
+          format: uuid
+          nullable: true
+        inventoryReceiptId:
+          type: string
+          format: uuid
+          nullable: true
+        tagCode:
+          type: string
         lotNumber:
           type: string
         bundleNumber:
@@ -2433,6 +2514,35 @@ components:
         thicknessCm:
           type: number
           minimum: 1
+        kind:
+          $ref: '#/components/schemas/SlabKind'
+        availability:
+          $ref: '#/components/schemas/SlabAvailability'
+        ownership:
+          $ref: '#/components/schemas/SlabOwnership'
+        ownerCustomerId:
+          type: string
+          format: uuid
+          nullable: true
+        condition:
+          $ref: '#/components/schemas/SlabCondition'
+        holdReason:
+          type: string
+          nullable: true
+        materialColorId:
+          type: string
+          format: uuid
+          nullable: true
+        storageLocationId:
+          type: string
+          format: uuid
+          nullable: true
+        inventoryReceiptId:
+          type: string
+          format: uuid
+          nullable: true
+        tagCode:
+          type: string
         lotNumber:
           type: string
           nullable: true
@@ -2511,6 +2621,88 @@ components:
           format: uuid
         notes:
           type: string
+
+    ReassignProjectSlabRequest:
+      type: object
+      required: [targetCustomerId, targetProjectId, reason]
+      properties:
+        targetCustomerId:
+          type: string
+          format: uuid
+        targetProjectId:
+          type: string
+          format: uuid
+        reason:
+          type: string
+          minLength: 1
+
+    ReleaseToShopRequest:
+      type: object
+      required: [reason]
+      properties:
+        reason:
+          type: string
+          minLength: 1
+
+    SlabAuditEvent:
+      type: object
+      required: [id, slabId, action, createdAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        slabId:
+          type: string
+          format: uuid
+        actorUserId:
+          type: string
+          format: uuid
+          nullable: true
+        action:
+          $ref: '#/components/schemas/SlabAuditAction'
+        fromProjectId:
+          type: string
+          format: uuid
+          nullable: true
+        toProjectId:
+          type: string
+          format: uuid
+          nullable: true
+        reason:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+
+    SlabAuditEventsResponse:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/SlabAuditEvent'
+
+    FindMaterialResult:
+      type: object
+      required: [slab, fitsRotated, wasteSqFt]
+      properties:
+        slab:
+          $ref: '#/components/schemas/Slab'
+        fitsRotated:
+          type: boolean
+        wasteSqFt:
+          type: number
+
+    FindMaterialResponse:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/FindMaterialResult'
 
     PaginatedSlabsResponse:
       type: object
@@ -2843,6 +3035,37 @@ paths:
           in: query
           schema:
             $ref: '#/components/schemas/SlabStatus'
+        - name: kind
+          in: query
+          schema:
+            $ref: '#/components/schemas/SlabKind'
+        - name: availability
+          in: query
+          schema:
+            $ref: '#/components/schemas/SlabAvailability'
+        - name: ownership
+          in: query
+          schema:
+            $ref: '#/components/schemas/SlabOwnership'
+        - name: ownerCustomerId
+          in: query
+          schema:
+            type: string
+            format: uuid
+        - name: condition
+          in: query
+          schema:
+            $ref: '#/components/schemas/SlabCondition'
+        - name: materialColorId
+          in: query
+          schema:
+            type: string
+            format: uuid
+        - name: storageLocationId
+          in: query
+          schema:
+            type: string
+            format: uuid
         - name: stoneType
           in: query
           schema:
@@ -2880,6 +3103,56 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+
+  /inventory/slabs/find-material:
+    get:
+      operationId: findMaterial
+      summary: Find available slabs that fit the requested dimensions
+      parameters:
+        - name: minLengthIn
+          in: query
+          required: true
+          schema:
+            type: number
+            minimum: 0
+        - name: minWidthIn
+          in: query
+          required: true
+          schema:
+            type: number
+            minimum: 0
+        - name: kind
+          in: query
+          schema:
+            $ref: '#/components/schemas/SlabKind'
+        - name: materialColorId
+          in: query
+          schema:
+            type: string
+            format: uuid
+        - name: thicknessCm
+          in: query
+          schema:
+            type: number
+        - name: finish
+          in: query
+          schema:
+            $ref: '#/components/schemas/SlabFinish'
+        - name: includeHeld
+          in: query
+          schema:
+            type: boolean
+        - name: includeDamaged
+          in: query
+          schema:
+            type: boolean
+      responses:
+        '200':
+          description: Matching slabs returned.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FindMaterialResponse'
 
   /price-lists:
     get:
@@ -3387,6 +3660,58 @@ paths:
               schema:
                 $ref: '#/components/schemas/CutSlabResponse'
 
+  /inventory/slabs/{slabId}/release-to-shop:
+    post:
+      operationId: releaseSlabToShop
+      summary: Release restricted material to shop stock (inventory manager / admin)
+      parameters:
+        - $ref: '#/components/parameters/SlabId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReleaseToShopRequest'
+      responses:
+        '200':
+          description: Slab released to shop stock.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Slab'
+        '400':
+          description: Invalid request.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Caller is not an inventory manager or admin.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Slab cannot be released in its current state.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /inventory/slabs/{slabId}/audit:
+    get:
+      operationId: listSlabAuditEvents
+      summary: List the audit trail for a slab
+      parameters:
+        - $ref: '#/components/parameters/SlabId'
+      responses:
+        '200':
+          description: Audit events returned newest first.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SlabAuditEventsResponse'
+
   /customers/{customerId}/projects/{projectId}/slabs:
     get:
       operationId: listProjectSlabs
@@ -3474,6 +3799,46 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/CutSlabResponse'
+
+  /customers/{customerId}/projects/{projectId}/slabs/{slabId}/reassign:
+    post:
+      operationId: reassignProjectSlab
+      summary: Reassign a slab from this job to another (inventory manager / admin)
+      parameters:
+        - $ref: '#/components/parameters/CustomerId'
+        - $ref: '#/components/parameters/ProjectId'
+        - $ref: '#/components/parameters/SlabId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReassignProjectSlabRequest'
+      responses:
+        '200':
+          description: Slab reassigned to the target job.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProjectSlab'
+        '400':
+          description: Invalid request.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Caller is not an inventory manager or admin.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Reassignment violates ownership rules.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
 
   /health:
     get:

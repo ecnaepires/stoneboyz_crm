@@ -146,17 +146,6 @@ export async function listCustomerProjectsAction(
   return (data?.data ?? []).map((project) => ({ id: project.id, title: project.title }));
 }
 
-async function apiOriginWithAuthHeaders(): Promise<{ origin: string; headers: Record<string, string> }> {
-  const { cookies } = await import('next/headers');
-  const cookieStore = await cookies();
-  const sessionCookie = cookieStore.get('better-auth.session_token');
-  const baseUrl = process.env.API_BASE_URL;
-  if (!baseUrl) throw new Error('API_BASE_URL not set');
-  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-  if (sessionCookie) headers['Cookie'] = `better-auth.session_token=${sessionCookie.value}`;
-  return { origin: new URL(baseUrl).origin, headers };
-}
-
 export async function reassignSlabAction(
   sourceCustomerId: string,
   sourceProjectId: string,
@@ -169,15 +158,17 @@ export async function reassignSlabAction(
   if (!targetCustomerId || !targetProjectId) throw new Error('Choose a target job');
   if (!reason) throw new Error('A reason is required to reassign material');
 
-  const { origin, headers } = await apiOriginWithAuthHeaders();
-  const res = await fetch(
-    `${origin}/api/v1/customers/${sourceCustomerId}/projects/${sourceProjectId}/slabs/${slabId}/reassign`,
-    { method: 'POST', headers, body: JSON.stringify({ targetCustomerId, targetProjectId, reason }) }
+  const client = await getApiClientWithAuth();
+  const { error } = await client.POST(
+    '/customers/{customerId}/projects/{projectId}/slabs/{slabId}/reassign',
+    {
+      params: { path: { customerId: sourceCustomerId, projectId: sourceProjectId, slabId } },
+      body: { targetCustomerId, targetProjectId, reason },
+    }
   );
 
-  if (!res.ok) {
-    const body = await res.text();
-    throw new Error('Failed to reassign slab: ' + body);
+  if (error) {
+    throw new Error('Failed to reassign slab: ' + JSON.stringify(error));
   }
 
   revalidatePath(`/projects/${sourceProjectId}`);
@@ -196,10 +187,16 @@ export async function findMaterialForJobAction(
   minLengthIn: number,
   minWidthIn: number
 ): Promise<FindMaterialRow[]> {
-  const { origin, headers } = await apiOriginWithAuthHeaders();
-  const query = new URLSearchParams({ minLengthIn: String(minLengthIn), minWidthIn: String(minWidthIn) });
-  const res = await fetch(`${origin}/api/v1/inventory/slabs/find-material?${query.toString()}`, { headers });
-  if (!res.ok) return [];
-  const body = (await res.json()) as { data?: Array<{ slab: FindMaterialRow }> };
-  return (body.data ?? []).map((result) => result.slab);
+  const client = await getApiClientWithAuth();
+  const { data } = await client.GET('/inventory/slabs/find-material', {
+    params: { query: { minLengthIn, minWidthIn } },
+  });
+  return (data?.data ?? []).map((result) => ({
+    id: result.slab.id,
+    tagCode: result.slab.tagCode ?? null,
+    stoneType: result.slab.stoneType,
+    lengthIn: result.slab.lengthIn,
+    widthIn: result.slab.widthIn,
+    ownership: result.slab.ownership,
+  }));
 }

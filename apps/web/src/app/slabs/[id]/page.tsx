@@ -35,19 +35,11 @@ const getDamageMarks = async (slabId: string) => {
 };
 
 const getAuditEvents = async (slabId: string) => {
-  const cookieStore = await cookies();
-  const sessionCookie = cookieStore.get('better-auth.session_token');
-  const baseUrl = process.env.API_BASE_URL;
-  if (!baseUrl) return [];
-  const headers: Record<string, string> = {};
-  if (sessionCookie) headers.Cookie = `better-auth.session_token=${sessionCookie.value}`;
-  const response = await fetch(`${new URL(baseUrl).origin}/api/v1/inventory/slabs/${slabId}/audit`, {
-    headers,
-    cache: 'no-store',
+  const client = await getApiClientWithAuth();
+  const { data } = await client.GET('/inventory/slabs/{slabId}/audit', {
+    params: { path: { slabId } },
   });
-  if (!response.ok) return [];
-  const body = await response.json() as { data?: Array<Record<string, unknown>> };
-  return body.data ?? [];
+  return data?.data ?? [];
 };
 
 export default async function SlabDetailPage({ params }: { params: Promise<{ id: string }> }) {

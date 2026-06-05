@@ -1,9 +1,12 @@
+import type { components } from '@stoneboyz/api-client';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { getApiClientWithAuth } from '@/lib/api';
 import { detachSlabFromJobAction, linkSlabToJobAction } from './_actions';
 import { AddMaterialSearch } from './AddMaterialSearch';
 import { ReassignForm } from './ReassignForm';
+
+type Slab = components['schemas']['Slab'];
 
 const labelize = (value: string) => value.replace(/_/g, ' ');
 const MANAGER_ROLES = new Set(['admin', 'inventory_manager']);
@@ -13,18 +16,7 @@ interface JobSlabsPanelProps {
   projectId: string;
 }
 
-interface SlabRow {
-  id: string;
-  tagCode: string | null;
-  stoneType: string;
-  kind: string;
-  availability: string;
-  ownership: string;
-  lengthIn: number;
-  widthIn: number;
-}
-
-const dims = (slab: SlabRow) => `${slab.lengthIn}" × ${slab.widthIn}"`;
+const dims = (slab: Slab) => `${slab.lengthIn}" × ${slab.widthIn}"`;
 const isRestricted = (ownership: string) =>
   ownership === 'job_purchased' || ownership === 'customer_supplied';
 
@@ -34,15 +26,13 @@ export async function JobSlabsPanel({ customerId, projectId }: JobSlabsPanelProp
   const { data: linkedRes } = await client.GET('/customers/{customerId}/projects/{projectId}/slabs', {
     params: { path: { customerId, projectId } },
   });
-  const linked = (linkedRes?.data ?? []) as unknown as SlabRow[];
+  const linked = linkedRes?.data ?? [];
   const linkedIds = new Set(linked.map((slab) => slab.id));
 
   const { data: materialRes } = await client.GET('/inventory/slabs', {
-    params: { query: { availability: 'available', ownerCustomerId: customerId } as Record<string, string> },
+    params: { query: { availability: 'available', ownerCustomerId: customerId } },
   });
-  const customerMaterial = ((materialRes?.data ?? []) as unknown as SlabRow[]).filter(
-    (slab) => !linkedIds.has(slab.id)
-  );
+  const customerMaterial = (materialRes?.data ?? []).filter((slab) => !linkedIds.has(slab.id));
 
   const { data: me } = await client.GET('/users/me', {});
   const isManager = MANAGER_ROLES.has((me as { role?: string } | undefined)?.role ?? '');
