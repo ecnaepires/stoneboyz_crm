@@ -1,5 +1,5 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
-import type { CreateDamageMarkInput, DamageMark } from '@stoneboyz/domain';
+import type { CreateDamageMarkInput, DamageMark, SlabAuditEvent } from '@stoneboyz/domain';
 import { InventorySupportRepository } from './inventory-support.repository.js';
 import { SlabsRepository } from './slabs.repository.js';
 
@@ -22,6 +22,10 @@ export class InventorySupportService {
 
   async listDamageMarks(slabId: string): Promise<DamageMark[]> {
     return this.inventorySupportRepository.listDamageMarks(slabId);
+  }
+
+  async listAuditEvents(slabId: string): Promise<SlabAuditEvent[]> {
+    return this.inventorySupportRepository.listAuditEvents(slabId);
   }
 
   async listMaterialColors() {

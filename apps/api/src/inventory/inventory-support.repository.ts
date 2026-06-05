@@ -1,7 +1,40 @@
 import { Inject, Injectable } from '@nestjs/common';
-import type { CreateDamageMarkInput, DamageMark, DamageMarkShape } from '@stoneboyz/domain';
-import type { Pool } from 'pg';
+import type { CreateDamageMarkInput, DamageMark, DamageMarkShape, SlabAuditAction, SlabAuditEvent } from '@stoneboyz/domain';
+import type { Pool, PoolClient } from 'pg';
 import { DATABASE_POOL } from '../database.provider.js';
+
+type QueryExecutor = Pick<Pool | PoolClient, 'query'>;
+
+export interface InsertSlabAuditEventInput {
+  slabId: string;
+  actorUserId: string | null;
+  action: SlabAuditAction;
+  fromProjectId?: string | null;
+  toProjectId?: string | null;
+  reason?: string | null;
+}
+
+interface SlabAuditEventRow {
+  id: string;
+  slab_id: string;
+  actor_user_id: string | null;
+  action: SlabAuditEvent['action'];
+  from_project_id: string | null;
+  to_project_id: string | null;
+  reason: string | null;
+  created_at: Date;
+}
+
+const mapSlabAuditEventRow = (row: SlabAuditEventRow): SlabAuditEvent => ({
+  id: row.id,
+  slabId: row.slab_id,
+  actorUserId: row.actor_user_id,
+  action: row.action,
+  fromProjectId: row.from_project_id,
+  toProjectId: row.to_project_id,
+  reason: row.reason,
+  createdAt: row.created_at.toISOString()
+});
 
 interface DamageMarkRow {
   id: string;
@@ -74,6 +107,40 @@ export class InventorySupportRepository {
     );
 
     return result.rows.map(mapDamageMarkRow);
+  }
+
+  async insertAuditEvent(input: InsertSlabAuditEventInput, executor: QueryExecutor = this.pool): Promise<SlabAuditEvent> {
+    const result = await executor.query<SlabAuditEventRow>(
+      `
+        INSERT INTO slab_audit_events (slab_id, actor_user_id, action, from_project_id, to_project_id, reason)
+        VALUES ($1, $2, $3, $4, $5, $6)
+        RETURNING *
+      `,
+      [
+        input.slabId,
+        input.actorUserId,
+        input.action,
+        input.fromProjectId ?? null,
+        input.toProjectId ?? null,
+        input.reason ?? null
+      ]
+    );
+
+    return mapSlabAuditEventRow(result.rows[0] as SlabAuditEventRow);
+  }
+
+  async listAuditEvents(slabId: string): Promise<SlabAuditEvent[]> {
+    const result = await this.pool.query<SlabAuditEventRow>(
+      `
+        SELECT *
+        FROM slab_audit_events
+        WHERE slab_id = $1
+        ORDER BY created_at ASC, id ASC
+      `,
+      [slabId]
+    );
+
+    return result.rows.map(mapSlabAuditEventRow);
   }
 
   async listMaterialColors(): Promise<Array<{ id: string; name: string }>> {

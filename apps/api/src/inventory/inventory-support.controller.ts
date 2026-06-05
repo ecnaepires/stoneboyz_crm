@@ -57,6 +57,17 @@ export class InventorySupportController {
     return { data: await this.inventorySupportService.listDamageMarks(parsedSlabId.data) };
   }
 
+  @Get('slabs/:slabId/audit')
+  async listAuditEvents(@Param('slabId') slabId: string) {
+    const parsedSlabId = slabIdSchema.safeParse(slabId);
+
+    if (!parsedSlabId.success) {
+      throw badRequest({ slabId: ['Invalid UUID'] });
+    }
+
+    return { data: await this.inventorySupportService.listAuditEvents(parsedSlabId.data) };
+  }
+
   @Get('material-colors')
   async listMaterialColors() {
     return { data: await this.inventorySupportService.listMaterialColors() };

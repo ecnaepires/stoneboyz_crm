@@ -314,4 +314,100 @@ describe('slabs', () => {
 
     expect(cutResponse.status).toBe(200);
   });
+
+  it('returns an empty audit history for a new slab', async () => {
+    const slab = await createSlab();
+
+    const response = await fetch(`${slabsUrl()}/${slab.body.id}/audit`);
+    expect(response.status).toBe(200);
+
+    const body = await response.json() as Record<string, unknown>;
+    expect(body.data).toEqual([]);
+  });
+
+  it('records a reserved audit event when a slab is attached to a project', async () => {
+    const slab = await createSlab();
+    const projectResponse = await fetch(projectsUrl(), {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        actorUserId: ACTOR_USER_ID,
+        customerId: SEEDED_CUSTOMER_ID,
+        title: 'Audit project',
+        ownerUserId: ACTOR_USER_ID
+      })
+    });
+    const project = await projectResponse.json() as Record<string, unknown>;
+
+    await fetch(projectSlabsUrl(project.id as string), {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ actorUserId: ACTOR_USER_ID, slabId: slab.body.id })
+    });
+
+    const response = await fetch(`${slabsUrl()}/${slab.body.id}/audit`);
+    const body = await response.json() as Record<string, unknown>;
+    const events = body.data as Array<Record<string, unknown>>;
+
+    expect(events).toHaveLength(1);
+    expect(events[0]).toMatchObject({
+      action: 'reserved',
+      toProjectId: project.id,
+      actorUserId: ACTOR_USER_ID
+    });
+  });
+
+  const createProject = async (title: string): Promise<Record<string, unknown>> => {
+    const response = await fetch(projectsUrl(), {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ actorUserId: ACTOR_USER_ID, customerId: SEEDED_CUSTOMER_ID, title, ownerUserId: ACTOR_USER_ID })
+    });
+    return await response.json() as Record<string, unknown>;
+  };
+
+  const attachSlab = (projectId: string, slabId: unknown): Promise<Response> =>
+    fetch(projectSlabsUrl(projectId), {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ actorUserId: ACTOR_USER_ID, slabId })
+    });
+
+  it('detaching a shop-owned slab returns it to available and records a released event', async () => {
+    const slab = await createSlab();
+    const project = await createProject('Detach shop project');
+    await attachSlab(project.id as string, slab.body.id);
+
+    const detachResponse = await fetch(`${projectSlabsUrl(project.id as string)}/${slab.body.id}`, {
+      method: 'DELETE',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({})
+    });
+    expect(detachResponse.status).toBe(200);
+
+    const slabAfter = await (await fetch(`${slabsUrl()}/${slab.body.id}`)).json() as Record<string, unknown>;
+    expect(slabAfter.availability).toBe('available');
+
+    const events = (await (await fetch(`${slabsUrl()}/${slab.body.id}/audit`)).json() as Record<string, unknown>).data as Array<Record<string, unknown>>;
+    expect(events.some((e) => e.action === 'released' && e.fromProjectId === project.id)).toBe(true);
+  });
+
+  it('blocks detaching customer-supplied material and keeps it reserved', async () => {
+    const slab = await createSlab({ ownership: 'customer_supplied' });
+    const project = await createProject('Detach restricted project');
+    await attachSlab(project.id as string, slab.body.id);
+
+    const detachResponse = await fetch(`${projectSlabsUrl(project.id as string)}/${slab.body.id}`, {
+      method: 'DELETE',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({})
+    });
+    expect(detachResponse.status).toBe(409);
+
+    const slabAfter = await (await fetch(`${slabsUrl()}/${slab.body.id}`)).json() as Record<string, unknown>;
+    expect(slabAfter.availability).toBe('reserved');
+
+    const events = (await (await fetch(`${slabsUrl()}/${slab.body.id}/audit`)).json() as Record<string, unknown>).data as Array<Record<string, unknown>>;
+    expect(events.some((e) => e.action === 'released')).toBe(false);
+  });
 });

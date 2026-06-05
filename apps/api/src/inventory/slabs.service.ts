@@ -13,6 +13,7 @@ import type { Pool, PoolClient } from 'pg';
 import { DATABASE_POOL } from '../database.provider.js';
 import { EventBus } from '../events/event-bus.js';
 import { buildSlabCutPayload, buildSlabEventPayload, buildSlabReservedPayload, buildSlabUpdatedPayload } from './slab-events.js';
+import { InventorySupportRepository } from './inventory-support.repository.js';
 import { InvalidSlabCursorError, InvalidSlabStatusError, SlabsRepository } from './slabs.repository.js';
 
 @Injectable()
@@ -20,6 +21,7 @@ export class SlabsService {
   constructor(
     @Inject(DATABASE_POOL) private readonly pool: Pool,
     private readonly slabsRepository: SlabsRepository,
+    private readonly inventorySupportRepository: InventorySupportRepository,
     private readonly eventBus: EventBus
   ) {}
 
@@ -189,13 +191,34 @@ export class SlabsService {
     }
 
     await this.reserveWithClient(slabId, actorUserId, client, undefined, projectId);
+    await this.inventorySupportRepository.insertAuditEvent(
+      { slabId, actorUserId, action: 'reserved', toProjectId: projectId },
+      client
+    );
   }
 
   async releaseForProject(slabId: string, projectId: string, actorUserId: string, client: PoolClient): Promise<void> {
+    const current = await this.slabsRepository.findById(slabId, client);
+
+    if (current === null) {
+      throw new NotFoundException({ code: 'NOT_FOUND', message: 'Slab not found' });
+    }
+
+    if (current.ownership !== 'shop_owned') {
+      throw new ConflictException({
+        code: 'INVALID_TRANSITION',
+        message: 'Restricted material must be released to shop stock by an inventory manager'
+      });
+    }
+
     const released = await this.slabsRepository.release(slabId, client);
 
     if (released !== null) {
       this.eventBus.emit('slab.released', buildSlabReservedPayload(slabId, actorUserId, undefined, projectId));
+      await this.inventorySupportRepository.insertAuditEvent(
+        { slabId, actorUserId, action: 'released', fromProjectId: projectId },
+        client
+      );
     }
   }
 

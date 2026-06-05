@@ -7,3 +7,4 @@ export const DAMAGE_MARK_TYPE_VALUES = ['scratch', 'chip', 'crack', 'stain', 'ot
 export const DAMAGE_MARK_SEVERITY_VALUES = ['minor', 'major'] as const;
 export const SLAB_FINISH_VALUES = ['polished', 'honed', 'brushed', 'leathered', 'sandblasted'] as const;
 export const SLAB_QUALITY_GRADE_VALUES = ['A', 'B', 'C'] as const;
+export const SLAB_AUDIT_ACTION_VALUES = ['reserved', 'released', 'reassigned', 'released_to_shop', 'cut'] as const;

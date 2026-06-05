@@ -6,6 +6,7 @@ import type {
   SLAB_FINISH_VALUES,
   SLAB_KIND_VALUES,
   SLAB_OWNERSHIP_VALUES,
+  SLAB_AUDIT_ACTION_VALUES,
   SLAB_QUALITY_GRADE_VALUES,
   SLAB_STATUS_VALUES
 } from './slab.constants.js';
@@ -19,6 +20,18 @@ export type SlabFinish = typeof SLAB_FINISH_VALUES[number];
 export type SlabQualityGrade = typeof SLAB_QUALITY_GRADE_VALUES[number];
 export type DamageMarkType = typeof DAMAGE_MARK_TYPE_VALUES[number];
 export type DamageMarkSeverity = typeof DAMAGE_MARK_SEVERITY_VALUES[number];
+export type SlabAuditAction = typeof SLAB_AUDIT_ACTION_VALUES[number];
+
+export interface SlabAuditEvent {
+  id: string;
+  slabId: string;
+  actorUserId: string | null;
+  action: SlabAuditAction;
+  fromProjectId: string | null;
+  toProjectId: string | null;
+  reason: string | null;
+  createdAt: string;
+}
 
 export interface Slab {
   id: string;
