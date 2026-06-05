@@ -24,8 +24,10 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Build domain package
-        run: pnpm -C packages/domain build
+      - name: Build workspace packages
+        run: |
+          pnpm -C packages/domain build
+          pnpm -C packages/api-client build
 
       - name: Typecheck domain
         run: pnpm typecheck
