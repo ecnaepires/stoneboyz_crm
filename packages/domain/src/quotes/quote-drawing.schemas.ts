@@ -60,7 +60,13 @@ const canvasSinkLayoutSchema = z.object({
 const canvasCornerLayoutSchema = z.object({
   pieceId: z.string().uuid(),
   corner: z.enum(["topLeft", "topRight", "bottomRight", "bottomLeft"]),
-  treatment: z.enum(["none", "radius", "clip", "bumpOut", "notch"]),
+  // Notch and Bump-Out are no longer corner treatments (ADR 0006); they are
+  // drawn into the piece outline as geometry. Legacy revisions that stored them
+  // on a corner coerce to "none" on load so old drawings still open.
+  treatment: z.preprocess(
+    (value) => (value === "bumpOut" || value === "notch" ? "none" : value),
+    z.enum(["none", "radius", "clip"]),
+  ),
   valueIn: z.number().positive().nullable().default(null),
 });
 
@@ -94,7 +100,7 @@ const canvasReferenceLineLayoutSchema = z.object({
   pieceId: z.string().uuid(),
   from: z.tuple([z.number(), z.number()]),
   to: z.tuple([z.number(), z.number()]),
-  kind: z.enum(["cabinet", "wall", "centerline", "dimension"]).default("cabinet"),
+  kind: z.enum(["cabinet", "wall", "centerline", "dimension", "segment"]).default("cabinet"),
   color: z.string().trim().max(32).default("#6b7280"),
   dash: z.boolean().optional(),
 });

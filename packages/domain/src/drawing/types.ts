@@ -4,12 +4,7 @@ export type DrawingCornerKey =
   | "topRight"
   | "bottomRight"
   | "bottomLeft";
-export type DrawingCornerTreatment =
-  | "none"
-  | "radius"
-  | "clip"
-  | "bumpOut"
-  | "notch";
+export type DrawingCornerTreatment = "none" | "radius" | "clip";
 export type DrawingEdgeTreatment =
   | "finished"
   | "appliance"
@@ -18,6 +13,22 @@ export type DrawingEdgeTreatment =
   | "splash"
   | "unfinished"
   | "additionalFinished";
+
+export type DrawingLineDirection =
+  | "right"
+  | "downRight"
+  | "down"
+  | "downLeft"
+  | "left"
+  | "upLeft"
+  | "up"
+  | "upRight";
+
+export type DrawingConstructionLineKind =
+  | "segment"
+  | "centerline"
+  | "cabinet"
+  | "wall";
 
 export interface DrawingPiece {
   id: string;
@@ -94,7 +105,7 @@ export interface ReferenceLineLayout {
   pieceId: string;
   from: [number, number];
   to: [number, number];
-  kind: "cabinet" | "wall";
+  kind: DrawingConstructionLineKind;
   color: string;
   dash?: boolean;
 }
@@ -141,7 +152,7 @@ export interface DrawingReferenceLine {
   pieceId: string;
   from: [number, number];
   to: [number, number];
-  kind: "cabinet" | "wall" | "centerline";
+  kind: DrawingConstructionLineKind;
   color: string;
   dash?: boolean;
 }
@@ -159,7 +170,7 @@ export interface DrawingReferenceLineVisualSegment {
   pieceId: string;
   from: [number, number];
   to: [number, number];
-  kind: "cabinet" | "wall" | "centerline";
+  kind: DrawingConstructionLineKind;
   color: string;
   dash: boolean;
 }
@@ -172,5 +183,14 @@ export interface DrawingReferenceLineVisualArc {
   radius: number;
   startAngle: number;
   endAngle: number;
+  sourceLineIds: [string, string];
+}
+
+export interface DrawingReferenceLineVisualConnector {
+  id: string;
+  pieceId: string;
+  color: string;
+  from: [number, number];
+  to: [number, number];
   sourceLineIds: [string, string];
 }

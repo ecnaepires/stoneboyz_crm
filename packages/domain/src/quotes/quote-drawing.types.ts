@@ -73,7 +73,7 @@ export interface CanvasSinkLayout {
 }
 
 export type CanvasCornerKey = 'topLeft' | 'topRight' | 'bottomRight' | 'bottomLeft';
-export type CanvasCornerTreatment = 'none' | 'radius' | 'clip' | 'bumpOut' | 'notch';
+export type CanvasCornerTreatment = 'none' | 'radius' | 'clip';
 export type CanvasEdgeTreatment =
   | 'finished'
   | 'appliance'
@@ -95,7 +95,7 @@ export interface CanvasReferenceLineLayout {
   pieceId: string;
   from: [number, number];
   to: [number, number];
-  kind: 'cabinet' | 'wall' | 'centerline' | 'dimension';
+  kind: 'cabinet' | 'wall' | 'centerline' | 'dimension' | 'segment';
   color: string;
   dash?: boolean | undefined;
 }
