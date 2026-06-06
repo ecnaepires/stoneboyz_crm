@@ -180,7 +180,7 @@ components:
 
     RecentQuote:
       type: object
-      required: [id, quoteNumber, title, status, customerId, customerName, createdAt]
+      required: [id, quoteNumber, title, status, customerId, customerName, valueCents, createdAt]
       properties:
         id:
           type: string
@@ -196,13 +196,45 @@ components:
           format: uuid
         customerName:
           type: string
+        valueCents:
+          type: integer
+          description: Computed quote value (subtotal + tax − discount), in cents.
         createdAt:
           type: string
           format: date-time
 
+    QuotePipeline:
+      type: object
+      description: Open quote counts by status, for the pipeline breakdown.
+      required: [draft, sent, accepted, rejected]
+      properties:
+        draft:
+          type: integer
+        sent:
+          type: integer
+        accepted:
+          type: integer
+        rejected:
+          type: integer
+
+    RevenuePoint:
+      type: object
+      required: [month, quotesCents, ordersCents]
+      properties:
+        month:
+          type: string
+          description: First day of the month in ISO date form, e.g. "2026-01-01".
+          format: date
+        quotesCents:
+          type: integer
+          description: Total value of quotes created that month, in cents.
+        ordersCents:
+          type: integer
+          description: Total value of orders sold that month, in cents.
+
     DashboardStats:
       type: object
-      required: [activeCustomers, openQuotes, ordersThisMonth, eventsThisWeek, recentQuotes]
+      required: [activeCustomers, openQuotes, ordersThisMonth, eventsThisWeek, pipeline, revenueSeries, recentQuotes]
       properties:
         activeCustomers:
           type: integer
@@ -224,6 +256,13 @@ components:
               type: integer
         eventsThisWeek:
           type: integer
+        pipeline:
+          $ref: '#/components/schemas/QuotePipeline'
+        revenueSeries:
+          type: array
+          description: Last 6 months of quote and order revenue, oldest first.
+          items:
+            $ref: '#/components/schemas/RevenuePoint'
         recentQuotes:
           type: array
           items:

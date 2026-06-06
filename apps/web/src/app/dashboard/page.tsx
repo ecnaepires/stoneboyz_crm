@@ -1,151 +1,64 @@
-import type { components } from '@stoneboyz/api-client';
-import Link from 'next/link';
+import { CalendarDays, FileText, Package, Users } from 'lucide-react';
 import { getApiClientWithAuth } from '@/lib/api';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow
-} from '@/components/ui/table';
-
-const currencyFormatter = new Intl.NumberFormat('en-US', {
-  style: 'currency',
-  currency: 'USD'
-});
-
-type RecentQuote = components['schemas']['RecentQuote'];
-
-const formatCurrencyFromCents = (cents: number): string => currencyFormatter.format(cents / 100);
-
-const capitalize = (value: string): string => value.charAt(0).toUpperCase() + value.slice(1);
-
-const getStatusClass = (status: RecentQuote['status']): string => {
-  switch (status) {
-    case 'draft':
-      return 'text-gray-500';
-    case 'sent':
-      return 'text-blue-600';
-    case 'accepted':
-      return 'text-green-600';
-    case 'rejected':
-      return 'text-red-500';
-    case 'archived':
-      return 'text-gray-400';
-    default:
-      return 'text-foreground';
-  }
-};
+import { StatCard } from './_components/stat-card';
+import { RevenueChart } from './_components/revenue-chart';
+import { PipelineDonut } from './_components/pipeline-donut';
+import { RecentQuotesTable } from './_components/recent-quotes-table';
+import { formatCurrencyFromCents } from './_components/utils';
 
 export default async function DashboardPage() {
   const client = await getApiClientWithAuth();
   const { data, error } = await client.GET('/dashboard', {});
 
   if (error) {
-    return <div className="text-red-600">Failed to load dashboard: {JSON.stringify(error)}</div>;
+    return (
+      <div className='rounded-xl border border-red-500/30 bg-red-500/10 p-4 text-sm text-red-600 dark:text-red-400'>
+        Failed to load dashboard: {JSON.stringify(error)}
+      </div>
+    );
   }
 
   if (!data) {
-    return <div className="text-muted-foreground">No dashboard data available.</div>;
+    return <div className='text-sm text-muted-foreground'>No dashboard data available.</div>;
   }
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h2 className="text-2xl font-bold">Dashboard</h2>
-        <p className="text-sm text-muted-foreground">Snapshot of customers, quotes, orders, and upcoming events.</p>
+    <div className='mx-auto max-w-7xl space-y-4'>
+      <div className='flex items-end justify-between'>
+        <div>
+          <h1 className='text-2xl font-extrabold tracking-tight'>Dashboard</h1>
+          <p className='mt-0.5 text-sm text-muted-foreground'>
+            Welcome back — here&apos;s your shop at a glance.
+          </p>
+        </div>
+        <span className='rounded-full border border-border bg-card px-3.5 py-1.5 text-xs font-semibold text-muted-foreground'>
+          This month
+        </span>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Active Customers</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold">{data.activeCustomers}</div>
-          </CardContent>
-        </Card>
+      <section className='grid gap-4 sm:grid-cols-2 xl:grid-cols-4'>
+        <StatCard label='Active Customers' value={data.activeCustomers} icon={Users} />
+        <StatCard
+          label='Open Quotes'
+          value={data.openQuotes.count}
+          sub={formatCurrencyFromCents(data.openQuotes.totalCents)}
+          icon={FileText}
+        />
+        <StatCard
+          label='Orders this Month'
+          value={data.ordersThisMonth.count}
+          sub={formatCurrencyFromCents(data.ordersThisMonth.totalCents)}
+          icon={Package}
+        />
+        <StatCard label='Events this Week' value={data.eventsThisWeek} icon={CalendarDays} />
+      </section>
 
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Open Quotes</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-1">
-            <div className="text-3xl font-bold">{data.openQuotes.count}</div>
-            <div className="text-sm text-muted-foreground">{formatCurrencyFromCents(data.openQuotes.totalCents)}</div>
-          </CardContent>
-        </Card>
+      <section className='grid gap-4 lg:grid-cols-[1.7fr_1fr]'>
+        <RevenueChart data={data.revenueSeries} />
+        <PipelineDonut pipeline={data.pipeline} />
+      </section>
 
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Orders This Month</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-1">
-            <div className="text-3xl font-bold">{data.ordersThisMonth.count}</div>
-            <div className="text-sm text-muted-foreground">{formatCurrencyFromCents(data.ordersThisMonth.totalCents)}</div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Events This Week</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold">{data.eventsThisWeek}</div>
-          </CardContent>
-        </Card>
-      </div>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Recent Quotes</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {data.recentQuotes.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No recent quotes yet.</p>
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Quote#</TableHead>
-                  <TableHead>Title</TableHead>
-                  <TableHead>Customer</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Date</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {data.recentQuotes.map((quote: RecentQuote) => (
-                  <TableRow key={quote.id}>
-                    <TableCell>
-                      <Link
-                        href={`/customers/${quote.customerId}/quotes/${quote.id}`}
-                        className="font-medium text-primary hover:underline"
-                      >
-                        {quote.quoteNumber}
-                      </Link>
-                    </TableCell>
-                    <TableCell>{quote.title}</TableCell>
-                    <TableCell>
-                      <Link href={`/customers/${quote.customerId}`} className="text-primary hover:underline">
-                        {quote.customerName}
-                      </Link>
-                    </TableCell>
-                    <TableCell>
-                      <span className={`capitalize ${getStatusClass(quote.status)}`}>
-                        {capitalize(quote.status)}
-                      </span>
-                    </TableCell>
-                    <TableCell>{new Date(quote.createdAt).toLocaleDateString()}</TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          )}
-        </CardContent>
-      </Card>
+      <RecentQuotesTable quotes={data.recentQuotes} />
     </div>
   );
 }

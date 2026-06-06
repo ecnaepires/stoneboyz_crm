@@ -32,8 +32,7 @@ interface Card {
 const resetDatabase = async (app: INestApplication): Promise<void> => {
   const pool = app.get<Pool>(DATABASE_POOL);
 
-  await pool.query('DROP SCHEMA public CASCADE;');
-  await pool.query('CREATE SCHEMA public;');
+  await pool.query('DROP SCHEMA public CASCADE; CREATE SCHEMA public;');
 
   const migrationsDir = join(process.cwd(), 'db/migrations');
   const migrationFiles = (await readdir(migrationsDir))

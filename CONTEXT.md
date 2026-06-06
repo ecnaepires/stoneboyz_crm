@@ -8,6 +8,51 @@ A job's current position in the CRM workflow. Scheduling a stage appointment pla
 
 A calendar item tied to customer work, optionally tied to a job. Deposit, Template, Material, Fabrication, Install, and Invoice appointments are stage appointments; Repair, Other, and Cut appointments are side-work and do not define a Pipeline Stage.
 
+## Job
+
+A customer work scope tracked through the CRM, from sales through production activity. A Job may have appointments, quotes, slabs, notes, and pipeline movement.
+_Avoid_: Project when speaking to shop users
+
+## Slab
+
+A physical piece of stone tracked in the shop's slab inventory. A Slab may be open shop stock or linked to a job, but it remains inventory while it is stored, reserved, cut, or kept as a remnant.
+
+## Slab Tag
+
+A physical label on a Slab or Remnant that identifies the inventory record. A Slab Tag should include a short readable code and a scannable QR code.
+
+## Material Ownership
+
+The party whose rights control whether a Slab or Remnant can be reused. Material Ownership determines whether leftover stone returns to shop stock or stays held for a Job.
+
+## Material Color
+
+The named stone color or material identity used to match Slabs, Remnants, quotes, and search results. Material Color should be selected consistently rather than typed differently by each user.
+
+## Remnant
+
+A leftover Slab created when a larger Slab is cut. A Remnant returns to inventory and may later be linked to the same Job, a different Job, or remain available as shop stock.
+
+## Storage Location
+
+The place in the shop's yard or warehouse where a Slab can be found. Storage Location should be consistent enough for staff to search, filter, and physically retrieve material without guessing.
+
+## Inventory Hold
+
+A restriction that keeps a Slab or Remnant from being offered for use. Holds are used for missing location, damage review, ownership review, or manager decision.
+
+## Slab Condition
+
+The visible physical condition of a Slab, including whether it is good or damaged. Slab Condition can include marked damage areas on photos so staff can judge usability before walking the yard.
+
+## Damage Mark
+
+A marked area on a Slab photo identifying one visible flaw, such as a scratch, chip, crack, or stain. A Slab may have many Damage Marks, and each mark carries its own type and note.
+
+## Slab Layout
+
+A planning view that places Job pieces onto a Slab or Remnant to judge whether the material can be cut for the work. Slab Layout uses confirmed Slab dimensions, Job piece dimensions, and Damage Marks.
+
 ## Area (Sheet)
 
 A named, ordered drawing surface within a quote, presented to the user as a Sheet — like a tab at the bottom of a spreadsheet. Each Sheet holds its own separate drawing and its own pieces; pieces on one Sheet are isolated from another. The user divides work into Sheets manually, typically one room or location per Sheet ("Kitchen", "Master Bath", "Outdoor Kitchen"), and renames each Sheet freely. A Sheet carries a single material, color, and edge profile; when a room mixes materials, the user creates a second Sheet rather than mixing materials on one. "Sheet" is the user-facing word; "Area" is the same concept in the data model.
@@ -21,6 +66,19 @@ The field worker who visits the customer's home and produces the drawing: counte
 ## Salesperson
 
 The office worker who receives a Templater's finished drawing and its measurements and turns them into a priced quote using a price list. Pricing belongs to the Salesperson's surface, not the drawing workspace.
+
+## Cutter
+
+The shop worker who cuts Slabs for Jobs and records any Remnants that return to inventory.
+
+## Inventory Manager
+
+The shop worker responsible for receiving Slabs, maintaining Storage Locations, and linking or releasing Slabs from Jobs.
+_Avoid_: Admin when describing inventory work
+
+## Inventory Receipt
+
+A batch of Slabs received into inventory from one delivery or unload event. An Inventory Receipt groups shared delivery details so each Slab can be added quickly.
 
 ## Pricing Catalog
 
