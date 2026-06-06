@@ -320,7 +320,7 @@ export default async function QuoteDetailPage({
           </CardContent>
         </Card>
 
-        <MeasurementsCard customerId={customerId} quoteId={quoteId} areas={areas} isDraft={isDraft} />
+        <MeasurementsCard customerId={customerId} quoteId={quoteId} areas={areas} />
 
         <PricingCard
           customerId={customerId}

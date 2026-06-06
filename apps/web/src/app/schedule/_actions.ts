@@ -87,6 +87,7 @@ export async function createScheduleEventAction(formData: FormData) {
   }
 
   revalidatePath('/schedule');
+  revalidatePath('/pipeline');
   revalidatePath(`/customers/${customerId}/events`);
   redirect(
     buildScheduleHref({

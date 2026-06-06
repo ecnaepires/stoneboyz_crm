@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(PGPASSWORD=stoneboyz_test psql -h localhost -p 5433 -U stoneboyz_test -d stoneboyz_crm_test -c \"SELECT count\\(*\\) FROM drawing_revisions;\")",
+      "Bash(node --loader ts-node/esm --no-warnings -e ' *)",
+      "Bash(gh run *)",
+      "Bash(git worktree *)",
+      "Bash(git -C .worktrees/valuation-reports branch --show-current)",
+      "Bash(pnpm -C packages/api-client generate)"
+    ]
+  }
+}

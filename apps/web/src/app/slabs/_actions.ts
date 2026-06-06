@@ -100,7 +100,10 @@ export async function uploadSlabImageAction(slabId: string, formData: FormData) 
     headers,
     body: uploadForm,
   });
-  if (!res.ok) throw new Error('Failed to upload image');
+  if (!res.ok) {
+    const body = await res.text();
+    throw new Error(`Failed to upload image: ${res.status} ${body}`);
+  }
   revalidatePath(`/slabs/${slabId}`);
 }
 

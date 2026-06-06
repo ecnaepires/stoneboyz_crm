@@ -132,6 +132,25 @@ describe('measurementTotalsFromLayout', () => {
     expect(measurementTotalsFromLayout(layout).countertopSqFt).toBe(26.042);
   });
 
+  it('derives countertop square footage from a polygon piece', () => {
+    const layout = emptyLayout();
+    layout.pieces = [
+      {
+        pieceId: 'p1', x: 0, y: 0, rotation: 0, kind: 'countertop',
+        // L outline: legs only = 100*25 + 25*50 = 3750 sqin / 144 = 26.042 sqft
+        shape: {
+          type: 'polygon',
+          vertices: [
+            { x: 0, y: 0 }, { x: 100, y: 0 }, { x: 100, y: 25 },
+            { x: 25, y: 25 }, { x: 25, y: 75 }, { x: 0, y: 75 }
+          ]
+        }
+      }
+    ];
+
+    expect(measurementTotalsFromLayout(layout).countertopSqFt).toBe(26.042);
+  });
+
   it('counts sinks and faucet holes weighted by quantity', () => {
     const layout = emptyLayout();
     layout.sinks = [

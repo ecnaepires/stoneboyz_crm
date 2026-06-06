@@ -203,6 +203,48 @@ describe('canvasLayoutSchema', () => {
       }
     ]);
   });
+
+  it('preserves segment reference lines for exact construction placement', () => {
+    const pieceId = '55555555-5555-4555-8555-555555555555';
+    const parsed = canvasLayoutSchema.parse({
+      pieces: [
+        {
+          pieceId,
+          x: 32,
+          y: 48,
+          rotation: 0,
+          shape: null
+        }
+      ],
+      sinks: [],
+      corners: [],
+      edges: [],
+      referenceLines: [
+        {
+          id: 'segment-1',
+          pieceId,
+          from: [30, 60],
+          to: [30, 30],
+          kind: 'segment',
+          color: '#6b7280',
+          dash: false
+        }
+      ],
+      deletedLines: []
+    });
+
+    expect(parsed.referenceLines).toEqual([
+      {
+        id: 'segment-1',
+        pieceId,
+        from: [30, 60],
+        to: [30, 30],
+        kind: 'segment',
+        color: '#6b7280',
+        dash: false
+      }
+    ]);
+  });
 });
 
 const PIECE_ID = '00000000-0000-4000-8000-000000000001';

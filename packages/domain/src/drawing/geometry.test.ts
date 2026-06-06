@@ -1,18 +1,31 @@
 import { describe, expect, it } from "vitest";
 import {
   backsplashCornerCandidatesForEdges,
+  buildConstructionLineFromDirection,
+  buildOffsetCenterline,
   buildChainFromClicks,
   buildChainFromDragPath,
+  centerlineForChainPoint,
+  chainVisibleEdges,
   chainShapeAreaSqIn,
   chainShapeGeometry,
   connectEdgesToRectangle,
+  extendConstructionLineToTarget,
   mergeDrawingBoundaryEdges,
+  offsetCenterline,
+  offsetConstructionLine,
   rectUnionBoundaryEdges,
   rectsToChainSegments,
   visibleBoundaryEdges,
+  drawingLineDirectionVector,
 } from "./geometry.js";
 import * as geometryModule from "./geometry.js";
-import type { ChainShapeLayout, DrawingShapeRect } from "./types.js";
+import type {
+  ChainShapeLayout,
+  DrawingConstructionLineKind,
+  DrawingLineDirection,
+  DrawingShapeRect,
+} from "./types.js";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const geo = geometryModule as any;
@@ -102,6 +115,521 @@ describe("drawing chain geometry", () => {
     };
 
     expect(edgeCount(chainShapeGeometry(zShape).rects)).toBe(8);
+  });
+
+  it("keeps visible dimensions tied to each drawn run instead of merging collinear runs", () => {
+    const shape: ChainShapeLayout = {
+      type: "chain",
+      segments: [
+        {
+          x: 0,
+          y: 0,
+          w: 120,
+          h: depth,
+          lengthIn: 40,
+          widthIn: 25.5,
+          orientation: "horizontal",
+        },
+        {
+          x: 120,
+          y: 0,
+          w: 90,
+          h: depth,
+          lengthIn: 30,
+          widthIn: 25.5,
+          orientation: "horizontal",
+        },
+      ],
+    };
+
+    const mergedTopEdge = visibleBoundaryEdges({
+      rects: chainShapeGeometry(shape).rects,
+    }).find((edge) => edge.from[1] === 0 && edge.to[1] === 0);
+    const topRunEdges = chainVisibleEdges({ shape }).filter(
+      (item) => item.side === "top",
+    );
+
+    expect(mergedTopEdge).toEqual({ from: [0, 0], to: [210, 0] });
+    expect(topRunEdges.map((item) => item.edge)).toEqual([
+      { from: [0, 0], to: [120, 0] },
+      { from: [120, 0], to: [210, 0] },
+    ]);
+  });
+
+  it("keeps U-shape top and bottom run dimensions independent", () => {
+    const shape: ChainShapeLayout = {
+      type: "chain",
+      segments: [
+        {
+          x: 120,
+          y: 0,
+          w: 180,
+          h: depth,
+          lengthIn: 60,
+          widthIn: 25.5,
+          orientation: "horizontal",
+        },
+        {
+          x: 0,
+          y: depth,
+          w: depth,
+          h: 150,
+          lengthIn: 50,
+          widthIn: 25.5,
+          orientation: "vertical",
+        },
+        {
+          x: 0,
+          y: depth + 150,
+          w: 300,
+          h: depth,
+          lengthIn: 100,
+          widthIn: 25.5,
+          orientation: "horizontal",
+        },
+        {
+          x: 300 - depth,
+          y: depth,
+          w: depth,
+          h: 150,
+          lengthIn: 50,
+          widthIn: 25.5,
+          orientation: "vertical",
+        },
+      ],
+    };
+
+    const visible = chainVisibleEdges({ shape });
+    const topRun = visible.find(
+      (item) => item.segmentIndex === 0 && item.side === "top",
+    );
+    const bottomRun = visible.find(
+      (item) => item.segmentIndex === 2 && item.side === "bottom",
+    );
+
+    expect(topRun?.edge).toEqual({ from: [120, 0], to: [300, 0] });
+    expect(bottomRun?.edge).toEqual({
+      from: [0, depth + 150 + depth],
+      to: [300, depth + 150 + depth],
+    });
+  });
+
+  it("places a centerline on the clicked horizontal run without spanning the full U bounds", () => {
+    const shape: ChainShapeLayout = {
+      type: "chain",
+      segments: [
+        {
+          x: 0,
+          y: 0,
+          w: 300,
+          h: depth,
+          lengthIn: 100,
+          widthIn: 25.5,
+          orientation: "horizontal",
+        },
+        {
+          x: 300 - depth,
+          y: depth,
+          w: depth,
+          h: 150,
+          lengthIn: 50,
+          widthIn: 25.5,
+          orientation: "vertical",
+        },
+        {
+          x: 0,
+          y: depth + 150,
+          w: 300,
+          h: depth,
+          lengthIn: 100,
+          widthIn: 25.5,
+          orientation: "horizontal",
+        },
+      ],
+    };
+
+    const centerline = centerlineForChainPoint({
+      shape,
+      point: [120, 20],
+    });
+
+    expect(centerline).toEqual({
+      from: [150, 0],
+      to: [150, depth],
+    });
+  });
+
+  it("places a centerline on the clicked vertical run without spanning the full U bounds", () => {
+    const shape: ChainShapeLayout = {
+      type: "chain",
+      segments: [
+        {
+          x: 0,
+          y: 0,
+          w: 300,
+          h: depth,
+          lengthIn: 100,
+          widthIn: 25.5,
+          orientation: "horizontal",
+        },
+        {
+          x: 300 - depth,
+          y: depth,
+          w: depth,
+          h: 150,
+          lengthIn: 50,
+          widthIn: 25.5,
+          orientation: "vertical",
+        },
+        {
+          x: 0,
+          y: depth + 150,
+          w: 300,
+          h: depth,
+          lengthIn: 100,
+          widthIn: 25.5,
+          orientation: "horizontal",
+        },
+      ],
+    };
+
+    const centerline = centerlineForChainPoint({
+      shape,
+      point: [250, 140],
+    });
+
+    expect(centerline).toEqual({
+      from: [300 - depth, depth + 75],
+      to: [300, depth + 75],
+    });
+  });
+
+  it("offsets a vertical centerline by exact inches to the chosen side", () => {
+    const shape: ChainShapeLayout = {
+      type: "chain",
+      segments: [
+        {
+          x: 0,
+          y: 0,
+          w: 300,
+          h: depth,
+          lengthIn: 100,
+          widthIn: 25.5,
+          orientation: "horizontal",
+        },
+        {
+          x: 300 - depth,
+          y: depth,
+          w: depth,
+          h: 150,
+          lengthIn: 50,
+          widthIn: 25.5,
+          orientation: "vertical",
+        },
+        {
+          x: 0,
+          y: depth + 150,
+          w: 300,
+          h: depth,
+          lengthIn: 100,
+          widthIn: 25.5,
+          orientation: "horizontal",
+        },
+      ],
+    };
+
+    const centerline = centerlineForChainPoint({
+      shape,
+      point: [120, 20],
+    });
+
+    expect(centerline).not.toBeNull();
+    expect(
+      offsetCenterline({
+        line: centerline!,
+        offsetIn: 56,
+        direction: "right",
+        scale: SCALE,
+      }),
+    ).toEqual({
+      from: [150 + 56 * SCALE, 0],
+      to: [150 + 56 * SCALE, depth],
+    });
+  });
+
+  it("offsets a horizontal centerline up or down without changing its span", () => {
+    const shape: ChainShapeLayout = {
+      type: "chain",
+      segments: [
+        {
+          x: 0,
+          y: 0,
+          w: 300,
+          h: depth,
+          lengthIn: 100,
+          widthIn: 25.5,
+          orientation: "horizontal",
+        },
+        {
+          x: 300 - depth,
+          y: depth,
+          w: depth,
+          h: 150,
+          lengthIn: 50,
+          widthIn: 25.5,
+          orientation: "vertical",
+        },
+      ],
+    };
+
+    const centerline = centerlineForChainPoint({
+      shape,
+      point: [300 - depth + 10, depth + 40],
+    });
+
+    expect(centerline).toEqual({
+      from: [300 - depth, depth + 75],
+      to: [300, depth + 75],
+    });
+    expect(
+      offsetCenterline({
+        line: centerline!,
+        offsetIn: 12,
+        direction: "up",
+        scale: SCALE,
+      }),
+    ).toEqual({
+      from: [300 - depth, depth + 75 - 12 * SCALE],
+      to: [300, depth + 75 - 12 * SCALE],
+    });
+  });
+
+  it("does not offset a centerline along its own span", () => {
+    const verticalCenterline = {
+      from: [150, 0] as [number, number],
+      to: [150, depth] as [number, number],
+    };
+
+    expect(
+      offsetCenterline({
+        line: verticalCenterline,
+        offsetIn: 8,
+        direction: "up",
+        scale: SCALE,
+      }),
+    ).toBeNull();
+  });
+
+  it("builds a dashed centerline annotation from a source line and exact offset", () => {
+    const sourceLine = {
+      from: [0, 0] as [number, number],
+      to: [0, depth] as [number, number],
+    };
+
+    expect(
+      buildOffsetCenterline({
+        id: "cl-1",
+        pieceId: "piece-1",
+        sourceLine,
+        offsetIn: 56,
+        direction: "right",
+        scale: SCALE,
+      }),
+    ).toEqual({
+      id: "cl-1",
+      pieceId: "piece-1",
+      from: [56 * SCALE, 0],
+      to: [56 * SCALE, depth],
+      kind: "centerline",
+      color: "#000000",
+      dash: true,
+    });
+  });
+
+  it("exposes construction line kinds and squared directions", () => {
+    const kind: DrawingConstructionLineKind = "segment";
+    const direction: DrawingLineDirection = "upRight";
+
+    expect(kind).toBe("segment");
+    expect(direction).toBe("upRight");
+  });
+
+  it("maps 8-way directions to piece-local unit vectors", () => {
+    expect(drawingLineDirectionVector("right")).toEqual([1, 0]);
+    expect(drawingLineDirectionVector("downRight")).toEqual([
+      Math.SQRT1_2,
+      Math.SQRT1_2,
+    ]);
+    expect(drawingLineDirectionVector("down")).toEqual([0, 1]);
+    expect(drawingLineDirectionVector("downLeft")).toEqual([
+      -Math.SQRT1_2,
+      Math.SQRT1_2,
+    ]);
+    expect(drawingLineDirectionVector("left")).toEqual([-1, 0]);
+    expect(drawingLineDirectionVector("upLeft")).toEqual([
+      -Math.SQRT1_2,
+      -Math.SQRT1_2,
+    ]);
+    expect(drawingLineDirectionVector("up")).toEqual([0, -1]);
+    expect(drawingLineDirectionVector("upRight")).toEqual([
+      Math.SQRT1_2,
+      -Math.SQRT1_2,
+    ]);
+  });
+
+  it("builds a segment line from anchor, length, and squared direction", () => {
+    expect(
+      buildConstructionLineFromDirection({
+        id: "segment-1",
+        pieceId: "piece-1",
+        kind: "segment",
+        anchor: [30, 60],
+        direction: "up",
+        lengthIn: 10,
+        scale: SCALE,
+        color: "#6b7280",
+      }),
+    ).toEqual({
+      id: "segment-1",
+      pieceId: "piece-1",
+      from: [30, 60],
+      to: [30, 30],
+      kind: "segment",
+      color: "#6b7280",
+      dash: false,
+    });
+  });
+
+  it("rounds diagonal segment endpoints to drawing sixteenths", () => {
+    expect(
+      buildConstructionLineFromDirection({
+        id: "segment-2",
+        pieceId: "piece-1",
+        kind: "segment",
+        anchor: [0, 0],
+        direction: "downRight",
+        lengthIn: 10,
+        scale: SCALE,
+      })?.to,
+    ).toEqual([21.1875, 21.1875]);
+  });
+
+  it("rejects non-positive segment lengths", () => {
+    expect(
+      buildConstructionLineFromDirection({
+        id: "segment-3",
+        pieceId: "piece-1",
+        kind: "segment",
+        anchor: [0, 0],
+        direction: "right",
+        lengthIn: 0,
+        scale: SCALE,
+      }),
+    ).toBeNull();
+    expect(
+      buildConstructionLineFromDirection({
+        id: "segment-4",
+        pieceId: "piece-1",
+        kind: "segment",
+        anchor: [0, 0],
+        direction: "right",
+        lengthIn: -5,
+        scale: SCALE,
+      }),
+    ).toBeNull();
+  });
+
+  it("offsets a diagonal construction line perpendicular to its span", () => {
+    expect(
+      offsetConstructionLine({
+        line: {
+          from: [0, 0],
+          to: [30, 30],
+        },
+        offsetIn: 10,
+        side: "left",
+        scale: SCALE,
+      }),
+    ).toEqual({
+      from: [-21.1875, 21.1875],
+      to: [8.8125, 51.1875],
+    });
+  });
+
+  it("returns null for non-positive or non-finite construction line offsets", () => {
+    const line = {
+      from: [0, 0] as [number, number],
+      to: [30, 30] as [number, number],
+    };
+
+    expect(
+      offsetConstructionLine({
+        line,
+        offsetIn: 0,
+        side: "left",
+        scale: SCALE,
+      }),
+    ).toBeNull();
+
+    expect(
+      offsetConstructionLine({
+        line,
+        offsetIn: -10,
+        side: "left",
+        scale: SCALE,
+      }),
+    ).toBeNull();
+
+    expect(
+      offsetConstructionLine({
+        line,
+        offsetIn: Number.NaN,
+        side: "left",
+        scale: SCALE,
+      }),
+    ).toBeNull();
+
+    expect(
+      offsetConstructionLine({
+        line,
+        offsetIn: Number.POSITIVE_INFINITY,
+        side: "left",
+        scale: SCALE,
+      }),
+    ).toBeNull();
+  });
+
+  it("extends source line to selected target while preserving source direction", () => {
+    expect(
+      extendConstructionLineToTarget({
+        source: {
+          from: [30, 0],
+          to: [30, 30],
+        },
+        target: {
+          from: [0, depth],
+          to: [300, depth],
+        },
+      }),
+    ).toEqual({
+      from: [30, 0],
+      to: [30, depth],
+    });
+  });
+
+  it("returns null when source direction cannot intersect target", () => {
+    expect(
+      extendConstructionLineToTarget({
+        source: {
+          from: [0, 0],
+          to: [30, 0],
+        },
+        target: {
+          from: [0, 10],
+          to: [30, 10],
+        },
+      }),
+    ).toBeNull();
   });
 });
 

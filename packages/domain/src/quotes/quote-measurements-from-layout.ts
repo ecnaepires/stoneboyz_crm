@@ -105,12 +105,21 @@ export function measurementTotalsFromLayout(layout: CanvasLayout): QuoteMeasurem
 
   for (const piece of layout.pieces) {
     const shape = piece.shape;
-    if (shape === null || shape === undefined || shape.type !== 'chain') {
+    if (shape === null || shape === undefined) {
       continue;
     }
     // Square footage is the exact outline (union) area of the piece polygon
-    // (ADR 0006) — for an L/U the legs only, not the bounding-box corner.
-    const areaSqIn = polygonAreaSqIn(chainToPolygon(shape as Parameters<typeof chainToPolygon>[0]));
+    // (ADR 0006) — for an L/U the legs only, not the bounding-box corner. A
+    // chain converts to its outline polygon; a polygon shape is measured
+    // directly. Other (legacy l/z) shapes are skipped here as before.
+    let areaSqIn: number;
+    if (shape.type === 'chain') {
+      areaSqIn = polygonAreaSqIn(chainToPolygon(shape as Parameters<typeof chainToPolygon>[0]));
+    } else if (shape.type === 'polygon') {
+      areaSqIn = polygonAreaSqIn({ vertices: shape.vertices });
+    } else {
+      continue;
+    }
     if (areaSqIn <= 0) {
       continue;
     }

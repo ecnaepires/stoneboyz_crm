@@ -35,6 +35,13 @@ const canvasPieceShapeSchema = z.discriminatedUnion("type", [
       )
       .min(2),
   }),
+  // Canonical outline shape (ADR 0006): ordered vertices in inches. Geometric
+  // validity (closed, positive area, no self-intersection) is enforced by
+  // polygonValidate in saveDrawingRevisionSchema, not here.
+  z.object({
+    type: z.literal("polygon"),
+    vertices: z.array(z.object({ x: z.number(), y: z.number() })).min(3),
+  }),
 ]);
 
 const canvasPieceLayoutSchema = z.object({

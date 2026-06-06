@@ -1,0 +1,87 @@
+- generic [active] [ref=e1]:
+  - banner [ref=e2]:
+    - generic [ref=e3]:
+      - generic [ref=e4]: SBZ
+      - generic [ref=e5]:
+        - generic [ref=e6]: Stone Boyz
+        - generic [ref=e7]: Luxury Kitchen
+    - navigation [ref=e8]:
+      - link "Dashboard" [ref=e9] [cursor=pointer]:
+        - /url: "#"
+      - link "Customers" [ref=e10] [cursor=pointer]:
+        - /url: "#"
+      - link "Quotes" [ref=e11] [cursor=pointer]:
+        - /url: "#"
+      - link "Orders" [ref=e12] [cursor=pointer]:
+        - /url: "#"
+      - link "Schedule" [ref=e13] [cursor=pointer]:
+        - /url: "#"
+      - link "Slabs" [ref=e14] [cursor=pointer]:
+        - /url: "#"
+  - main [ref=e16]:
+    - generic [ref=e17]:
+      - generic [ref=e18]:
+        - heading "Dashboard" [level=1] [ref=e19]
+        - generic [ref=e20]: Snapshot of customers, quotes, orders, and upcoming events.
+      - generic [ref=e21]: This month ▾
+    - generic [ref=e22]:
+      - generic [ref=e23]:
+        - generic [ref=e24]: Active Customers
+        - generic [ref=e25]: "142"
+        - generic [ref=e26]: ▲ 8 this week
+      - generic [ref=e27]:
+        - generic [ref=e28]: Open Quotes
+        - generic [ref=e29]: "37"
+        - generic [ref=e30]: $284,500
+      - generic [ref=e31]:
+        - generic [ref=e32]: Orders this Month
+        - generic [ref=e33]: "18"
+        - generic [ref=e34]: $1,204,900
+      - generic [ref=e35]:
+        - generic [ref=e36]: Events this Week
+        - generic [ref=e37]: "6"
+        - generic [ref=e38]: 2 today
+    - generic [ref=e39]:
+      - generic [ref=e40]:
+        - heading "Revenue, last 6 months" [level=3] [ref=e41]
+        - generic [ref=e42]: $1.20M
+        - generic [ref=e43]: ▲ 14% vs. prior
+        - img [ref=e44]
+      - generic [ref=e47]:
+        - generic [ref=e48]:
+          - heading "Recent Quotes" [level=2] [ref=e49]
+          - link "View all →" [ref=e50] [cursor=pointer]:
+            - /url: "#"
+        - generic [ref=e51]:
+          - generic [ref=e52]: Quote
+          - generic [ref=e53]: Title / Customer
+          - generic [ref=e54]: Status
+          - generic [ref=e55]: Date
+        - generic [ref=e56]:
+          - generic [ref=e57]: Q-1042
+          - generic [ref=e58]:
+            - text: Granite Kitchen Remodel
+            - text: Acme Builders
+          - generic [ref=e60]: Sent
+          - generic [ref=e61]: Jun 2
+        - generic [ref=e62]:
+          - generic [ref=e63]: Q-1041
+          - generic [ref=e64]:
+            - text: Quartz Master Bath
+            - text: Rivera Homes
+          - generic [ref=e66]: Accepted
+          - generic [ref=e67]: Jun 1
+        - generic [ref=e68]:
+          - generic [ref=e69]: Q-1040
+          - generic [ref=e70]:
+            - text: Marble Waterfall Island
+            - text: Lee Residence
+          - generic [ref=e72]: Draft
+          - generic [ref=e73]: May 30
+        - generic [ref=e74]:
+          - generic [ref=e75]: Q-1039
+          - generic [ref=e76]:
+            - text: Porcelain Outdoor Kitchen
+            - text: Coastal Dev
+          - generic [ref=e78]: Rejected
+          - generic [ref=e79]: May 29

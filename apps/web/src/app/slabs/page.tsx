@@ -51,7 +51,7 @@ export default async function SlabsPage() {
               <TableCell><Link href={`/slabs/${slab.id}`} className="font-medium text-primary hover:underline">{slab.stoneType}</Link></TableCell>
               <TableCell className="capitalize">{slab.finish}</TableCell>
               <TableCell>{slab.qualityGrade}</TableCell>
-              <TableCell>{slab.lengthIn.toFixed(3)} x {slab.widthIn.toFixed(3)}</TableCell>
+              <TableCell>{slab.lengthIn} x {slab.widthIn}</TableCell>
               <TableCell>{squareFeet(slab.lengthIn, slab.widthIn)}</TableCell>
               <TableCell>
                 <span className={`inline-flex rounded-full px-2 py-1 text-xs font-medium capitalize ${statusClasses[slab.status]}`}>

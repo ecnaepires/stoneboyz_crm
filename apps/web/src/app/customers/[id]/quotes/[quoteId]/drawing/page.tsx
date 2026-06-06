@@ -26,7 +26,6 @@ export default async function QuoteDrawingWorkspacePage({
 
   const areas = (quote.areas ?? []) as QuoteAreaWithMeasurementTotals[];
   const isDraft = quote.status === 'draft';
-  const hasPriceList = quote.priceListId !== null;
 
   return (
     <div className="fixed inset-0 z-40 flex min-h-0 flex-col bg-white">
@@ -60,7 +59,6 @@ export default async function QuoteDrawingWorkspacePage({
           quoteId={quoteId}
           areas={areas}
           isDraft={isDraft}
-          hasPriceList={hasPriceList}
         />
       </div>
     </div>

@@ -1,0 +1,143 @@
+- generic [ref=e2]:
+  - navigation [ref=e3]:
+    - heading "Stoneboyz CRM" [level=1] [ref=e5]
+    - list [ref=e6]:
+      - listitem [ref=e7]:
+        - link "Dashboard" [ref=e8] [cursor=pointer]:
+          - /url: /dashboard
+      - listitem [ref=e9]:
+        - link "Customers" [ref=e10] [cursor=pointer]:
+          - /url: /customers
+      - listitem [ref=e11]:
+        - link "Jobs" [ref=e12] [cursor=pointer]:
+          - /url: /projects
+      - listitem [ref=e13]:
+        - link "Pipeline" [ref=e14] [cursor=pointer]:
+          - /url: /pipeline
+      - listitem [ref=e15]:
+        - link "Quotes" [ref=e16] [cursor=pointer]:
+          - /url: /customers
+      - listitem [ref=e17]:
+        - link "Scheduling" [ref=e18] [cursor=pointer]:
+          - /url: /schedule
+      - listitem [ref=e19]:
+        - link "Price Lists" [ref=e20] [cursor=pointer]:
+          - /url: /price-lists
+      - listitem [ref=e21]:
+        - link "Slabs" [ref=e22] [cursor=pointer]:
+          - /url: /slabs
+      - listitem [ref=e23]:
+        - link "Archived" [ref=e24] [cursor=pointer]:
+          - /url: /customers/archived
+  - generic [ref=e25]:
+    - button "Toggle sidebar" [ref=e27] [cursor=pointer]:
+      - img [ref=e28]
+    - main [ref=e29]:
+      - generic [ref=e30]:
+        - generic [ref=e31]:
+          - generic [ref=e32]:
+            - generic [ref=e33]:
+              - link "AB Counter" [ref=e34] [cursor=pointer]:
+                - /url: /customers/56479665-2afb-4693-b3cd-d023c00e2d28
+              - text: /
+              - link "Quotes" [ref=e35] [cursor=pointer]:
+                - /url: /customers/56479665-2afb-4693-b3cd-d023c00e2d28/quotes
+              - text: /
+              - link "Q-2026-001" [ref=e36] [cursor=pointer]:
+                - /url: /customers/56479665-2afb-4693-b3cd-d023c00e2d28/quotes/d0509d72-fdc2-4b38-b5b3-ca7792a2ee98
+              - text: / Drawing Workspace
+            - heading "test1" [level=2] [ref=e37]
+          - generic [ref=e38]:
+            - generic [ref=e39]: draft
+            - link "Exit" [ref=e40] [cursor=pointer]:
+              - /url: /customers/56479665-2afb-4693-b3cd-d023c00e2d28/quotes/d0509d72-fdc2-4b38-b5b3-ca7792a2ee98
+        - generic [ref=e44]:
+          - heading "Kitchen" [level=3] [ref=e45]
+          - generic [ref=e46]:
+            - generic [ref=e47]:
+              - generic [ref=e48]:
+                - generic [ref=e49]:
+                  - button "Help" [ref=e50] [cursor=pointer]
+                  - button "Undo" [disabled]
+                  - button "Redo" [disabled]
+                  - button "Revisions" [ref=e51] [cursor=pointer]
+                  - button "Save" [ref=e52] [cursor=pointer]
+                  - button "Exit" [ref=e53] [cursor=pointer]
+                - generic [ref=e54]: Revision 12 saved 6/3/2026, 7:12:35 PM
+              - generic [ref=e55]:
+                - button "1 Counter Dimensions" [ref=e56] [cursor=pointer]:
+                  - generic [ref=e57]: "1"
+                  - generic [ref=e58]: Counter Dimensions
+                - button "2 Curves & Bumpouts" [ref=e59] [cursor=pointer]:
+                  - generic [ref=e60]: "2"
+                  - generic [ref=e61]: Curves & Bumpouts
+                - button "3 Splash & Edge" [ref=e62] [cursor=pointer]:
+                  - generic [ref=e63]: "3"
+                  - generic [ref=e64]: Splash & Edge
+                - button "4 Sink & Cooktop" [ref=e65] [cursor=pointer]:
+                  - generic [ref=e66]: "4"
+                  - generic [ref=e67]: Sink & Cooktop
+                - button "5 Color & Edge" [ref=e68] [cursor=pointer]:
+                  - generic [ref=e69]: "5"
+                  - generic [ref=e70]: Color & Edge
+                - button "6 Price Details" [ref=e71] [cursor=pointer]:
+                  - generic [ref=e72]: "6"
+                  - generic [ref=e73]: Price Details
+              - complementary [ref=e77]:
+                - button "/ Pen" [ref=e79] [cursor=pointer]:
+                  - generic [ref=e80]: /
+                  - generic [ref=e81]: Pen
+                - button "S Select" [ref=e83] [cursor=pointer]:
+                  - generic [ref=e84]: S
+                  - generic [ref=e85]: Select
+                - button "x Delete Selected" [disabled] [ref=e87]:
+                  - generic [ref=e88]: x
+                  - generic [ref=e89]: Delete Selected
+                - button "• Erase" [ref=e91] [cursor=pointer]:
+                  - generic [ref=e92]: •
+                  - generic [ref=e93]: Erase
+                - button "⌞ Distance" [ref=e95] [cursor=pointer]:
+                  - generic [ref=e96]: ⌞
+                  - generic [ref=e97]: Distance
+                - button "⌜ Fillet" [ref=e99] [cursor=pointer]:
+                  - generic [ref=e100]: ⌜
+                  - generic [ref=e101]: Fillet
+                - button "= Offset" [ref=e103] [cursor=pointer]:
+                  - generic [ref=e104]: =
+                  - generic [ref=e105]: Offset
+                - button "⊕ Centerline" [ref=e107] [cursor=pointer]:
+                  - generic [ref=e108]: ⊕
+                  - generic [ref=e109]: Centerline
+                - button "🎨 Paint" [ref=e111] [cursor=pointer]:
+                  - generic [ref=e112]: 🎨
+                  - generic [ref=e113]: Paint
+                - button "▰ Back Splash" [ref=e115] [cursor=pointer]:
+                  - generic [ref=e116]: ▰
+                  - generic [ref=e117]: Back Splash
+                - button "≡ Legend" [ref=e119] [cursor=pointer]:
+                  - generic [ref=e120]: ≡
+                  - generic [ref=e121]: Legend
+                - button "♂ Rotate" [disabled] [ref=e123]:
+                  - generic [ref=e124]: ♂
+                  - generic [ref=e125]: Rotate
+                - button "⊥ Extend" [ref=e127] [cursor=pointer]:
+                  - generic [ref=e128]: ⊥
+                  - generic [ref=e129]: Extend
+                - button "/ Segment" [ref=e131] [cursor=pointer]:
+                  - generic [ref=e132]: /
+                  - generic [ref=e133]: Segment
+                - button "↔ Dimensions" [ref=e135] [cursor=pointer]:
+                  - generic [ref=e136]: ↔
+                  - generic [ref=e137]: Dimensions
+                - button "• Color" [ref=e139] [cursor=pointer]:
+                  - generic [ref=e140]: •
+                  - generic [ref=e141]: Color
+                - button "↶ Undo" [disabled] [ref=e144]:
+                  - generic [ref=e145]: ↶
+                  - generic [ref=e146]: Undo
+                - button "↷ Redo" [disabled] [ref=e148]:
+                  - generic [ref=e149]: ↷
+                  - generic [ref=e150]: Redo
+            - generic [ref=e151]:
+              - button "Reset Layout" [ref=e152] [cursor=pointer]
+              - paragraph [ref=e153]: Drag with the pencil to create a 25 1/2" deep counter. Use on-piece controls for rotate, duplicate, and delete.

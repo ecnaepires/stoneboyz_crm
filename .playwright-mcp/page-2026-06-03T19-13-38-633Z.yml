@@ -1,0 +1,29 @@
+- generic [active] [ref=e1]:
+  - button "Open Next.js Dev Tools" [ref=e25] [cursor=pointer]:
+    - img [ref=e26]
+  - alert [ref=e29]
+  - generic [ref=e30]:
+    - generic [ref=e31]:
+      - heading "Customers" [level=2] [ref=e32]
+      - link "+ New Customer" [ref=e33] [cursor=pointer]:
+        - /url: /customers/new
+    - generic [ref=e34]:
+      - textbox "Search customers..." [ref=e35]
+      - button "Search" [ref=e36] [cursor=pointer]
+    - table [ref=e38]:
+      - rowgroup [ref=e39]:
+        - row "Name Status Type Industry Created" [ref=e40]:
+          - columnheader "Name" [ref=e41]
+          - columnheader "Status" [ref=e42]
+          - columnheader "Type" [ref=e43]
+          - columnheader "Industry" [ref=e44]
+          - columnheader "Created" [ref=e45]
+      - rowgroup [ref=e46]:
+        - row "AB Counter lead customer Construction 6/3/2026" [ref=e47]:
+          - cell "AB Counter" [ref=e48]:
+            - link "AB Counter" [ref=e49] [cursor=pointer]:
+              - /url: /customers/56479665-2afb-4693-b3cd-d023c00e2d28
+          - cell "lead" [ref=e50]
+          - cell "customer" [ref=e51]
+          - cell "Construction" [ref=e52]
+          - cell "6/3/2026" [ref=e53]

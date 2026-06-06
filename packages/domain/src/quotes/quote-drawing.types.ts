@@ -50,7 +50,19 @@ export interface CanvasChainShapeLayout {
   segments: CanvasChainShapeSegment[];
 }
 
-export type CanvasPieceShape = CanvasLShapeLayout | CanvasZShapeLayout | CanvasChainShapeLayout;
+// Canonical outline shape (ADR 0006): ordered vertices in inches. Added
+// alongside chain/l/z so new drawings can persist as true polygons (including
+// angled edges) while stored chain/l/z revisions keep loading via converters.
+export interface CanvasPolygonShapeLayout {
+  type: 'polygon';
+  vertices: Array<{ x: number; y: number }>;
+}
+
+export type CanvasPieceShape =
+  | CanvasLShapeLayout
+  | CanvasZShapeLayout
+  | CanvasChainShapeLayout
+  | CanvasPolygonShapeLayout;
 
 export interface CanvasPieceLayout {
   pieceId: string;

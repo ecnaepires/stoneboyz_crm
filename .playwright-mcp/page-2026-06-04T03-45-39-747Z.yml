@@ -1,0 +1,116 @@
+- generic [active] [ref=e1]:
+  - banner [ref=e2]:
+    - generic [ref=e3]:
+      - generic [ref=e4]: SBZ
+      - generic [ref=e5]: STONE_BOYZ
+      - generic [ref=e6]: ●LIVE
+    - navigation [ref=e7]:
+      - link "DASH" [ref=e8] [cursor=pointer]:
+        - /url: "#"
+      - link "CUST" [ref=e9] [cursor=pointer]:
+        - /url: "#"
+      - link "QUOTE" [ref=e10] [cursor=pointer]:
+        - /url: "#"
+      - link "ORDER" [ref=e11] [cursor=pointer]:
+        - /url: "#"
+      - link "SLAB" [ref=e12] [cursor=pointer]:
+        - /url: "#"
+    - generic [ref=e13]: 2026-06-04 · 09:14:22 PST
+  - main [ref=e14]:
+    - generic [ref=e15]: sbz@ops:~$ load dashboard --period=month
+    - generic [ref=e17]:
+      - generic [ref=e18]:
+        - generic [ref=e19]: "> Active Customers"
+        - generic [ref=e20]: "142"
+        - generic [ref=e21]:
+          - generic [ref=e22]: all accounts
+          - generic [ref=e23]: ▲ 6.0%
+      - generic [ref=e24]:
+        - generic [ref=e25]: "> Open Quotes"
+        - generic [ref=e26]: "37"
+        - generic [ref=e27]:
+          - generic [ref=e28]: $284,500
+          - generic [ref=e29]: ▲ 12.4%
+      - generic [ref=e30]:
+        - generic [ref=e31]: "> Orders/Mo"
+        - generic [ref=e32]: "18"
+        - generic [ref=e33]:
+          - generic [ref=e34]: $1,204,900
+          - generic [ref=e35]: ▲ 9.1%
+      - generic [ref=e36]:
+        - generic [ref=e37]: "> Events/Wk"
+        - generic [ref=e38]: "06"
+        - generic [ref=e39]:
+          - generic [ref=e40]: 2 today
+          - generic [ref=e41]: ▼ 1
+    - generic [ref=e42]:
+      - generic [ref=e43]:
+        - generic [ref=e44]:
+          - generic [ref=e45]: Revenue // 6mo
+          - generic [ref=e46]: $1.20M ▲14%
+        - img [ref=e48]
+      - generic [ref=e52]:
+        - generic [ref=e53]:
+          - generic [ref=e54]: Pipeline
+          - generic [ref=e55]: "37"
+        - generic [ref=e56]:
+          - img [ref=e57]
+          - generic [ref=e63]:
+            - generic [ref=e64]:
+              - text: Sent
+              - generic [ref=e66]: "16"
+            - generic [ref=e67]:
+              - text: Accepted
+              - generic [ref=e69]: "11"
+            - generic [ref=e70]:
+              - text: Draft
+              - generic [ref=e72]: "07"
+            - generic [ref=e73]:
+              - text: Rejected
+              - generic [ref=e75]: "03"
+    - generic [ref=e76]:
+      - generic [ref=e77]:
+        - generic [ref=e78]: Recent Quotes
+        - generic [ref=e79]: "[ ENTER ] open · [ / ] filter"
+      - generic [ref=e80]:
+        - generic [ref=e81]: QUOTE#
+        - generic [ref=e82]: TITLE
+        - generic [ref=e83]: CUSTOMER
+        - generic [ref=e84]: STATUS
+        - generic [ref=e85]: VALUE
+        - generic [ref=e86]: DATE
+      - generic [ref=e87]:
+        - generic [ref=e88]: Q-1042
+        - generic [ref=e89]: Granite Kitchen Remodel
+        - generic [ref=e90]: Acme Builders
+        - generic [ref=e91]: ■ SENT
+        - generic [ref=e92]: $48,200
+        - generic [ref=e93]: 06/02
+      - generic [ref=e94]:
+        - generic [ref=e95]: Q-1041
+        - generic [ref=e96]: Quartz Master Bath
+        - generic [ref=e97]: Rivera Homes
+        - generic [ref=e98]: ■ ACCEPTED
+        - generic [ref=e99]: $31,750
+        - generic [ref=e100]: 06/01
+      - generic [ref=e101]:
+        - generic [ref=e102]: Q-1040
+        - generic [ref=e103]: Marble Waterfall Island
+        - generic [ref=e104]: Lee Residence
+        - generic [ref=e105]: ■ DRAFT
+        - generic [ref=e106]: $22,900
+        - generic [ref=e107]: 05/30
+      - generic [ref=e108]:
+        - generic [ref=e109]: Q-1039
+        - generic [ref=e110]: Porcelain Outdoor Kitchen
+        - generic [ref=e111]: Coastal Dev
+        - generic [ref=e112]: ■ REJECTED
+        - generic [ref=e113]: $54,100
+        - generic [ref=e114]: 05/29
+      - generic [ref=e115]:
+        - generic [ref=e116]: Q-1038
+        - generic [ref=e117]: Soapstone Vanity Tops
+        - generic [ref=e118]: Hartman Group
+        - generic [ref=e119]: ■ SENT
+        - generic [ref=e120]: $18,400
+        - generic [ref=e121]: 05/28

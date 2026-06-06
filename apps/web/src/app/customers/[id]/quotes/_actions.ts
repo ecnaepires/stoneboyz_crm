@@ -182,6 +182,7 @@ export async function sendQuoteAction(customerId: string, quoteId: string) {
   }
 
   revalidatePath(`/customers/${customerId}/quotes/${quoteId}`);
+  revalidatePath(`/customers/${customerId}/quotes/${quoteId}/drawing`);
 }
 
 export async function sendQuoteEmailAction(
@@ -369,6 +370,7 @@ export async function updateAreaAction(
   }
 
   revalidatePath(`/customers/${customerId}/quotes/${quoteId}`);
+  revalidatePath(`/customers/${customerId}/quotes/${quoteId}/drawing`);
   return { ok: true as const, data: undefined };
 }
 
@@ -392,6 +394,7 @@ export async function deleteAreaAction(
   }
 
   revalidatePath(`/customers/${customerId}/quotes/${quoteId}`);
+  revalidatePath(`/customers/${customerId}/quotes/${quoteId}/drawing`);
 }
 
 export async function generatePricingAction(

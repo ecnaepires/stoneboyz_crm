@@ -1,0 +1,121 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e2]:
+    - generic [ref=e3]:
+      - generic [ref=e4]: SBZ
+      - generic [ref=e5]:
+        - generic [ref=e6]: Stone Boyz
+        - generic [ref=e7]: Luxury Kitchen
+    - navigation [ref=e8]:
+      - link "Dashboard" [ref=e9] [cursor=pointer]:
+        - /url: "#"
+      - link "Customers" [ref=e10] [cursor=pointer]:
+        - /url: "#"
+      - link "Quotes" [ref=e11] [cursor=pointer]:
+        - /url: "#"
+      - link "Orders" [ref=e12] [cursor=pointer]:
+        - /url: "#"
+      - link "Schedule" [ref=e13] [cursor=pointer]:
+        - /url: "#"
+      - link "Slabs" [ref=e14] [cursor=pointer]:
+        - /url: "#"
+    - button "＋ New Quote" [ref=e16] [cursor=pointer]
+  - generic [ref=e18]:
+    - heading "Good morning, Stone Boyz 👋" [level=1] [ref=e19]
+    - paragraph [ref=e20]: Here's your shop at a glance.
+  - generic [ref=e21]:
+    - generic [ref=e22]:
+      - generic [ref=e23]:
+        - generic [ref=e24]:
+          - generic [ref=e25]: Revenue · last 6 mo.
+          - generic [ref=e26]: $1.20M
+          - generic [ref=e27]: ▲ 14% vs. prior
+        - generic [ref=e28]:
+          - generic [ref=e29]: Quotes
+          - generic [ref=e31]: Orders
+      - img [ref=e33]
+    - generic [ref=e38]:
+      - generic [ref=e39]: ▲ 6%
+      - generic [ref=e40]:
+        - generic [ref=e41]: ◷
+        - text: Active Customers
+      - generic [ref=e42]: "142"
+      - img [ref=e43]
+    - generic [ref=e45]:
+      - generic [ref=e46]: ▲ 12%
+      - generic [ref=e47]:
+        - generic [ref=e48]: ▤
+        - text: Open Quotes
+      - generic [ref=e49]: "37"
+      - generic [ref=e50]: $284,500
+    - generic [ref=e51]:
+      - img [ref=e52]:
+        - generic [ref=e58]: "37"
+        - generic [ref=e59]: OPEN
+      - generic [ref=e60]:
+        - generic [ref=e61]:
+          - text: Sent
+          - generic [ref=e63]: "16"
+        - generic [ref=e64]:
+          - text: Accepted
+          - generic [ref=e66]: "11"
+        - generic [ref=e67]:
+          - text: Draft
+          - generic [ref=e69]: "7"
+        - generic [ref=e70]:
+          - text: Rejected
+          - generic [ref=e72]: "3"
+    - generic [ref=e73]:
+      - generic [ref=e74]: ▲ 9%
+      - generic [ref=e75]:
+        - generic [ref=e76]: ▣
+        - text: Orders / Month
+      - generic [ref=e77]: "18"
+      - generic [ref=e78]: $1,204,900
+    - generic [ref=e79]:
+      - generic [ref=e80]: 2 today
+      - generic [ref=e81]:
+        - generic [ref=e82]: ◆
+        - text: Events / Week
+      - generic [ref=e83]: "6"
+      - img [ref=e84]
+    - generic [ref=e86]:
+      - generic [ref=e87]:
+        - heading "Recent Quotes" [level=2] [ref=e88]
+        - link "View all →" [ref=e89] [cursor=pointer]:
+          - /url: "#"
+      - generic [ref=e90]:
+        - generic [ref=e91]: Quote
+        - generic [ref=e92]: Customer
+        - generic [ref=e93]: Status
+        - generic [ref=e94]: Value
+        - generic [ref=e95]: Date
+      - generic [ref=e96]:
+        - generic [ref=e97]:
+          - generic [ref=e98]: GK
+          - generic [ref=e99]:
+            - generic [ref=e100]: Granite Kitchen Remodel
+            - generic [ref=e101]: Q-1042
+        - generic [ref=e102]: Acme Builders
+        - generic [ref=e103]: Sent
+        - generic [ref=e104]: $48,200
+        - generic [ref=e105]: Jun 2
+      - generic [ref=e106]:
+        - generic [ref=e107]:
+          - generic [ref=e108]: QB
+          - generic [ref=e109]:
+            - generic [ref=e110]: Quartz Master Bath
+            - generic [ref=e111]: Q-1041
+        - generic [ref=e112]: Rivera Homes
+        - generic [ref=e113]: Accepted
+        - generic [ref=e114]: $31,750
+        - generic [ref=e115]: Jun 1
+      - generic [ref=e116]:
+        - generic [ref=e117]:
+          - generic [ref=e118]: MW
+          - generic [ref=e119]:
+            - generic [ref=e120]: Marble Waterfall Island
+            - generic [ref=e121]: Q-1040
+        - generic [ref=e122]: Lee Residence
+        - generic [ref=e123]: Draft
+        - generic [ref=e124]: $22,900
+        - generic [ref=e125]: May 30
