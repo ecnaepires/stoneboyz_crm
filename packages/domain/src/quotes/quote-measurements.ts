@@ -28,6 +28,19 @@ export function calculateCountertopSqFt(lengthIn: number, widthIn: number, quant
   return roundToPrecision((lengthIn * widthIn * quantity) / SQUARE_INCHES_PER_SQUARE_FOOT, 3);
 }
 
+// Square footage for one piece. A drawing-derived piece carries its exact
+// outline area (areaSqIn) and bills on that; a manually entered rectangle bills
+// on lengthIn * widthIn (ADR 0006).
+function pieceSqFt(piece: QuoteMeasurementAreaInput['pieces'][number]): number {
+  const quantity = piece.quantity ?? 1;
+  if (piece.areaSqIn !== undefined) {
+    assertPositive(piece.areaSqIn, 'areaSqIn');
+    assertPositive(quantity, 'quantity');
+    return roundToPrecision((piece.areaSqIn * quantity) / SQUARE_INCHES_PER_SQUARE_FOOT, 3);
+  }
+  return calculateCountertopSqFt(piece.lengthIn, piece.widthIn, quantity);
+}
+
 export function calculateLinearFeet(lengthIn: number): number {
   assertPositive(lengthIn, 'lengthIn');
   return roundToPrecision(lengthIn / INCHES_PER_FOOT, 3);
@@ -50,14 +63,10 @@ export function calculateMeasurementAreaTotals(area: QuoteMeasurementAreaInput):
   const sinks = area.sinks ?? [];
 
   const countertopSqFt = sumRounded(
-    pieces
-      .filter((piece) => piece.kind !== 'backsplash')
-      .map((piece) => calculateCountertopSqFt(piece.lengthIn, piece.widthIn, piece.quantity ?? 1))
+    pieces.filter((piece) => piece.kind !== 'backsplash').map(pieceSqFt)
   );
   const backsplashSqFt = sumRounded(
-    pieces
-      .filter((piece) => piece.kind === 'backsplash')
-      .map((piece) => calculateCountertopSqFt(piece.lengthIn, piece.widthIn, piece.quantity ?? 1))
+    pieces.filter((piece) => piece.kind === 'backsplash').map(pieceSqFt)
   );
 
   return {

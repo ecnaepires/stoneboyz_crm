@@ -1,4 +1,6 @@
-import { chainShapeAreaSqIn, chainShapeGeometry } from '../drawing/geometry.js';
+import { chainShapeGeometry } from '../drawing/geometry.js';
+import { chainToPolygon } from '../drawing/converters.js';
+import { polygonAreaSqIn } from '../drawing/polygon.js';
 import { calculateMeasurementAreaTotals } from './quote-measurements.js';
 import type {
   CounterPieceInput,
@@ -32,9 +34,10 @@ interface PieceExtents {
 
 // Bounding-box extents of a piece in inches. Edge linear footage is keyed by
 // pieceId + top/right/bottom/left, which is exact for a single-segment
-// rectangle. KNOWN GAP (ADR 0003 step 5): for a multi-segment chain this uses
-// the bounding box, so an L/U over-reports a side's run; resolved when the edge
-// tool is reshaped to address per-segment boundary edges.
+// rectangle. KNOWN GAP (ADR 0003 step 5 / ADR 0006): for a multi-segment chain
+// this uses the bounding box, so an L/U over- or under-reports a side's run. The
+// fix is per-segment edge identity, landing with parametric polygon authoring;
+// until then the named-side edge model cannot address every edge of an L/U.
 function pieceExtents(piece: CanvasPieceLayout): PieceExtents | null {
   const shape = piece.shape;
   if (shape === null || shape === undefined || shape.type !== 'chain') {
@@ -105,7 +108,9 @@ export function measurementTotalsFromLayout(layout: CanvasLayout): QuoteMeasurem
     if (shape === null || shape === undefined || shape.type !== 'chain') {
       continue;
     }
-    const areaSqIn = chainShapeAreaSqIn(shape as Parameters<typeof chainShapeAreaSqIn>[0]);
+    // Square footage is the exact outline (union) area of the piece polygon
+    // (ADR 0006) — for an L/U the legs only, not the bounding-box corner.
+    const areaSqIn = polygonAreaSqIn(chainToPolygon(shape as Parameters<typeof chainToPolygon>[0]));
     if (areaSqIn <= 0) {
       continue;
     }
@@ -113,11 +118,10 @@ export function measurementTotalsFromLayout(layout: CanvasLayout): QuoteMeasurem
     if (extents !== null) {
       extentsByPiece.set(piece.pieceId, extents);
     }
-    // Route the precomputed union area through the canonical sqft formula
-    // (area / 144) by feeding it as length with unit width.
     pieces.push({
-      lengthIn: areaSqIn,
-      widthIn: 1,
+      lengthIn: 0,
+      widthIn: 0,
+      areaSqIn,
       kind: piece.kind ?? 'countertop'
     });
   }
