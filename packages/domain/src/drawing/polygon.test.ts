@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { polygonAreaSqIn, polygonSignedTwiceArea, type Polygon } from './polygon.js';
+import {
+  polygonAreaSqIn,
+  polygonSignedTwiceArea,
+  polygonValidate,
+  type Polygon
+} from './polygon.js';
 
 const poly = (...vertices: Array<[number, number]>): Polygon => ({
   vertices: vertices.map(([x, y]) => ({ x, y }))
@@ -29,6 +34,52 @@ describe('polygonAreaSqIn', () => {
 
   it('returns 0 for fewer than three vertices', () => {
     expect(polygonAreaSqIn(poly([0, 0], [100, 0]))).toBe(0);
+  });
+});
+
+describe('polygonValidate', () => {
+  it('accepts a rectangle', () => {
+    expect(polygonValidate(poly([0, 0], [100, 0], [100, 25], [0, 25]))).toEqual({ ok: true });
+  });
+
+  it('accepts a concave L', () => {
+    const l = poly([0, 0], [100, 0], [100, 25], [25, 25], [25, 75], [0, 75]);
+    expect(polygonValidate(l)).toEqual({ ok: true });
+  });
+
+  it('rejects fewer than three vertices', () => {
+    expect(polygonValidate(poly([0, 0], [100, 0]))).toEqual({
+      ok: false,
+      error: 'too_few_vertices'
+    });
+  });
+
+  it('rejects a zero-length edge (duplicate consecutive vertex)', () => {
+    expect(polygonValidate(poly([0, 0], [100, 0], [100, 0], [0, 25]))).toEqual({
+      ok: false,
+      error: 'zero_length_edge'
+    });
+  });
+
+  it('rejects an explicitly closed ring (last vertex duplicates first)', () => {
+    expect(polygonValidate(poly([0, 0], [100, 0], [100, 25], [0, 0]))).toEqual({
+      ok: false,
+      error: 'zero_length_edge'
+    });
+  });
+
+  it('rejects collinear zero-area vertices', () => {
+    expect(polygonValidate(poly([0, 0], [50, 0], [100, 0]))).toEqual({
+      ok: false,
+      error: 'zero_area'
+    });
+  });
+
+  it('rejects a self-intersecting bowtie', () => {
+    expect(polygonValidate(poly([0, 0], [100, 100], [100, 0], [0, 100]))).toEqual({
+      ok: false,
+      error: 'self_intersecting'
+    });
   });
 });
 
