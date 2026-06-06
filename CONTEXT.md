@@ -47,11 +47,15 @@ The visible physical condition of a Slab, including whether it is good or damage
 
 ## Damage Mark
 
-A marked area on a Slab photo identifying one visible flaw, such as a scratch, chip, crack, or stain. A Slab may have many Damage Marks, and each mark carries its own type and note.
+A marked area on a Slab photo identifying one visible flaw, such as a scratch, chip, crack, or stain. A Slab may have many Damage Marks, and each mark carries its own type and note. A Damage Mark lives in photo pixel space and is a visual record; it is not the same as a Damage Zone and the two must not be blurred.
+
+## Damage Zone
+
+A region of unusable Slab surface expressed in physical slab inches, authored directly on the Slab Layout board. Slab Layout warns when a piece overlaps a Damage Zone. It is distinct from a Damage Mark: a Damage Mark annotates a photo for visual record, while a Damage Zone drives geometric placement on the layout.
 
 ## Slab Layout
 
-A planning view that places Job pieces onto a Slab or Remnant to judge whether the material can be cut for the work. Slab Layout uses confirmed Slab dimensions, Job piece dimensions, and Damage Marks.
+A planning view that places a Job's pieces onto its reserved Slabs and Remnants of one Material Color to judge whether the material can be cut for the work. The user places each piece by hand; Slab Layout uses confirmed Slab dimensions, Job piece dimensions, and Damage Zones, and flags pieces that fall outside the slab, overlap another piece, or overlap a Damage Zone.
 
 ## Area (Sheet)
 
@@ -62,6 +66,22 @@ Each Sheet reports its own measurement rollup: counter square footage, backsplas
 ## Templater
 
 The field worker who visits the customer's home and produces the drawing: counters, backsplashes, floor tiles, sinks, faucet holes, and edges, divided into Sheets by room. The Templater works only in the drawing workspace and never sets pricing. Drawing is the only input; measurements are read off the drawing.
+
+## Construction Line
+
+A straight drawing reference attached to a countertop piece for layout, alignment, or shop communication. A Construction Line is not material and never contributes to square footage, finished-edge linear footage, splash quantities, sink counts, faucet-hole counts, or pricing quantities.
+
+## Segment Line
+
+A Construction Line placed from a user-chosen start point, exact length, and direction squared to the countertop piece. Segment Lines are used for controlled layout marks such as seam planning and must not be drawn freehand.
+
+## Centerline
+
+A dashed construction/reference line placed by the Templater for alignment. A Centerline can be offset by exact measured inches from a counter edge, cabinet reference, or wall reference. It is not material and never contributes to square footage, finished-edge linear footage, splash quantities, sink counts, faucet-hole counts, or pricing quantities.
+
+## Extend
+
+A drawing operation that lengthens a source Construction Line to a user-selected target line while preserving the source line's direction squared to the countertop. Extend does not change countertop shape; if the source is a countertop edge, the result is a Construction Line.
 
 ## Salesperson
 
@@ -120,7 +140,11 @@ Any countertop edge that is not a wall edge. A wall edge sits against the wall a
 
 ## Square Footage
 
-The full slab area of a piece. Counter pieces and backsplash pieces are measured by square footage only; the polished top face of the slab is not a separately measured fabrication. Sink and faucet cutouts do not reduce square footage — a piece is measured as its full rectangle. Only fabricated edges are measured by linear foot; the slab face is not.
+The exact outline area of a piece — the union of its drawn shape. For an L or U piece this is the legs only, not the empty corner of its bounding box. Counter pieces and backsplash pieces are measured by square footage only; the polished top face of the slab is not a separately measured fabrication. Sink and faucet cutouts do not reduce square footage — they are counted as units and charged separately, never subtracted from the outline area. Only fabricated edges are measured by linear foot; the slab face is not. The same outline area serves both billing and cut-fit (Slab Layout); the two never use different shapes for the same piece.
+
+## Corner Treatment
+
+A finishing note applied to a single countertop corner. Only two exist: Radius (rounded) and Clip (chamfer). A Corner Treatment is a fabrication annotation and never changes square footage or finished-edge linear footage — it records how the corner is finished, not a change to the piece outline. Notch and Bump-Out are not Corner Treatments: they are real changes to the piece outline and are drawn into the shape itself, where they are measured like any other outline geometry.
 
 ## Splash (edge treatment)
 
