@@ -3,8 +3,13 @@
 // data migration: measurement and the canvas normalize to Polygon on load.
 
 import { chainShapeGeometry, legacyShapeToChain } from './geometry.js';
-import type { Polygon, PolygonVertex } from './polygon.js';
-import type { ChainShapeLayout, LShapeLayout, ZShapeLayout } from './types.js';
+import { polygonEdges, type Polygon, type PolygonVertex } from './polygon.js';
+import type {
+  ChainShapeLayout,
+  DrawingEdgeKey,
+  LShapeLayout,
+  ZShapeLayout,
+} from './types.js';
 
 const EMPTY: Polygon = { vertices: [] };
 
@@ -46,4 +51,52 @@ export function zShapeToPolygon(
   scale = 3,
 ): Polygon {
   return chainToPolygon(legacyShapeToChain(shape, piece, scale));
+}
+
+const EPSILON = 1e-6;
+
+// Translate a legacy named side (top/right/bottom/left) into the index of the
+// polygon edge that lies on that side of the bounding box. Used to carry edge
+// treatments stored against the old four-side model onto the per-segment polygon
+// edges on load. Canvas Y grows downward, so "top" is the minimum Y. When a side
+// has more than one edge (an L/U leg), the longest one wins. Returns null when no
+// axis-aligned edge sits on that side.
+export function mapLegacyEdgeToPolygonIndex(
+  polygon: Polygon,
+  side: DrawingEdgeKey,
+): number | null {
+  const edges = polygonEdges(polygon);
+  if (edges.length === 0) {
+    return null;
+  }
+
+  const xs = polygon.vertices.map((v) => v.x);
+  const ys = polygon.vertices.map((v) => v.y);
+  const minX = Math.min(...xs);
+  const maxX = Math.max(...xs);
+  const minY = Math.min(...ys);
+  const maxY = Math.max(...ys);
+
+  const near = (a: number, b: number) => Math.abs(a - b) < EPSILON;
+  const isHorizontal = (e: (typeof edges)[number]) => near(e.from.y, e.to.y);
+  const isVertical = (e: (typeof edges)[number]) => near(e.from.x, e.to.x);
+
+  const onSide = edges.filter((e) => {
+    switch (side) {
+      case 'top':
+        return isHorizontal(e) && near(e.from.y, minY);
+      case 'bottom':
+        return isHorizontal(e) && near(e.from.y, maxY);
+      case 'left':
+        return isVertical(e) && near(e.from.x, minX);
+      case 'right':
+        return isVertical(e) && near(e.from.x, maxX);
+    }
+  });
+
+  if (onSide.length === 0) {
+    return null;
+  }
+
+  return onSide.reduce((longest, e) => (e.lengthIn > longest.lengthIn ? e : longest)).index;
 }

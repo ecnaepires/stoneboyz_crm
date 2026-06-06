@@ -1,8 +1,13 @@
 import { describe, expect, it } from 'vitest';
-import { chainToPolygon, lShapeToPolygon, zShapeToPolygon } from './converters.js';
+import {
+  chainToPolygon,
+  lShapeToPolygon,
+  mapLegacyEdgeToPolygonIndex,
+  zShapeToPolygon
+} from './converters.js';
 import { chainShapeAreaSqIn, legacyShapeToChain } from './geometry.js';
-import { polygonAreaSqIn, polygonValidate } from './polygon.js';
-import type { ChainShapeLayout } from './types.js';
+import { polygonAreaSqIn, polygonEdges, polygonValidate } from './polygon.js';
+import type { ChainShapeLayout, DrawingEdgeKey } from './types.js';
 
 const SCALE = 3;
 
@@ -49,6 +54,42 @@ describe('chainToPolygon', () => {
 
   it('returns an empty polygon for a degenerate chain', () => {
     expect(chainToPolygon({ type: 'chain', segments: [] })).toEqual({ vertices: [] });
+  });
+});
+
+describe('mapLegacyEdgeToPolygonIndex', () => {
+  const rect = chainToPolygon(rectChain);
+
+  it('maps each named side to a distinct edge lying on that side of the bounds', () => {
+    const edges = polygonEdges(rect);
+    const sides: DrawingEdgeKey[] = ['top', 'right', 'bottom', 'left'];
+    const indices = sides.map((side) => mapLegacyEdgeToPolygonIndex(rect, side));
+
+    // every side resolves and they are all distinct
+    expect(indices.every((i) => i !== null)).toBe(true);
+    expect(new Set(indices).size).toBe(4);
+
+    // top edge is horizontal at min Y; left edge is vertical at min X
+    const ys = rect.vertices.map((v) => v.y);
+    const xs = rect.vertices.map((v) => v.x);
+    const topEdge = edges[indices[0] as number];
+    const leftEdge = edges[indices[3] as number];
+    expect(topEdge?.from.y).toBeCloseTo(Math.min(...ys), 6);
+    expect(topEdge?.to.y).toBeCloseTo(Math.min(...ys), 6);
+    expect(leftEdge?.from.x).toBeCloseTo(Math.min(...xs), 6);
+    expect(leftEdge?.to.x).toBeCloseTo(Math.min(...xs), 6);
+  });
+
+  it('top and bottom map to the 100in runs, left and right to the 25in runs', () => {
+    const edges = polygonEdges(rect);
+    expect(edges[mapLegacyEdgeToPolygonIndex(rect, 'top') as number]?.lengthIn).toBe(100);
+    expect(edges[mapLegacyEdgeToPolygonIndex(rect, 'bottom') as number]?.lengthIn).toBe(100);
+    expect(edges[mapLegacyEdgeToPolygonIndex(rect, 'left') as number]?.lengthIn).toBe(25);
+    expect(edges[mapLegacyEdgeToPolygonIndex(rect, 'right') as number]?.lengthIn).toBe(25);
+  });
+
+  it('returns null when the polygon is empty', () => {
+    expect(mapLegacyEdgeToPolygonIndex({ vertices: [] }, 'top')).toBeNull();
   });
 });
 
