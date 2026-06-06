@@ -36,6 +36,29 @@ export function polygonAreaSqIn(polygon: Polygon): number {
   return Math.abs(polygonSignedTwiceArea(polygon)) / 2;
 }
 
+export interface PolygonEdge {
+  index: number;
+  from: PolygonVertex;
+  to: PolygonVertex;
+  lengthIn: number;
+}
+
+// Ordered edges of the ring, each between adjacent vertices, with its exact
+// length in inches. Edge i runs from vertex i to vertex i+1 (the last wraps back
+// to the first). This replaces the four named sides (top/right/bottom/left): an
+// L or U exposes every leg as its own edge, so finished-edge linear footage is
+// measured exactly instead of off the bounding box (ADR 0006).
+export function polygonEdges(polygon: Polygon): PolygonEdge[] {
+  const { vertices } = polygon;
+  if (vertices.length < 2) {
+    return [];
+  }
+  return vertices.map((from, index) => {
+    const to = vertices[(index + 1) % vertices.length] as PolygonVertex;
+    return { index, from, to, lengthIn: Math.hypot(to.x - from.x, to.y - from.y) };
+  });
+}
+
 export type PolygonValidationError =
   | 'too_few_vertices'
   | 'zero_length_edge'

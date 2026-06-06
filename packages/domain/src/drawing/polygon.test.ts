@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   polygonAreaSqIn,
+  polygonEdges,
   polygonSignedTwiceArea,
   polygonValidate,
   type Polygon
@@ -34,6 +35,30 @@ describe('polygonAreaSqIn', () => {
 
   it('returns 0 for fewer than three vertices', () => {
     expect(polygonAreaSqIn(poly([0, 0], [100, 0]))).toBe(0);
+  });
+});
+
+describe('polygonEdges', () => {
+  it('returns four edges with exact lengths for a rectangle', () => {
+    const edges = polygonEdges(poly([0, 0], [100, 0], [100, 25], [0, 25]));
+    expect(edges.map((e) => e.lengthIn)).toEqual([100, 25, 100, 25]);
+    expect(edges.map((e) => e.index)).toEqual([0, 1, 2, 3]);
+  });
+
+  it('measures each leg of an L exactly, not the bounding box', () => {
+    const l = poly([0, 0], [100, 0], [100, 25], [25, 25], [25, 75], [0, 75]);
+    expect(polygonEdges(l).map((e) => e.lengthIn)).toEqual([100, 25, 75, 50, 25, 75]);
+  });
+
+  it('measures an angled (diagonal) edge as its true hypotenuse', () => {
+    // a clipped corner: the 3-4-5 diagonal has length 5.
+    const clipped = poly([0, 0], [100, 0], [100, 21], [96, 24], [0, 24]);
+    const diagonal = polygonEdges(clipped)[2];
+    expect(diagonal?.lengthIn).toBe(5);
+  });
+
+  it('returns no edges for fewer than two vertices', () => {
+    expect(polygonEdges(poly([0, 0]))).toEqual([]);
   });
 });
 
