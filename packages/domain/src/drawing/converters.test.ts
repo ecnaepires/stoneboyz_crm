@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { chainToPolygon } from './converters.js';
-import { chainShapeAreaSqIn } from './geometry.js';
-import { polygonAreaSqIn } from './polygon.js';
+import { chainToPolygon, lShapeToPolygon, zShapeToPolygon } from './converters.js';
+import { chainShapeAreaSqIn, legacyShapeToChain } from './geometry.js';
+import { polygonAreaSqIn, polygonValidate } from './polygon.js';
 import type { ChainShapeLayout } from './types.js';
 
 const SCALE = 3;
@@ -49,5 +49,47 @@ describe('chainToPolygon', () => {
 
   it('returns an empty polygon for a degenerate chain', () => {
     expect(chainToPolygon({ type: 'chain', segments: [] })).toEqual({ vertices: [] });
+  });
+});
+
+describe('lShapeToPolygon', () => {
+  // 120x60 main body with a 25.5x40 notch removed at bottom-left.
+  const piece = { lengthIn: 120, widthIn: 60 };
+  const lShape = { type: 'l' as const, legX: 0, legY: 0, legWidthIn: 25.5, legLengthIn: 40 };
+
+  it('produces a valid polygon whose area matches the legacy chain (main minus notch)', () => {
+    const polygon = lShapeToPolygon(lShape, piece);
+    expect(polygonValidate(polygon)).toEqual({ ok: true });
+    expect(polygonAreaSqIn(polygon)).toBeCloseTo(
+      chainShapeAreaSqIn(legacyShapeToChain(lShape, piece, 3)),
+      3
+    );
+    // Legacy converter's silhouette for this L is 6690 sqin (the notch height
+    // is the body below the leg, not the full leg length).
+    expect(polygonAreaSqIn(polygon)).toBe(6690);
+  });
+});
+
+describe('zShapeToPolygon', () => {
+  const piece = { lengthIn: 60, widthIn: 100 };
+  const zShape = {
+    type: 'z' as const,
+    legX: piece.lengthIn * 3 - 25.5 * 3,
+    legY: piece.widthIn * 3 - 30 * 3,
+    legWidthIn: 25.5,
+    legLengthIn: 30,
+    tailX: 0,
+    tailY: -30 * 3,
+    tailLengthIn: 30,
+    tailWidthIn: 25.5
+  };
+
+  it('produces a valid polygon whose area matches the legacy chain', () => {
+    const polygon = zShapeToPolygon(zShape, piece);
+    expect(polygonValidate(polygon)).toEqual({ ok: true });
+    expect(polygonAreaSqIn(polygon)).toBeCloseTo(
+      chainShapeAreaSqIn(legacyShapeToChain(zShape, piece, 3)),
+      3
+    );
   });
 });

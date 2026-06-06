@@ -2,9 +2,9 @@
 // (ADR 0006). These let stored chain/l/z revisions load as polygons without a
 // data migration: measurement and the canvas normalize to Polygon on load.
 
-import { chainShapeGeometry } from './geometry.js';
+import { chainShapeGeometry, legacyShapeToChain } from './geometry.js';
 import type { Polygon, PolygonVertex } from './polygon.js';
-import type { ChainShapeLayout } from './types.js';
+import type { ChainShapeLayout, LShapeLayout, ZShapeLayout } from './types.js';
 
 const EMPTY: Polygon = { vertices: [] };
 
@@ -27,4 +27,23 @@ export function chainToPolygon(shape: ChainShapeLayout): Polygon {
     vertices.push({ x: (outline[i] as number) / scale, y: (outline[i + 1] as number) / scale });
   }
   return { vertices };
+}
+
+// Legacy l/z shapes reconstruct their full silhouette from the piece's main
+// bounding box, so they need the piece dimensions. Both route through the chain
+// converter (legacyShapeToChain already retires l/z into rect-union chains).
+export function lShapeToPolygon(
+  shape: LShapeLayout,
+  piece: { lengthIn: number; widthIn: number },
+  scale = 3,
+): Polygon {
+  return chainToPolygon(legacyShapeToChain(shape, piece, scale));
+}
+
+export function zShapeToPolygon(
+  shape: ZShapeLayout,
+  piece: { lengthIn: number; widthIn: number },
+  scale = 3,
+): Polygon {
+  return chainToPolygon(legacyShapeToChain(shape, piece, scale));
 }
