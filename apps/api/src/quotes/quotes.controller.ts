@@ -24,6 +24,7 @@ import { QuotesService } from './quotes.service.js';
 const customerIdSchema = z.string().uuid();
 const quoteIdSchema = z.string().uuid();
 const lineItemIdSchema = z.string().uuid();
+type PdfDocumentElement = Parameters<typeof renderToBuffer>[0];
 
 const parseLimit = (value: unknown): unknown => {
   if (typeof value !== 'string') {
@@ -129,9 +130,10 @@ export class QuotesController {
       this.quotesService.getById(parsedCustomerId, parsedQuoteId),
       this.customersService.getById(parsedCustomerId)
     ]);
-    const document = React.createElement(QuotePdf, { quote, customerName: customer.name }) as React.ReactElement<
-      React.ComponentProps<typeof Document>
-    >;
+    const document = React.createElement(QuotePdf, {
+      quote,
+      customerName: customer.name
+    }) as PdfDocumentElement;
     const buffer = await renderToBuffer(document);
     const sanitizedQuoteNumber = quote.quoteNumber.replace(/[^a-zA-Z0-9-_]+/g, '_');
 
@@ -158,9 +160,10 @@ export class QuotesController {
       });
     }
 
-    const document = React.createElement(QuotePdf, { quote, customerName: customer.name }) as React.ReactElement<
-      React.ComponentProps<typeof Document>
-    >;
+    const document = React.createElement(QuotePdf, {
+      quote,
+      customerName: customer.name
+    }) as PdfDocumentElement;
     const buffer = await renderToBuffer(document);
 
     await this.emailService.sendQuotePdf({
