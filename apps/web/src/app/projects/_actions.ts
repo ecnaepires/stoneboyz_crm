@@ -101,6 +101,41 @@ export async function updateProjectAction(
   redirect(`/projects/${projectId}`);
 }
 
+export async function updateJobAddressAction(
+  projectId: string,
+  formData: FormData,
+) {
+  const client = await getApiClientWithAuth();
+
+  const field = (key: string) => {
+    const value = (formData.get(key) as string | null)?.trim();
+    return value ? value : null;
+  };
+
+  const { error } = await client.PATCH("/projects/{projectId}", {
+    params: { path: { projectId } },
+    body: {
+      jobAddress: {
+        line1: field("line1"),
+        line2: field("line2"),
+        city: field("city"),
+        region: field("region"),
+        postalCode: field("postalCode"),
+        country: field("country"),
+        contactName: field("contactName"),
+        phone: field("phone"),
+        email: field("email"),
+      },
+    },
+  });
+
+  if (error) {
+    throw new Error("Failed to update job address: " + JSON.stringify(error));
+  }
+
+  revalidatePath(`/projects/${projectId}`);
+}
+
 export async function archiveProjectAction(projectId: string) {
   const client = await getApiClientWithAuth();
 

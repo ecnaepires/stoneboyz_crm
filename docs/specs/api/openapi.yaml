@@ -310,6 +310,7 @@ components:
               fabricator,
               installer,
               service_tech,
+              inventory_manager,
             ]
         createdAt:
           type: string
@@ -671,6 +672,8 @@ components:
         itemGroup:
           type: string
           enum: [material, fabrication, edge, sink, faucet_hole, splash, admin]
+          default: material
+          description: Defaults from category/itemType when omitted.
         category:
           type: string
         itemType:
@@ -682,8 +685,12 @@ components:
         chargeMethod:
           type: string
           enum: [square_foot, linear_foot, each]
+          default: square_foot
+          description: Defaults from category/unit when omitted.
         measurementBasis:
           type: string
+          default: combined_sqft
+          description: Defaults from category when omitted.
           enum:
             [
               countertop_sqft,
@@ -1019,6 +1026,7 @@ components:
       required:
         - id
         - customerId
+        - jobTemplateId
         - title
         - status
         - ownerUserId
@@ -1031,11 +1039,17 @@ components:
         customerId:
           type: string
           format: uuid
+        jobTemplateId:
+          type: string
+          format: uuid
+          nullable: true
         title:
           type: string
         description:
           type: string
           nullable: true
+        jobAddress:
+          $ref: "#/components/schemas/ProjectJobAddress"
         status:
           $ref: "#/components/schemas/ProjectStatus"
         ownerUserId:
@@ -1051,9 +1065,41 @@ components:
           type: string
           format: date-time
 
+    ProjectJobAddress:
+      type: object
+      nullable: true
+      properties:
+        line1:
+          type: string
+          nullable: true
+        line2:
+          type: string
+          nullable: true
+        city:
+          type: string
+          nullable: true
+        region:
+          type: string
+          nullable: true
+        postalCode:
+          type: string
+          nullable: true
+        country:
+          type: string
+          nullable: true
+        contactName:
+          type: string
+          nullable: true
+        phone:
+          type: string
+          nullable: true
+        email:
+          type: string
+          nullable: true
+
     CreateProjectRequest:
       type: object
-      required: [customerId, title, ownerUserId]
+      required: [customerId, title, jobTemplateId, ownerUserId]
       properties:
         customerId:
           type: string
@@ -1061,12 +1107,187 @@ components:
         title:
           type: string
           minLength: 1
+        jobTemplateId:
+          type: string
+          format: uuid
         description:
           type: string
         status:
           $ref: "#/components/schemas/ProjectStatus"
         ownerUserId:
           type: string
+
+    JobTemplateActivitySpec:
+      type: object
+      required:
+        - sortOrder
+        - title
+        - eventType
+        - appointmentType
+        - templateKind
+        - durationMinutes
+        - notes
+      properties:
+        sortOrder:
+          type: integer
+          minimum: 1
+        title:
+          type: string
+        eventType:
+          type: string
+          enum: [appointment, shop_job]
+        appointmentType:
+          type: string
+          enum: [template, deposit, material, cut, fabrication, install, invoice, repair, other]
+          nullable: true
+        templateKind:
+          type: string
+          enum: [measurement_only, physical_template, laser_template]
+          nullable: true
+        durationMinutes:
+          type: integer
+          minimum: 1
+        notes:
+          type: string
+          nullable: true
+
+    JobTemplate:
+      type: object
+      required:
+        - id
+        - slug
+        - name
+        - description
+        - isDefault
+        - activitySpecs
+        - createdAt
+        - updatedAt
+      properties:
+        id:
+          type: string
+          format: uuid
+        slug:
+          type: string
+        name:
+          type: string
+        description:
+          type: string
+          nullable: true
+        isDefault:
+          type: boolean
+        activitySpecs:
+          type: array
+          items:
+            $ref: "#/components/schemas/JobTemplateActivitySpec"
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    JobActivity:
+      type: object
+      required:
+        - id
+        - customerId
+        - projectId
+        - jobTemplateId
+        - templateActivityKey
+        - title
+        - activityType
+        - appointmentType
+        - templateKind
+        - status
+        - sortOrder
+        - durationMinutes
+        - scheduledEventId
+        - autoscheduleState
+        - autoscheduleOffsetAmount
+        - autoscheduleOffsetUnit
+        - dependsOnActivityId
+        - manualOverrideAt
+        - createdAt
+        - updatedAt
+      properties:
+        id:
+          type: string
+          format: uuid
+        customerId:
+          type: string
+          format: uuid
+        projectId:
+          type: string
+          format: uuid
+        jobTemplateId:
+          type: string
+          format: uuid
+        templateActivityKey:
+          type: string
+        title:
+          type: string
+        activityType:
+          type: string
+          enum: [appointment, shop_job]
+        appointmentType:
+          type: string
+          enum: [template, deposit, material, cut, fabrication, install, invoice, repair, other]
+          nullable: true
+        templateKind:
+          type: string
+          enum: [measurement_only, physical_template, laser_template]
+          nullable: true
+        status:
+          type: string
+          enum: [not_scheduled, scheduled, confirmed, in_progress, completed, cancelled]
+        sortOrder:
+          type: integer
+        durationMinutes:
+          type: integer
+        scheduledEventId:
+          type: string
+          format: uuid
+          nullable: true
+        autoscheduleState:
+          type: string
+          nullable: true
+        autoscheduleOffsetAmount:
+          type: integer
+          nullable: true
+        autoscheduleOffsetUnit:
+          type: string
+          nullable: true
+        dependsOnActivityId:
+          type: string
+          format: uuid
+          nullable: true
+        manualOverrideAt:
+          type: string
+          format: date-time
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    ScheduleJobActivityRequest:
+      type: object
+      required: [scheduledAt, assigneeUserIds]
+      properties:
+        scheduledAt:
+          type: string
+          format: date-time
+        durationMinutes:
+          type: integer
+          minimum: 1
+        assigneeUserIds:
+          type: array
+          minItems: 1
+          items:
+            type: string
+            format: uuid
 
     UpdateProjectRequest:
       type: object
@@ -1081,6 +1302,8 @@ components:
         description:
           type: string
           nullable: true
+        jobAddress:
+          $ref: "#/components/schemas/ProjectJobAddress"
         status:
           $ref: "#/components/schemas/ProjectStatus"
         ownerUserId:
@@ -3771,6 +3994,7 @@ paths:
                       fabricator,
                       installer,
                       service_tech,
+                      inventory_manager,
                     ]
       responses:
         "200":
@@ -4148,6 +4372,175 @@ paths:
                   timestamp:
                     type: string
                     format: date-time
+
+  /customers/{customerId}/projects/{projectId}/activities:
+    get:
+      operationId: listJobActivities
+      summary: List job activities
+      parameters:
+        - $ref: "#/components/parameters/CustomerId"
+        - $ref: "#/components/parameters/ProjectId"
+      responses:
+        "200":
+          description: Job activities returned.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/JobActivity"
+        "400":
+          description: Invalid request.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Project not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /customers/{customerId}/projects/{projectId}/activities/{activityId}/schedule:
+    patch:
+      operationId: rescheduleJobActivity
+      summary: Reschedule job activity
+      parameters:
+        - $ref: "#/components/parameters/CustomerId"
+        - $ref: "#/components/parameters/ProjectId"
+        - name: activityId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ScheduleJobActivityRequest"
+      responses:
+        "200":
+          description: Job activity rescheduled.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/JobActivity"
+        "400":
+          description: Invalid request.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Job activity not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: Job activity cannot be rescheduled.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+    post:
+      operationId: scheduleJobActivity
+      summary: Schedule job activity
+      parameters:
+        - $ref: "#/components/parameters/CustomerId"
+        - $ref: "#/components/parameters/ProjectId"
+        - name: activityId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ScheduleJobActivityRequest"
+      responses:
+        "200":
+          description: Job activity scheduled.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/JobActivity"
+        "400":
+          description: Invalid request.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Job activity not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: Job activity already scheduled.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /job-templates:
+    get:
+      operationId: listJobTemplates
+      summary: List job templates
+      responses:
+        "200":
+          description: Job templates returned.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/JobTemplate"
+        "401":
+          description: Authentication required.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /job-templates/{jobTemplateId}:
+    get:
+      operationId: getJobTemplate
+      summary: Get job template
+      parameters:
+        - name: jobTemplateId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Job template returned.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/JobTemplate"
+        "400":
+          description: Invalid request.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Job template not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
 
   /projects:
     get:

@@ -471,6 +471,75 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/customers/{customerId}/projects/{projectId}/activities": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List job activities */
+        get: operations["listJobActivities"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/customers/{customerId}/projects/{projectId}/activities/{activityId}/schedule": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Schedule job activity */
+        post: operations["scheduleJobActivity"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Reschedule job activity */
+        patch: operations["rescheduleJobActivity"];
+        trace?: never;
+    };
+    "/job-templates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List job templates */
+        get: operations["listJobTemplates"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/job-templates/{jobTemplateId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get job template */
+        get: operations["getJobTemplate"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/projects": {
         parameters: {
             query?: never;
@@ -1430,7 +1499,7 @@ export interface components {
             email: string;
             name: string;
             /** @enum {string} */
-            role: "admin" | "salesperson" | "templater" | "cutter" | "fabricator" | "installer" | "service_tech";
+            role: "admin" | "salesperson" | "templater" | "cutter" | "fabricator" | "installer" | "service_tech" | "inventory_manager";
             /** Format: date-time */
             createdAt: string;
         };
@@ -1565,16 +1634,28 @@ export interface components {
         CreatePriceListItemRequest: {
             /** Format: uuid */
             catalogItemId?: string;
-            /** @enum {string} */
-            itemGroup?: "material" | "fabrication" | "edge" | "sink" | "faucet_hole" | "splash" | "admin";
+            /**
+             * @description Defaults from category/itemType when omitted.
+             * @default material
+             * @enum {string}
+             */
+            itemGroup: "material" | "fabrication" | "edge" | "sink" | "faucet_hole" | "splash" | "admin";
             category: string;
             itemType: string;
             name: string;
             description?: string;
-            /** @enum {string} */
-            chargeMethod?: "square_foot" | "linear_foot" | "each";
-            /** @enum {string} */
-            measurementBasis?: "countertop_sqft" | "backsplash_sqft" | "combined_sqft" | "finished_edge_linft" | "splash_sqft" | "sink_count" | "faucet_hole_count" | "each";
+            /**
+             * @description Defaults from category/unit when omitted.
+             * @default square_foot
+             * @enum {string}
+             */
+            chargeMethod: "square_foot" | "linear_foot" | "each";
+            /**
+             * @description Defaults from category when omitted.
+             * @default combined_sqft
+             * @enum {string}
+             */
+            measurementBasis: "countertop_sqft" | "backsplash_sqft" | "combined_sqft" | "finished_edge_linft" | "splash_sqft" | "sink_count" | "faucet_hole_count" | "each";
             unit: string;
             priceCents: number;
             sortOrder?: number;
@@ -1718,8 +1799,11 @@ export interface components {
             id: string;
             /** Format: uuid */
             customerId: string;
+            /** Format: uuid */
+            jobTemplateId: string | null;
             title: string;
             description?: string | null;
+            jobAddress?: components["schemas"]["ProjectJobAddress"];
             status: components["schemas"]["ProjectStatus"];
             ownerUserId: string;
             /** Format: date-time */
@@ -1729,19 +1813,99 @@ export interface components {
             /** Format: date-time */
             updatedAt: string;
         };
+        ProjectJobAddress: {
+            line1?: string | null;
+            line2?: string | null;
+            city?: string | null;
+            region?: string | null;
+            postalCode?: string | null;
+            country?: string | null;
+            contactName?: string | null;
+            phone?: string | null;
+            email?: string | null;
+        } | null;
         CreateProjectRequest: {
             /** Format: uuid */
             customerId: string;
             title: string;
+            /** Format: uuid */
+            jobTemplateId: string;
             description?: string;
             status?: components["schemas"]["ProjectStatus"];
             ownerUserId: string;
+        };
+        JobTemplateActivitySpec: {
+            sortOrder: number;
+            title: string;
+            /** @enum {string} */
+            eventType: "appointment" | "shop_job";
+            /** @enum {string|null} */
+            appointmentType: "template" | "deposit" | "material" | "cut" | "fabrication" | "install" | "invoice" | "repair" | "other" | null;
+            /** @enum {string|null} */
+            templateKind: "measurement_only" | "physical_template" | "laser_template" | null;
+            durationMinutes: number;
+            notes: string | null;
+        };
+        JobTemplate: {
+            /** Format: uuid */
+            id: string;
+            slug: string;
+            name: string;
+            description: string | null;
+            isDefault: boolean;
+            activitySpecs: components["schemas"]["JobTemplateActivitySpec"][];
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+        };
+        JobActivity: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            customerId: string;
+            /** Format: uuid */
+            projectId: string;
+            /** Format: uuid */
+            jobTemplateId: string;
+            templateActivityKey: string;
+            title: string;
+            /** @enum {string} */
+            activityType: "appointment" | "shop_job";
+            /** @enum {string|null} */
+            appointmentType: "template" | "deposit" | "material" | "cut" | "fabrication" | "install" | "invoice" | "repair" | "other" | null;
+            /** @enum {string|null} */
+            templateKind: "measurement_only" | "physical_template" | "laser_template" | null;
+            /** @enum {string} */
+            status: "not_scheduled" | "scheduled" | "confirmed" | "in_progress" | "completed" | "cancelled";
+            sortOrder: number;
+            durationMinutes: number;
+            /** Format: uuid */
+            scheduledEventId: string | null;
+            autoscheduleState: string | null;
+            autoscheduleOffsetAmount: number | null;
+            autoscheduleOffsetUnit: string | null;
+            /** Format: uuid */
+            dependsOnActivityId: string | null;
+            /** Format: date-time */
+            manualOverrideAt: string | null;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+        };
+        ScheduleJobActivityRequest: {
+            /** Format: date-time */
+            scheduledAt: string;
+            durationMinutes?: number;
+            assigneeUserIds: string[];
         };
         UpdateProjectRequest: {
             /** Format: uuid */
             customerId?: string;
             title?: string;
             description?: string | null;
+            jobAddress?: components["schemas"]["ProjectJobAddress"];
             status?: components["schemas"]["ProjectStatus"];
             ownerUserId?: string;
         };
@@ -1973,10 +2137,10 @@ export interface components {
             areaId: string;
             /** Format: uuid */
             materialItemId: string | null;
+            /** @enum {string} */
             materialSource: "inventory" | "external";
             /** Format: uuid */
             materialSlabId: string | null;
-            /** @description Note for external material selection */
             externalMaterialNote: string | null;
             /** Format: uuid */
             edgeItemId: string | null;
@@ -2005,6 +2169,7 @@ export interface components {
             areaId: string;
             /** Format: uuid */
             materialItemId?: string | null;
+            /** @enum {string} */
             materialSource?: "inventory" | "external";
             /** Format: uuid */
             materialSlabId?: string | null;
@@ -3237,7 +3402,7 @@ export interface operations {
             content: {
                 "application/json": {
                     /** @enum {string} */
-                    role: "admin" | "salesperson" | "templater" | "cutter" | "fabricator" | "installer" | "service_tech";
+                    role: "admin" | "salesperson" | "templater" | "cutter" | "fabricator" | "installer" | "service_tech" | "inventory_manager";
                 };
             };
         };
@@ -3762,6 +3927,226 @@ export interface operations {
                         /** Format: date-time */
                         timestamp: string;
                     };
+                };
+            };
+        };
+    };
+    listJobActivities: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                customerId: components["parameters"]["CustomerId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Job activities returned. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["JobActivity"][];
+                };
+            };
+            /** @description Invalid request. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Project not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    scheduleJobActivity: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                customerId: components["parameters"]["CustomerId"];
+                projectId: components["parameters"]["ProjectId"];
+                activityId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ScheduleJobActivityRequest"];
+            };
+        };
+        responses: {
+            /** @description Job activity scheduled. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["JobActivity"];
+                };
+            };
+            /** @description Invalid request. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Job activity not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Job activity already scheduled. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    rescheduleJobActivity: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                customerId: components["parameters"]["CustomerId"];
+                projectId: components["parameters"]["ProjectId"];
+                activityId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ScheduleJobActivityRequest"];
+            };
+        };
+        responses: {
+            /** @description Job activity rescheduled. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["JobActivity"];
+                };
+            };
+            /** @description Invalid request. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Job activity not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Job activity cannot be rescheduled. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    listJobTemplates: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Job templates returned. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["JobTemplate"][];
+                };
+            };
+            /** @description Authentication required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getJobTemplate: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                jobTemplateId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Job template returned. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["JobTemplate"];
+                };
+            };
+            /** @description Invalid request. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Job template not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
         };

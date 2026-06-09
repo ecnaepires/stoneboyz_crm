@@ -17,6 +17,7 @@ import {
 import { archiveProjectAction } from '../_actions';
 import { addJobNoteAction, deleteJobNoteAction, updateChecklistAction, type ChecklistField } from './_actions';
 import { ChecklistToggle } from './checklist-toggle';
+import { JobAddressContent } from './JobAddressCard';
 import { getApiClientWithAuth } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -87,16 +88,6 @@ const checklistRows: Array<{ field: ChecklistField; label: string }> = [
   { field: 'readyToTemplate', label: 'Ready to Template' },
   { field: 'approvedForInstall', label: 'Approved for Install' },
 ];
-
-const activityNames = [
-  'Template',
-  'Deposit',
-  'Material',
-  'Fabrication',
-  'Install',
-  'Invoice',
-  'Repair',
-] as const;
 
 const money = (cents: number | null | undefined) =>
   `$${((cents ?? 0) / 100).toFixed(2)}`;
@@ -170,6 +161,12 @@ export default async function ProjectDetailPage({ params }: ProjectDetailPagePro
     notFound();
   }
 
+  const { data: jobTemplate } = project.jobTemplateId
+    ? await client.GET('/job-templates/{jobTemplateId}', {
+        params: { path: { jobTemplateId: project.jobTemplateId } },
+      })
+    : { data: null };
+
   const [
     { data: customer },
     { data: contactsRes },
@@ -177,6 +174,7 @@ export default async function ProjectDetailPage({ params }: ProjectDetailPagePro
     { data: quotesRes },
     { data: ordersRes },
     { data: eventsRes },
+    { data: activitiesRes },
     { data: notesRes },
     { data: usersRes },
     { data: phasesRes },
@@ -205,6 +203,9 @@ export default async function ProjectDetailPage({ params }: ProjectDetailPagePro
         query: { projectId: id, limit: 50 },
       },
     }),
+    client.GET('/customers/{customerId}/projects/{projectId}/activities', {
+      params: { path: { customerId: project.customerId, projectId: id } },
+    }),
     (client as unknown as NotesQueryClient).GET('/customers/{customerId}/projects/{projectId}/notes', {
       params: { path: { customerId: project.customerId, projectId: id } },
     }),
@@ -220,6 +221,7 @@ export default async function ProjectDetailPage({ params }: ProjectDetailPagePro
   const quoteIds = new Set(quotes.map((quote) => quote.id));
   const orders = (ordersRes?.data ?? []).filter((order) => quoteIds.has(order.quoteId));
   const events = eventsRes?.data ?? [];
+  const activities = activitiesRes ?? [];
   const notes = notesRes ?? [];
   const phases = phasesRes ?? [];
   const activePhase = phases[0];
@@ -244,9 +246,7 @@ export default async function ProjectDetailPage({ params }: ProjectDetailPagePro
   const archiveWithId = archiveProjectAction.bind(null, id);
   const addNoteWithIds = addJobNoteAction.bind(null, project.customerId, id);
 
-  const eventByActivity = new Map(
-    events.map((event) => [event.appointmentType ?? event.title.toLowerCase(), event])
-  );
+  const eventById = new Map(events.map((event) => [event.id, event]));
 
   return (
     <div className="space-y-5">
@@ -320,6 +320,10 @@ export default async function ProjectDetailPage({ params }: ProjectDetailPagePro
                 </dd>
               </div>
               <div>
+                <dt className="text-muted-foreground">Job Template</dt>
+                <dd>{jobTemplate?.name ?? '-'}</dd>
+              </div>
+              <div>
                 <dt className="text-muted-foreground">Creation Date</dt>
                 <dd>{formatDate(project.createdAt)}</dd>
               </div>
@@ -341,7 +345,17 @@ export default async function ProjectDetailPage({ params }: ProjectDetailPagePro
 
         <div className="space-y-5">
           <Card>
-            <SectionTitle icon={MapPin} title="Job Address" />
+            <SectionTitle
+              icon={MapPin}
+              title="Account Address"
+              action={
+                <Button asChild variant="ghost" size="sm" aria-label="Edit account address">
+                  <Link href={`/customers/${project.customerId}`}>
+                    <Pencil className="h-4 w-4" />
+                  </Link>
+                </Button>
+              }
+            />
             <CardContent className="p-4 text-sm">
               {primaryAddress ? (
                 <address className="not-italic">
@@ -351,8 +365,15 @@ export default async function ProjectDetailPage({ params }: ProjectDetailPagePro
                   <div>{primaryAddress.country}</div>
                 </address>
               ) : (
-                <p className="text-muted-foreground">No job address recorded.</p>
+                <p className="text-muted-foreground">No account address recorded.</p>
               )}
+            </CardContent>
+          </Card>
+
+          <Card>
+            <SectionTitle icon={MapPin} title="Job Address" />
+            <CardContent className="p-4 text-sm">
+              <JobAddressContent projectId={project.id} jobAddress={project.jobAddress ?? null} />
             </CardContent>
           </Card>
 
@@ -407,25 +428,41 @@ export default async function ProjectDetailPage({ params }: ProjectDetailPagePro
                 <TableHead className="w-[16%]">Start Date</TableHead>
                 <TableHead className="w-[14%]">Duration</TableHead>
                 <TableHead className="w-[14%]">Assigned To</TableHead>
-                <TableHead>Notes</TableHead>
+                <TableHead>Schedule</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {activityNames.map((activity) => {
-                const event = eventByActivity.get(activity.toLowerCase());
+              {activities.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={6} className="py-6 text-center text-sm text-muted-foreground">
+                    No job activities created yet.
+                  </TableCell>
+                </TableRow>
+              ) : activities.map((activity) => {
+                const event = activity.scheduledEventId ? eventById.get(activity.scheduledEventId) : undefined;
 
                 return (
-                  <TableRow key={activity}>
-                    <TableCell className="font-medium">{activity}</TableCell>
+                  <TableRow key={activity.id}>
+                    <TableCell className="font-medium">
+                      <Link href={`/projects/${id}/activities/${activity.id}`} className="text-primary hover:underline">
+                        {activity.title}
+                      </Link>
+                    </TableCell>
                     <TableCell>
-                      <span className={`inline-flex rounded-full border px-2 py-0.5 text-xs font-medium capitalize ${statusClass(event?.status ?? 'draft')}`}>
-                        {event ? labelize(event.status) : 'Tentative'}
+                      <span className={`inline-flex rounded-full border px-2 py-0.5 text-xs font-medium capitalize ${statusClass(activity.status)}`}>
+                        {labelize(activity.status)}
                       </span>
                     </TableCell>
                     <TableCell>{formatDate(event?.scheduledAt)}</TableCell>
-                    <TableCell>{event ? `${event.durationMinutes} min` : '-'}</TableCell>
+                    <TableCell>{activity.durationMinutes} min</TableCell>
                     <TableCell>{assigneeLabel(event?.assigneeUserIds)}</TableCell>
-                    <TableCell className="break-words text-muted-foreground">{event?.notes ?? '-'}</TableCell>
+                    <TableCell>
+                      <Button asChild variant="outline" size="sm">
+                        <Link href={`/projects/${id}/activities/${activity.id}`}>
+                          {activity.status === 'not_scheduled' ? 'Schedule' : 'Open'}
+                        </Link>
+                      </Button>
+                    </TableCell>
                   </TableRow>
                 );
               })}
