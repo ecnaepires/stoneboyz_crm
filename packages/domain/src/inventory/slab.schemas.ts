@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { validateSlabMeasurement } from '../validators/slab-measurement.js';
 import { SLAB_FINISH_VALUES, SLAB_QUALITY_GRADE_VALUES, SLAB_STATUS_VALUES } from './slab.constants.js';
 
 export const slabStatusSchema = z.enum(SLAB_STATUS_VALUES);
@@ -20,6 +21,15 @@ export const createSlabSchema = z.object({
   costCents: z.number().int().min(0).default(0),
   imageUrls: imageUrlsSchema.default([]),
   notes: z.string().min(1).optional()
+}).superRefine((input, ctx) => {
+  const result = validateSlabMeasurement(input);
+  if (!result.ok) {
+    const path = result.error.includes('thickness') ? ['thicknessCm'] : ['lengthIn'];
+    if (result.error === 'slab exceeds maximum dimensions') {
+      path[0] = input.lengthIn > 144 ? 'lengthIn' : 'widthIn';
+    }
+    ctx.addIssue({ code: 'custom', message: result.error, path });
+  }
 });
 
 export const updateSlabSchema = z.object({
@@ -38,6 +48,22 @@ export const updateSlabSchema = z.object({
 }).refine((input) => Object.keys(input).length > 0, {
   message: 'At least one field is required',
   path: []
+}).superRefine((input, ctx) => {
+  if (input.lengthIn === undefined && input.widthIn === undefined && input.thicknessCm === undefined) {
+    return;
+  }
+  const result = validateSlabMeasurement({
+    lengthIn: input.lengthIn ?? 1,
+    widthIn: input.widthIn ?? 1,
+    thicknessCm: input.thicknessCm ?? 2
+  });
+  if (!result.ok) {
+    const path = result.error.includes('thickness') ? ['thicknessCm'] : ['lengthIn'];
+    if (result.error === 'slab exceeds maximum dimensions') {
+      path[0] = input.lengthIn !== undefined && input.lengthIn > 144 ? 'lengthIn' : 'widthIn';
+    }
+    ctx.addIssue({ code: 'custom', message: result.error, path });
+  }
 });
 
 export const cutSlabSchema = z.object({

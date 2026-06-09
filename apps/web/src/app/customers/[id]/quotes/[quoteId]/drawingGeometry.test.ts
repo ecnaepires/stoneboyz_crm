@@ -638,8 +638,17 @@ describe("drawing geometry workflow rules", () => {
     ]);
   });
 
-  it("renders radius visuals across matching wall offset lines", () => {
+  it("renders radius visuals across matching wall offset lines while cabinet references stay straight", () => {
     const referenceLines = [
+      {
+        id: "bottom-cabinet",
+        pieceId: "piece-1",
+        from: [0, 76.5] as [number, number],
+        to: [300, 76.5] as [number, number],
+        kind: "cabinet" as const,
+        color: "#6b7280",
+        dash: true,
+      },
       {
         id: "bottom-offset",
         pieceId: "piece-1",
@@ -672,6 +681,16 @@ describe("drawing geometry workflow rules", () => {
     });
 
     expect(result.segments).toEqual([
+      {
+        id: "bottom-cabinet",
+        sourceLineId: "bottom-cabinet",
+        pieceId: "piece-1",
+        from: [0, 76.5],
+        to: [300, 76.5],
+        kind: "cabinet",
+        color: "#6b7280",
+        dash: true,
+      },
       {
         id: "bottom-offset",
         sourceLineId: "bottom-offset",

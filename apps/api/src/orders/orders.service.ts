@@ -1,14 +1,22 @@
-import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
-import type { AddOrderPaymentInput, ConvertQuoteToOrderInput, ListOrdersInput, Order, OrderPayment, OrderWithPayments } from '@stoneboyz/domain';
+import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import type {
+  AddOrderPaymentInput,
+  ConvertQuoteToOrderInput,
+  ListOrdersInput,
+  Order,
+  OrderPayment,
+  OrderWithPayments,
+  VoidOrderPaymentInput,
+  RequestOrderDepositInput
+} from '@stoneboyz/domain';
 import type { Pool } from 'pg';
 import { Inject } from '@nestjs/common';
 import { DATABASE_POOL } from '../database.provider.js';
 import { EventBus } from '../events/event-bus.js';
+import { buildProjectStageChangedPayload } from '../projects/project-events.js';
 import { QuotesRepository } from '../quotes/quotes.repository.js';
 import { buildOrderPayload, buildOrderPaymentPayload } from './order-events.js';
 import { InvalidOrderCursorError, OrdersRepository } from './orders.repository.js';
-import { BadRequestException } from '@nestjs/common';
-import { computeTotalCents } from '../quotes/quote.mapper.js';
 
 @Injectable()
 export class OrdersService {
@@ -106,26 +114,116 @@ export class OrdersService {
     return { ...order, payments };
   }
 
-  async addPayment(customerId: string, orderId: string, input: AddOrderPaymentInput): Promise<OrderPayment> {
-    await this.ensureOrderExists(customerId, orderId);
+  async requestDeposit(customerId: string, orderId: string, input: RequestOrderDepositInput): Promise<OrderWithPayments> {
+    const existingOrder = await this.ensureOrderExists(customerId, orderId);
 
-    const payment = await this.ordersRepository.addPayment(this.pool, orderId, input);
+    if (input.depositRequiredCents > existingOrder.totalCents) {
+      throw new BadRequestException({
+        code: 'DEPOSIT_EXCEEDS_ORDER_TOTAL',
+        message: 'Deposit cannot be greater than the order total'
+      });
+    }
+
+    const client = await this.pool.connect();
+    let order: Order | null = null;
+    let advancedProjectIds: string[] = [];
+
+    try {
+      await client.query('BEGIN');
+      order = await this.ordersRepository.requestDeposit(client, customerId, orderId, input);
+
+      if (order === null) {
+        throw new NotFoundException({ code: 'NOT_FOUND', message: 'Order not found' });
+      }
+
+      advancedProjectIds = await this.ordersRepository.advanceLinkedProjectToDeposit(client, customerId, orderId);
+      await this.ordersRepository.syncDepositChecklistForOrder(client, customerId, orderId);
+      await client.query('COMMIT');
+    } catch (error) {
+      await client.query('ROLLBACK');
+      throw error;
+    } finally {
+      client.release();
+    }
+
+    if (order === null) {
+      throw new NotFoundException({ code: 'NOT_FOUND', message: 'Order not found' });
+    }
+
+    this.eventBus.emit('order.deposit_requested', buildOrderPayload(customerId, orderId, input.actorUserId));
+    for (const projectId of advancedProjectIds) {
+      this.eventBus.emit(
+        'project.stage_changed',
+        buildProjectStageChangedPayload(projectId, input.actorUserId, 'new', 'deposit', 'auto')
+      );
+    }
+
+    const payments = await this.ordersRepository.listPayments(orderId);
+    return { ...order, payments };
+  }
+
+  async addPayment(customerId: string, orderId: string, input: AddOrderPaymentInput): Promise<OrderPayment> {
+    const order = await this.ensureOrderExists(customerId, orderId);
+
+    if (input.amountCents > order.balanceDueCents) {
+      throw new ConflictException({
+        code: 'PAYMENT_EXCEEDS_BALANCE',
+        message: 'Payment cannot be greater than the order balance'
+      });
+    }
+
+    const client = await this.pool.connect();
+    let payment: OrderPayment | null = null;
+
+    try {
+      await client.query('BEGIN');
+      payment = await this.ordersRepository.addPayment(client, orderId, input);
+      await this.ordersRepository.syncDepositChecklistForOrder(client, customerId, orderId);
+      await client.query('COMMIT');
+    } catch (error) {
+      await client.query('ROLLBACK');
+      throw error;
+    } finally {
+      client.release();
+    }
+
+    if (payment === null) {
+      throw new NotFoundException({ code: 'NOT_FOUND', message: 'Payment not found' });
+    }
 
     this.eventBus.emit('order.payment_added', buildOrderPaymentPayload(customerId, orderId, payment.id, input.actorUserId));
 
     return payment;
   }
 
-  async removePayment(customerId: string, orderId: string, paymentId: string, actorUserId: string): Promise<OrderPayment> {
+  async voidPayment(customerId: string, orderId: string, paymentId: string, input: VoidOrderPaymentInput): Promise<OrderPayment> {
     await this.ensureOrderExists(customerId, orderId);
 
-    const payment = await this.ordersRepository.removePayment(orderId, paymentId);
+    const client = await this.pool.connect();
+    let payment: OrderPayment | null = null;
+
+    try {
+      await client.query('BEGIN');
+      payment = await this.ordersRepository.voidPayment(client, orderId, paymentId, input.actorUserId, input.voidReason);
+
+      if (payment === null) {
+        throw new NotFoundException({ code: 'NOT_FOUND', message: 'Payment not found' });
+      }
+
+      await this.ordersRepository.syncDepositChecklistForOrder(client, customerId, orderId);
+      await client.query('COMMIT');
+    } catch (error) {
+      await client.query('ROLLBACK');
+      throw error;
+    } finally {
+      client.release();
+    }
 
     if (payment === null) {
       throw new NotFoundException({ code: 'NOT_FOUND', message: 'Payment not found' });
     }
 
-    this.eventBus.emit('order.payment_removed', buildOrderPaymentPayload(customerId, orderId, paymentId, actorUserId));
+    this.eventBus.emit('order.payment_voided', buildOrderPaymentPayload(customerId, orderId, paymentId, input.actorUserId));
 
     return payment;
   }

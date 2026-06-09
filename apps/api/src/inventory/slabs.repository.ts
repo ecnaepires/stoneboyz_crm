@@ -278,6 +278,97 @@ export class SlabsRepository {
     return null;
   }
 
+  async negotiate(slabId: string, client: Queryable = this.pool): Promise<Slab | null> {
+    const result = await client.query<SlabRow>(
+      `
+        UPDATE slabs
+        SET status = 'negotiating', updated_at = now()
+        WHERE id = $1
+          AND deleted_at IS NULL
+          AND status IN ('available', 'remnant')
+        RETURNING *
+      `,
+      [slabId]
+    );
+
+    const row = result.rows[0];
+
+    if (row !== undefined) {
+      return mapSlabRow(row);
+    }
+
+    const current = await this.findById(slabId, client);
+    if (current !== null) {
+      throw new InvalidSlabStatusError('Slab is not available');
+    }
+
+    return null;
+  }
+
+  async promoteNegotiatingToReserved(slabId: string, client: Queryable = this.pool): Promise<Slab | null> {
+    const result = await client.query<SlabRow>(
+      `
+        UPDATE slabs
+        SET status = 'reserved', updated_at = now()
+        WHERE id = $1
+          AND deleted_at IS NULL
+          AND status = 'negotiating'
+        RETURNING *
+      `,
+      [slabId]
+    );
+
+    const row = result.rows[0];
+
+    if (row !== undefined) {
+      return mapSlabRow(row);
+    }
+
+    const current = await this.findById(slabId, client);
+    if (current !== null) {
+      throw new InvalidSlabStatusError('Slab is not negotiating');
+    }
+
+    return null;
+  }
+
+  async promoteNegotiatingManyForQuote(quoteId: string, client: Queryable): Promise<string[]> {
+    const candidateResult = await client.query<{ id: string }>(
+      `
+        SELECT DISTINCT qaps.material_slab_id AS id
+        FROM quote_area_pricing_selections qaps
+        INNER JOIN quote_areas qa ON qa.id = qaps.quote_area_id
+        WHERE qa.quote_id = $1
+          AND qaps.material_source = 'inventory'
+          AND qaps.material_slab_id IS NOT NULL
+      `,
+      [quoteId]
+    );
+    const slabIds = candidateResult.rows.map((row) => row.id);
+
+    if (slabIds.length === 0) {
+      return [];
+    }
+
+    const result = await client.query<{ id: string }>(
+      `
+        UPDATE slabs
+        SET status = 'reserved', updated_at = now()
+        WHERE id = ANY($1::uuid[])
+          AND deleted_at IS NULL
+          AND status = 'negotiating'
+        RETURNING id
+      `,
+      [slabIds]
+    );
+
+    if (result.rows.length !== slabIds.length) {
+      throw new InvalidSlabStatusError('Slab is not negotiating');
+    }
+
+    return result.rows.map((row) => row.id);
+  }
+
   async release(slabId: string, client: Queryable = this.pool): Promise<Slab | null> {
     const result = await client.query<SlabRow>(
       `
@@ -285,7 +376,7 @@ export class SlabsRepository {
         SET status = 'available', updated_at = now()
         WHERE id = $1
           AND deleted_at IS NULL
-          AND status = 'reserved'
+          AND status IN ('negotiating', 'reserved')
         RETURNING *
       `,
       [slabId]
@@ -294,6 +385,30 @@ export class SlabsRepository {
     const row = result.rows[0];
 
     return row === undefined ? null : mapSlabRow(row);
+  }
+
+  async releaseNegotiatingManyForQuote(quoteId: string, client: Queryable): Promise<string[]> {
+    const result = await client.query<{ id: string }>(
+      `
+        UPDATE slabs s
+        SET status = 'available', updated_at = now()
+        FROM (
+          SELECT DISTINCT qaps.material_slab_id AS id
+          FROM quote_area_pricing_selections qaps
+          INNER JOIN quote_areas qa ON qa.id = qaps.quote_area_id
+          WHERE qa.quote_id = $1
+            AND qaps.material_source = 'inventory'
+            AND qaps.material_slab_id IS NOT NULL
+        ) candidate_slabs
+        WHERE s.id = candidate_slabs.id
+          AND s.deleted_at IS NULL
+          AND s.status = 'negotiating'
+        RETURNING s.id
+      `,
+      [quoteId]
+    );
+
+    return result.rows.map((row) => row.id);
   }
 
   async cut(slabId: string, remnants: CreateSlabInput[], client: Queryable): Promise<{ slab: Slab | null; remnants: Slab[] }> {

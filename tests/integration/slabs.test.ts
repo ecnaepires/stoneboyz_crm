@@ -50,7 +50,7 @@ const createSlab = async (body: Record<string, unknown> = {}): Promise<{ respons
       finish: 'polished',
       qualityGrade: 'A',
       lengthIn: 120,
-      widthIn: 70,
+      widthIn: 60,
       thicknessCm: 3,
       costCents: 120000,
       ...body
@@ -125,6 +125,53 @@ describe('slabs', () => {
     expect(response.status).toBe(200);
     expect(body).toMatchObject({ hasMore: false, nextCursor: null });
     expect(body.data).toHaveLength(1);
+  });
+
+  it('uploads and removes slab photos', async () => {
+    const slab = await createSlab();
+    const formData = new FormData();
+    formData.set(
+      'image',
+      new Blob([new Uint8Array([137, 80, 78, 71])], { type: 'image/png' }),
+      'slab.png'
+    );
+
+    const uploadResponse = await fetch(`${slabsUrl()}/${slab.body.id}/images`, {
+      method: 'POST',
+      body: formData
+    });
+    const uploaded = await uploadResponse.json() as Record<string, unknown>;
+
+    expect(uploadResponse.status).toBe(201);
+    expect(uploaded.imageUrls).toHaveLength(1);
+    expect((uploaded.imageUrls as string[])[0]).toContain('/uploads/slabs/');
+
+    const deleteResponse = await fetch(`${slabsUrl()}/${slab.body.id}/images`, {
+      method: 'DELETE',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ url: (uploaded.imageUrls as string[])[0] })
+    });
+    const deleted = await deleteResponse.json() as Record<string, unknown>;
+
+    expect(deleteResponse.status).toBe(200);
+    expect(deleted.imageUrls).toEqual([]);
+  });
+
+  it('rejects slab measurements outside shop limits', async () => {
+    const oversized = await createSlab({ widthIn: 61 });
+
+    expect(oversized.response.status).toBe(400);
+    expect(oversized.body).toMatchObject({
+      code: 'VALIDATION_ERROR',
+      details: { widthIn: ['slab exceeds maximum dimensions'] }
+    });
+
+    const invalidThickness = await createSlab({ thicknessCm: 1 });
+    expect(invalidThickness.response.status).toBe(400);
+    expect(invalidThickness.body).toMatchObject({
+      code: 'VALIDATION_ERROR',
+      details: { thicknessCm: ['thickness must be 2cm or 3cm'] }
+    });
   });
 
   it('reserves and releases a slab through quote line items', async () => {

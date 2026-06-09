@@ -7,6 +7,7 @@ import { polygonEdges, type Polygon, type PolygonVertex } from './polygon.js';
 import type {
   ChainShapeLayout,
   DrawingEdgeKey,
+  EdgeLayout,
   LShapeLayout,
   ZShapeLayout,
 } from './types.js';
@@ -29,7 +30,11 @@ export function chainToPolygon(shape: ChainShapeLayout): Polygon {
   const { outline } = chainShapeGeometry(shape);
   const vertices: PolygonVertex[] = [];
   for (let i = 0; i + 1 < outline.length; i += 2) {
-    vertices.push({ x: (outline[i] as number) / scale, y: (outline[i + 1] as number) / scale });
+    vertices.push({
+      id: `legacy-v${vertices.length}`,
+      x: (outline[i] as number) / scale,
+      y: (outline[i + 1] as number) / scale
+    });
   }
   return { vertices };
 }
@@ -55,16 +60,19 @@ export function zShapeToPolygon(
 
 const EPSILON = 1e-6;
 
-// Translate a legacy named side (top/right/bottom/left) into the index of the
-// polygon edge that lies on that side of the bounding box. Used to carry edge
-// treatments stored against the old four-side model onto the per-segment polygon
-// edges on load. Canvas Y grows downward, so "top" is the minimum Y. When a side
-// has more than one edge (an L/U leg), the longest one wins. Returns null when no
-// axis-aligned edge sits on that side.
+export interface PolygonEdgeIdentity {
+  fromVertexId: string;
+  toVertexId: string;
+}
+
+// Translate a legacy named side (top/right/bottom/left) into the identity of the
+// polygon edge that lies on that side of the bounding box. The function name is
+// kept for compatibility with earlier callers; rename debt: it now returns
+// vertex identity, not an index (ADR 0007).
 export function mapLegacyEdgeToPolygonIndex(
   polygon: Polygon,
   side: DrawingEdgeKey,
-): number | null {
+): PolygonEdgeIdentity | null {
   const edges = polygonEdges(polygon);
   if (edges.length === 0) {
     return null;
@@ -98,5 +106,43 @@ export function mapLegacyEdgeToPolygonIndex(
     return null;
   }
 
-  return onSide.reduce((longest, e) => (e.lengthIn > longest.lengthIn ? e : longest)).index;
+  const edge = onSide.reduce((longest, e) => (e.lengthIn > longest.lengthIn ? e : longest));
+  return { fromVertexId: edge.fromVertexId, toVertexId: edge.toVertexId };
+}
+
+export function splitEdgeLayout(
+  edge: EdgeLayout,
+  insertedVertexId: string,
+): [EdgeLayout, EdgeLayout] {
+  return [
+    { ...edge, toVertexId: insertedVertexId },
+    { ...edge, fromVertexId: insertedVertexId }
+  ];
+}
+
+export type MergeEdgeLayoutsResult =
+  | { ok: true; edge: EdgeLayout }
+  | { ok: false; error: 'treatment_choice_required' };
+
+export function mergeEdgeLayouts(
+  first: EdgeLayout,
+  second: EdgeLayout,
+  treatmentChoice?: EdgeLayout['treatment'],
+): MergeEdgeLayoutsResult {
+  if (first.treatment !== second.treatment && treatmentChoice === undefined) {
+    return { ok: false, error: 'treatment_choice_required' };
+  }
+
+  const treatment = treatmentChoice ?? first.treatment;
+  const source =
+    treatment === second.treatment && treatment !== first.treatment ? second : first;
+  return {
+    ok: true,
+    edge: {
+      ...source,
+      fromVertexId: first.fromVertexId,
+      toVertexId: second.toVertexId,
+      treatment
+    }
+  };
 }

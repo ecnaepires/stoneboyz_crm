@@ -325,8 +325,9 @@ export interface OrderPaymentEventData {
 export type OrderEventName =
   | 'order.created'
   | 'order.archived'
+  | 'order.deposit_requested'
   | 'order.payment_added'
-  | 'order.payment_removed';
+  | 'order.payment_voided';
 
 export type AppEventName =
   | CustomerEventName

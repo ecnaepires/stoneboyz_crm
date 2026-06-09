@@ -382,6 +382,39 @@ describe('Quote measurement cascade delete', () => {
 });
 
 describe('Quote measurement golden acceptance scenario', () => {
+  it('measures normal rectangular drawing pieces saved without a complex shape', async () => {
+    const { quoteId, areaId } = await createQuoteWithArea({ name: 'Kitchen' });
+
+    const pieceRes = await fetch(measurementsUrl(quoteId, areaId, 'pieces'), {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ name: 'Sink run', lengthIn: 96, widthIn: 25.5, quantity: 1 })
+    });
+    const piece = await pieceRes.json() as Record<string, unknown>;
+    expect(pieceRes.status).toBe(201);
+
+    const saved = await saveDrawing(quoteId, areaId, {
+      pieces: [
+        { pieceId: piece['id'], x: 0, y: 0, rotation: 0, shape: null }
+      ],
+      edges: [],
+      sinks: []
+    });
+    expect(saved.status).toBe(201);
+
+    const response = await fetch(`${quotesUrl()}/${quoteId}`);
+    const body = await response.json() as Record<string, unknown>;
+    const areas = body['areas'] as Array<Record<string, unknown>>;
+    const kitchen = areas.find((area) => area['id'] === areaId);
+
+    expect(response.status).toBe(200);
+    expect(kitchen?.['measurementTotals']).toMatchObject({
+      pieceCount: 1,
+      countertopSqFt: 17,
+      combinedSqFt: 17
+    });
+  });
+
   it('returns the expected Kitchen measurement totals on quote detail', async () => {
     const { quoteId, areaId } = await createQuoteWithArea({ name: 'Kitchen' });
 

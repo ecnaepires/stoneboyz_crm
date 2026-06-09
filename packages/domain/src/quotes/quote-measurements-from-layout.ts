@@ -9,6 +9,7 @@ import type {
   SinkCutoutInput
 } from './quote-measurements.types.js';
 import type {
+  CanvasCornerLayout,
   CanvasEdgeLayout,
   CanvasEdgeTreatment,
   CanvasLayout,
@@ -74,6 +75,40 @@ function sideLengthIn(extents: PieceExtents, edge: CanvasEdgeLayout['edge']): nu
   return edge === 'top' || edge === 'bottom' ? extents.lengthIn : extents.widthIn;
 }
 
+function cornerAreaReductionSqIn(corner: CanvasCornerLayout): number {
+  const valueIn = corner.valueIn ?? 0;
+  if (valueIn <= 0) {
+    return 0;
+  }
+  if (corner.treatment === 'radius') {
+    return valueIn * valueIn - (Math.PI * valueIn * valueIn) / 4;
+  }
+  if (corner.treatment === 'clip') {
+    const legIn = valueIn / 2;
+    return (legIn * legIn) / 2;
+  }
+  return 0;
+}
+
+function roundToPrecision(value: number, precision: number): number {
+  const multiplier = 10 ** precision;
+  return Math.round((value + Number.EPSILON) * multiplier) / multiplier;
+}
+
+function areaSqInForPiece(piece: CanvasPieceLayout): number | null {
+  const shape = piece.shape;
+  if (shape === null || shape === undefined) {
+    return null;
+  }
+  if (shape.type === 'chain') {
+    return polygonAreaSqIn(chainToPolygon(shape as Parameters<typeof chainToPolygon>[0]));
+  }
+  if (shape.type === 'polygon') {
+    return polygonAreaSqIn({ vertices: shape.vertices });
+  }
+  return null;
+}
+
 // Translate one canvas edge into the domain edge inputs that reproduce its
 // measurement contribution. A splash is emitted as two finished runs — the top
 // run (length, which also carries the splash height for square footage) plus the
@@ -112,12 +147,8 @@ export function measurementTotalsFromLayout(layout: CanvasLayout): QuoteMeasurem
     // (ADR 0006) — for an L/U the legs only, not the bounding-box corner. A
     // chain converts to its outline polygon; a polygon shape is measured
     // directly. Other (legacy l/z) shapes are skipped here as before.
-    let areaSqIn: number;
-    if (shape.type === 'chain') {
-      areaSqIn = polygonAreaSqIn(chainToPolygon(shape as Parameters<typeof chainToPolygon>[0]));
-    } else if (shape.type === 'polygon') {
-      areaSqIn = polygonAreaSqIn({ vertices: shape.vertices });
-    } else {
+    const areaSqIn = areaSqInForPiece(piece);
+    if (areaSqIn === null) {
       continue;
     }
     if (areaSqIn <= 0) {
@@ -147,6 +178,23 @@ export function measurementTotalsFromLayout(layout: CanvasLayout): QuoteMeasurem
   const sinks = layout.sinks.map(sinkToCutoutInput);
 
   return calculateMeasurementAreaTotals({ name: '', pieces, edges, sinks });
+}
+
+export function netFinishedAreaSqInFromLayout(layout: CanvasLayout): number {
+  const totalSqIn = layout.pieces.reduce((total, piece) => {
+    const areaSqIn = areaSqInForPiece(piece);
+    if (areaSqIn === null || areaSqIn <= 0) {
+      return total;
+    }
+
+    const cornerReductionSqIn = layout.corners
+      .filter((corner) => corner.pieceId === piece.pieceId)
+      .reduce((cornerTotal, corner) => cornerTotal + cornerAreaReductionSqIn(corner), 0);
+
+    return total + Math.max(areaSqIn - cornerReductionSqIn, 0);
+  }, 0);
+
+  return roundToPrecision(totalSqIn, 3);
 }
 
 // Only quantity and faucet hole count feed the summary; sink spec fields are

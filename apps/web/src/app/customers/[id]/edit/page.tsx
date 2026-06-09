@@ -1,6 +1,11 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { updateCustomerAction } from '../../_actions';
+import {
+  customerSourceOptions,
+  customerStatusOptions,
+  customerTypeOptions,
+} from '../../form-options';
 import { getApiClientWithAuth } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -53,11 +58,11 @@ export default async function EditCustomerPage({ params }: EditCustomerPageProps
               <div className="space-y-2">
                 <Label htmlFor="status">Status *</Label>
                 <Select id="status" name="status" required defaultValue={customer.status}>
-                  <option value="lead">Lead</option>
-                  <option value="qualified">Qualified</option>
-                  <option value="active">Active</option>
-                  <option value="inactive">Inactive</option>
-                  <option value="churned">Churned</option>
+                  {customerStatusOptions.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
                 </Select>
               </div>
             </div>
@@ -71,10 +76,11 @@ export default async function EditCustomerPage({ params }: EditCustomerPageProps
               <div className="space-y-2">
                 <Label htmlFor="type">Type *</Label>
                 <Select id="type" name="type" required defaultValue={customer.type}>
-                  <option value="prospect">Prospect</option>
-                  <option value="customer">Customer</option>
-                  <option value="partner">Partner</option>
-                  <option value="vendor">Vendor</option>
+                  {customerTypeOptions.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
                 </Select>
               </div>
               <div className="space-y-2">
@@ -110,7 +116,14 @@ export default async function EditCustomerPage({ params }: EditCustomerPageProps
               </div>
               <div className="space-y-2">
                 <Label htmlFor="source">Source</Label>
-                <Input id="source" name="source" defaultValue={customer.source ?? ''} />
+                <Select id="source" name="source" defaultValue={customer.source ?? ''}>
+                  <option value="">Select source...</option>
+                  {customerSourceOptions.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </Select>
               </div>
             </div>
 

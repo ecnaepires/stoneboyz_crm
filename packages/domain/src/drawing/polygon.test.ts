@@ -8,7 +8,7 @@ import {
 } from './polygon.js';
 
 const poly = (...vertices: Array<[number, number]>): Polygon => ({
-  vertices: vertices.map(([x, y]) => ({ x, y }))
+  vertices: vertices.map(([x, y], index) => ({ id: `v${index}`, x, y }))
 });
 
 describe('polygonAreaSqIn', () => {

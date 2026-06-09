@@ -1,6 +1,11 @@
 'use client';
 
 import { createCustomerAction } from '../_actions';
+import {
+  customerSourceOptions,
+  customerStatusOptions,
+  customerTypeOptions,
+} from '../form-options';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -31,11 +36,11 @@ export default function NewCustomerPage() {
               <div className="space-y-2">
                 <Label htmlFor="status">Status *</Label>
                 <Select id="status" name="status" required defaultValue="lead">
-                  <option value="lead">Lead</option>
-                  <option value="qualified">Qualified</option>
-                  <option value="active">Active</option>
-                  <option value="inactive">Inactive</option>
-                  <option value="churned">Churned</option>
+                  {customerStatusOptions.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
                 </Select>
               </div>
             </div>
@@ -52,11 +57,12 @@ export default function NewCustomerPage() {
               </div>
               <div className="space-y-2">
                 <Label htmlFor="type">Type *</Label>
-                <Select id="type" name="type" required defaultValue="prospect">
-                  <option value="prospect">Prospect</option>
-                  <option value="customer">Customer</option>
-                  <option value="partner">Partner</option>
-                  <option value="vendor">Vendor</option>
+                <Select id="type" name="type" required defaultValue="customer">
+                  {customerTypeOptions.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
                 </Select>
               </div>
             </div>
@@ -79,7 +85,14 @@ export default function NewCustomerPage() {
               </div>
               <div className="space-y-2">
                 <Label htmlFor="source">Source</Label>
-                <Input id="source" name="source" placeholder="e.g. Referral" />
+                <Select id="source" name="source" defaultValue="">
+                  <option value="">Select source...</option>
+                  {customerSourceOptions.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </Select>
               </div>
             </div>
 

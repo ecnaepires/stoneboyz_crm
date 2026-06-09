@@ -5,6 +5,7 @@
 // first. This module is pure: no canvas, no pixels.
 
 export interface PolygonVertex {
+  id: string;
   x: number;
   y: number;
 }
@@ -40,6 +41,8 @@ export interface PolygonEdge {
   index: number;
   from: PolygonVertex;
   to: PolygonVertex;
+  fromVertexId: string;
+  toVertexId: string;
   lengthIn: number;
 }
 
@@ -55,7 +58,14 @@ export function polygonEdges(polygon: Polygon): PolygonEdge[] {
   }
   return vertices.map((from, index) => {
     const to = vertices[(index + 1) % vertices.length] as PolygonVertex;
-    return { index, from, to, lengthIn: Math.hypot(to.x - from.x, to.y - from.y) };
+    return {
+      index,
+      from,
+      to,
+      fromVertexId: from.id,
+      toVertexId: to.id,
+      lengthIn: Math.hypot(to.x - from.x, to.y - from.y)
+    };
   });
 }
 

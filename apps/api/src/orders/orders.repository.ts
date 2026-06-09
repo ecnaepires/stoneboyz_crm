@@ -6,7 +6,8 @@ import type {
   OrderArea,
   OrderLineItem,
   OrderPayment,
-  OrderPaymentStatus
+  OrderPaymentStatus,
+  RequestOrderDepositInput
 } from '@stoneboyz/domain';
 import type { Pool, PoolClient } from 'pg';
 import { DATABASE_POOL } from '../database.provider.js';
@@ -112,7 +113,7 @@ export class OrdersRepository {
       `
         SELECT ${ORDER_SELECT}
         FROM orders o
-        LEFT JOIN order_payments op ON op.order_id = o.id
+        LEFT JOIN order_payments op ON op.order_id = o.id AND op.status = 'recorded'
         WHERE ${where.join(' AND ')}
         GROUP BY o.id
         ${having}
@@ -169,7 +170,7 @@ export class OrdersRepository {
       `
         SELECT ${ORDER_SELECT}
         FROM orders o
-        LEFT JOIN order_payments op ON op.order_id = o.id
+        LEFT JOIN order_payments op ON op.order_id = o.id AND op.status = 'recorded'
         WHERE o.customer_id = $1 AND o.id = $2 AND o.deleted_at IS NULL
         GROUP BY o.id
       `,
@@ -317,10 +318,134 @@ export class OrdersRepository {
     return mapOrderPaymentRow(result.rows[0] as OrderPaymentRow);
   }
 
-  async removePayment(orderId: string, paymentId: string): Promise<OrderPayment | null> {
-    const result = await this.pool.query<OrderPaymentRow>(
-      `DELETE FROM order_payments WHERE order_id = $1 AND id = $2 RETURNING *`,
-      [orderId, paymentId]
+  async requestDeposit(
+    client: Queryable,
+    customerId: string,
+    orderId: string,
+    input: RequestOrderDepositInput
+  ): Promise<Order | null> {
+    const result = await client.query<OrderRow>(
+      `
+        UPDATE orders o
+        SET deposit_required_cents = $3,
+            deposit_requested_at = COALESCE(deposit_requested_at, now()),
+            deposit_requested_by_user_id = COALESCE(deposit_requested_by_user_id, $4),
+            updated_at = now()
+        WHERE o.customer_id = $1
+          AND o.id = $2
+          AND o.deleted_at IS NULL
+          AND $3 <= o.total_cents
+        RETURNING
+          o.*,
+          (
+            SELECT COALESCE(SUM(op.amount_cents), 0)::integer
+            FROM order_payments op
+            WHERE op.order_id = o.id
+              AND op.status = 'recorded'
+          ) AS total_paid_cents
+      `,
+      [customerId, orderId, input.depositRequiredCents, input.actorUserId]
+    );
+    const row = result.rows[0];
+    return row === undefined ? null : mapOrderRow(row);
+  }
+
+  async advanceLinkedProjectToDeposit(client: Queryable, customerId: string, orderId: string): Promise<string[]> {
+    const result = await client.query<{ id: string }>(
+      `
+        WITH linked_project AS (
+          SELECT q.project_id
+          FROM orders o
+          JOIN quotes q ON q.id = o.quote_id
+          WHERE o.customer_id = $1
+            AND o.id = $2
+            AND o.deleted_at IS NULL
+            AND q.project_id IS NOT NULL
+        )
+        UPDATE projects p
+        SET pipeline_stage = 'deposit',
+            status = 'active',
+            stage_entered_at = now(),
+            updated_at = now()
+        FROM linked_project lp
+        WHERE p.id = lp.project_id
+          AND p.archived_at IS NULL
+          AND p.pipeline_stage = 'new'
+        RETURNING p.id
+      `,
+      [customerId, orderId]
+    );
+
+    return result.rows.map((row) => row.id);
+  }
+
+  async syncDepositChecklistForOrder(client: Queryable, customerId: string, orderId: string): Promise<void> {
+    await client.query(
+      `
+        WITH order_deposit AS (
+          SELECT
+            q.project_id,
+            COALESCE(q.phase_id, first_phase.id) AS phase_id,
+            o.deposit_required_cents,
+            COALESCE(SUM(op.amount_cents), 0)::integer AS total_paid_cents
+          FROM orders o
+          JOIN quotes q ON q.id = o.quote_id
+          LEFT JOIN LATERAL (
+            SELECT p.id
+            FROM phases p
+            WHERE p.project_id = q.project_id
+              AND p.deleted_at IS NULL
+            ORDER BY p.phase_number ASC, p.created_at ASC, p.id ASC
+            LIMIT 1
+          ) first_phase ON q.phase_id IS NULL
+          LEFT JOIN order_payments op ON op.order_id = o.id AND op.status = 'recorded'
+          WHERE o.customer_id = $1
+            AND o.id = $2
+            AND o.deleted_at IS NULL
+          GROUP BY q.project_id, q.phase_id, first_phase.id, o.deposit_required_cents
+        )
+        INSERT INTO job_checklists (customer_id, project_id, phase_id, deposit_received)
+        SELECT
+          $1,
+          od.project_id,
+          od.phase_id,
+          (
+              od.deposit_required_cents > 0
+              AND od.total_paid_cents >= od.deposit_required_cents
+          )
+        FROM order_deposit od
+        WHERE od.project_id IS NOT NULL
+          AND od.phase_id IS NOT NULL
+        ON CONFLICT (phase_id)
+        DO UPDATE
+        SET deposit_received = EXCLUDED.deposit_received,
+            updated_at = now()
+      `,
+      [customerId, orderId]
+    );
+  }
+
+  async voidPayment(
+    client: Queryable,
+    orderId: string,
+    paymentId: string,
+    actorUserId: string,
+    voidReason?: string
+  ): Promise<OrderPayment | null> {
+    const result = await client.query<OrderPaymentRow>(
+      `
+        UPDATE order_payments
+        SET status = 'void',
+            voided_at = now(),
+            voided_by_user_id = $3,
+            void_reason = $4,
+            updated_at = now()
+        WHERE order_id = $1
+          AND id = $2
+          AND status = 'recorded'
+        RETURNING *
+      `,
+      [orderId, paymentId, actorUserId, voidReason ?? null]
     );
     const row = result.rows[0];
     return row === undefined ? null : mapOrderPaymentRow(row);
@@ -332,7 +457,13 @@ export class OrdersRepository {
         UPDATE orders
         SET deleted_at = now(), deleted_by_user_id = $3, updated_at = now()
         WHERE customer_id = $1 AND id = $2 AND deleted_at IS NULL
-        RETURNING *, 0::integer AS total_paid_cents
+        RETURNING *,
+          (
+            SELECT COALESCE(SUM(op.amount_cents), 0)::integer
+            FROM order_payments op
+            WHERE op.order_id = orders.id
+              AND op.status = 'recorded'
+          ) AS total_paid_cents
       `,
       [customerId, orderId, actorUserId]
     );

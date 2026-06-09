@@ -90,6 +90,8 @@ const twoSegRect = (lengthIn: number, widthIn: number) => {
 const priceListsUrl = (): string => `${baseUrl}/api/v1/price-lists`;
 const priceListUrl = (priceListId: string): string => `${priceListsUrl()}/${priceListId}`;
 const itemsUrl = (priceListId: string): string => `${priceListUrl(priceListId)}/items`;
+const slabsUrl = (): string => `${baseUrl}/api/v1/inventory/slabs`;
+const slabUrl = (slabId: string): string => `${slabsUrl()}/${slabId}`;
 
 const createQuote = async (customerId = SEEDED_CUSTOMER_ID): Promise<string> => {
   const res = await fetch(quotesUrl(customerId), {
@@ -157,6 +159,27 @@ const createPriceListItem = async (
   return await response.json() as Record<string, unknown>;
 };
 
+const createSlab = async (overrides: Record<string, unknown> = {}): Promise<Record<string, unknown>> => {
+  const response = await fetch(slabsUrl(), {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({
+      actorUserId: ACTOR_USER_ID,
+      stoneType: 'Uba Tuba',
+      finish: 'polished',
+      qualityGrade: 'A',
+      lengthIn: 120,
+      widthIn: 60,
+      thicknessCm: 3,
+      costCents: 120000,
+      ...overrides
+    })
+  });
+
+  expect(response.status).toBe(201);
+  return await response.json() as Record<string, unknown>;
+};
+
 const setQuotePriceList = async (quoteId: string, priceListId: string): Promise<void> => {
   await fetch(`${quotesUrl()}/${quoteId}`, {
     method: 'PATCH',
@@ -184,25 +207,6 @@ const createGoldenMeasurements = async (quoteId: string, areaId: string): Promis
   };
   const saved = await saveDrawing(quoteId, areaId, layout);
   expect(saved.status).toBe(201);
-};
-
-const lineTotalsByCategory = (lines: Array<Record<string, unknown>>): Record<string, unknown> =>
-  Object.fromEntries(lines.map((line) => [line['category'], line['lineTotalCents']]));
-
-const expectGoldenLines = (lines: Array<Record<string, unknown>>): void => {
-  expect(lines).toHaveLength(6);
-  const totals = lineTotalsByCategory(lines);
-
-  // Layout-derived totals (rounded to 3 dp by the domain) priced at the configured rates:
-  // combinedSqFt 35.708 -> material 35.708*2000, fabrication 35.708*1500;
-  // finishedEdgeLinFt 15 (splash outline 100+2*4 + island 72 = 180in/12) -> 15*800;
-  // splashSqFt 2.778 -> 2.778*1200; sink 1 -> 15000; faucet 1 -> 5000.
-  expect(totals['material']).toBe(71416);
-  expect(totals['fabrication']).toBe(53562);
-  expect(totals['finished_edge']).toBe(12000);
-  expect(totals['splash']).toBe(3334);
-  expect(totals['sink_cutout']).toBe(15000);
-  expect(totals['faucet_hole']).toBe(5000);
 };
 
 beforeAll(async () => {
@@ -237,42 +241,332 @@ beforeEach(async () => {
 });
 
 describe('Quote pricing generate and list', () => {
-  it('generates and persists the expected golden pricing lines', async () => {
-    const generateRes = await fetch(`${pricingUrl(quoteId, areaId)}/generate`, {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' }
+  it('moves an inventory material slab to negotiating when area pricing is saved', async () => {
+    const material = await createPriceListItem(priceListId, 'material', 1800, {
+      itemGroup: 'material',
+      unit: 'sqft',
+      chargeMethod: 'square_foot',
+      measurementBasis: 'countertop_sqft',
+      name: 'Uba Tuba'
     });
-    const generateBody = await generateRes.json() as { data: Array<Record<string, unknown>> };
+    const slab = await createSlab();
 
-    expect(generateRes.status).toBe(200);
-    expectGoldenLines(generateBody.data);
+    const selectionResponse = await fetch(pricingSelectionsUrl(quoteId), {
+      method: 'PATCH',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        areas: [
+          {
+            areaId,
+            materialItemId: material['id'],
+            materialSource: 'inventory',
+            materialSlabId: slab['id']
+          }
+        ]
+      })
+    });
 
-    const listRes = await fetch(pricingUrl(quoteId, areaId));
-    const listBody = await listRes.json() as { data: Array<Record<string, unknown>> };
+    expect(selectionResponse.status).toBe(200);
 
-    expect(listRes.status).toBe(200);
-    expectGoldenLines(listBody.data);
+    const slabResponse = await fetch(slabUrl(slab['id'] as string));
+    const slabBody = await slabResponse.json() as Record<string, unknown>;
+    expect(slabBody['status']).toBe('negotiating');
+
+    const savedSelection = await (await fetch(pricingSelectionsUrl(quoteId))).json() as {
+      areas: Array<Record<string, unknown>>;
+    };
+    expect(savedSelection.areas[0]).toMatchObject({
+      areaId,
+      materialItemId: material['id'],
+      materialSource: 'inventory',
+      materialSlabId: slab['id'],
+      externalMaterialNote: null
+    });
   });
 
-  it('generates pricing idempotently without duplicates', async () => {
-    await fetch(`${pricingUrl(quoteId, areaId)}/generate`, {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' }
+  it('releases a negotiating slab when area pricing changes to external material', async () => {
+    const material = await createPriceListItem(priceListId, 'material', 1800, {
+      itemGroup: 'material',
+      unit: 'sqft',
+      chargeMethod: 'square_foot',
+      measurementBasis: 'countertop_sqft',
+      name: 'Uba Tuba'
     });
-    const secondRes = await fetch(`${pricingUrl(quoteId, areaId)}/generate`, {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' }
+    const slab = await createSlab();
+
+    const inventoryResponse = await fetch(pricingSelectionsUrl(quoteId), {
+      method: 'PATCH',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        areas: [
+          {
+            areaId,
+            materialItemId: material['id'],
+            materialSource: 'inventory',
+            materialSlabId: slab['id']
+          }
+        ]
+      })
     });
-    const secondBody = await secondRes.json() as { data: Array<Record<string, unknown>> };
+    expect(inventoryResponse.status).toBe(200);
 
-    expect(secondRes.status).toBe(200);
-    expectGoldenLines(secondBody.data);
+    const externalResponse = await fetch(pricingSelectionsUrl(quoteId), {
+      method: 'PATCH',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        areas: [
+          {
+            areaId,
+            materialItemId: material['id'],
+            materialSource: 'external',
+            materialSlabId: null,
+            externalMaterialNote: 'MSI special order'
+          }
+        ]
+      })
+    });
 
-    const listBody = await (await fetch(pricingUrl(quoteId, areaId))).json() as { data: Array<Record<string, unknown>> };
-    expectGoldenLines(listBody.data);
+    expect(externalResponse.status).toBe(200);
+
+    const slabBody = await (await fetch(slabUrl(slab['id'] as string))).json() as Record<string, unknown>;
+    expect(slabBody['status']).toBe('available');
+
+    const savedSelection = await (await fetch(pricingSelectionsUrl(quoteId))).json() as {
+      areas: Array<Record<string, unknown>>;
+    };
+    expect(savedSelection.areas[0]).toMatchObject({
+      areaId,
+      materialItemId: material['id'],
+      materialSource: 'external',
+      materialSlabId: null,
+      externalMaterialNote: 'MSI special order'
+    });
   });
 
-  it('returns empty pricing lines when a quote has no price list', async () => {
+  it('allows multiple quote areas to negotiate the same slab without releasing it early', async () => {
+    const material = await createPriceListItem(priceListId, 'material', 1800, {
+      itemGroup: 'material',
+      unit: 'sqft',
+      chargeMethod: 'square_foot',
+      measurementBasis: 'countertop_sqft',
+      name: 'Uba Tuba'
+    });
+    const slab = await createSlab();
+    const { body: secondArea } = await createArea(quoteId, { name: 'Vanity' });
+    const secondAreaId = secondArea['id'] as string;
+
+    const firstAreaResponse = await fetch(pricingSelectionsUrl(quoteId), {
+      method: 'PATCH',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        areas: [
+          {
+            areaId,
+            materialItemId: material['id'],
+            materialSource: 'inventory',
+            materialSlabId: slab['id']
+          }
+        ]
+      })
+    });
+    expect(firstAreaResponse.status).toBe(200);
+
+    const secondAreaResponse = await fetch(pricingSelectionsUrl(quoteId), {
+      method: 'PATCH',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        areas: [
+          {
+            areaId: secondAreaId,
+            materialItemId: material['id'],
+            materialSource: 'inventory',
+            materialSlabId: slab['id']
+          }
+        ]
+      })
+    });
+    expect(secondAreaResponse.status).toBe(200);
+
+    const firstAreaExternalResponse = await fetch(pricingSelectionsUrl(quoteId), {
+      method: 'PATCH',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        areas: [
+          {
+            areaId,
+            materialItemId: material['id'],
+            materialSource: 'external',
+            materialSlabId: null,
+            externalMaterialNote: 'Customer may choose a special order'
+          }
+        ]
+      })
+    });
+    expect(firstAreaExternalResponse.status).toBe(200);
+
+    const slabBody = await (await fetch(slabUrl(slab['id'] as string))).json() as Record<string, unknown>;
+    expect(slabBody['status']).toBe('negotiating');
+
+    const savedSelection = await (await fetch(pricingSelectionsUrl(quoteId))).json() as {
+      areas: Array<Record<string, unknown>>;
+    };
+    expect(savedSelection.areas).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          areaId,
+          materialSource: 'external',
+          materialSlabId: null
+        }),
+        expect.objectContaining({
+          areaId: secondAreaId,
+          materialSource: 'inventory',
+          materialSlabId: slab['id']
+        })
+      ])
+    );
+  });
+
+  it('rejects negotiating a slab already negotiating on another quote', async () => {
+    const material = await createPriceListItem(priceListId, 'material', 1800, {
+      itemGroup: 'material',
+      unit: 'sqft',
+      chargeMethod: 'square_foot',
+      measurementBasis: 'countertop_sqft',
+      name: 'Uba Tuba'
+    });
+    const slab = await createSlab();
+    const otherQuoteId = await createQuote();
+    const { body: otherArea } = await createArea(otherQuoteId, { name: 'Kitchen' });
+    const otherAreaId = otherArea['id'] as string;
+
+    const firstQuoteResponse = await fetch(pricingSelectionsUrl(quoteId), {
+      method: 'PATCH',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        areas: [
+          {
+            areaId,
+            materialItemId: material['id'],
+            materialSource: 'inventory',
+            materialSlabId: slab['id']
+          }
+        ]
+      })
+    });
+    expect(firstQuoteResponse.status).toBe(200);
+
+    const otherQuoteResponse = await fetch(pricingSelectionsUrl(otherQuoteId), {
+      method: 'PATCH',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        areas: [
+          {
+            areaId: otherAreaId,
+            materialItemId: material['id'],
+            materialSource: 'inventory',
+            materialSlabId: slab['id']
+          }
+        ]
+      })
+    });
+    const otherQuoteBody = await otherQuoteResponse.json() as Record<string, unknown>;
+
+    expect(otherQuoteResponse.status).toBe(409);
+    expect(otherQuoteBody).toMatchObject({
+      code: 'SLAB_NOT_AVAILABLE',
+      message: 'This Slab is already being negotiated on another quote. Pick another inventory Slab or use external material.'
+    });
+  });
+
+  it('promotes negotiating slabs to reserved when a quote is accepted', async () => {
+    const material = await createPriceListItem(priceListId, 'material', 1800, {
+      itemGroup: 'material',
+      unit: 'sqft',
+      chargeMethod: 'square_foot',
+      measurementBasis: 'countertop_sqft',
+      name: 'Uba Tuba'
+    });
+    const slab = await createSlab();
+
+    const selectionResponse = await fetch(pricingSelectionsUrl(quoteId), {
+      method: 'PATCH',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        areas: [
+          {
+            areaId,
+            materialItemId: material['id'],
+            materialSource: 'inventory',
+            materialSlabId: slab['id']
+          }
+        ]
+      })
+    });
+    expect(selectionResponse.status).toBe(200);
+
+    const sendResponse = await fetch(`${quotesUrl()}/${quoteId}/send`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ actorUserId: ACTOR_USER_ID })
+    });
+    expect(sendResponse.status).toBe(200);
+
+    const acceptResponse = await fetch(`${quotesUrl()}/${quoteId}/accept`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ actorUserId: ACTOR_USER_ID })
+    });
+    expect(acceptResponse.status).toBe(200);
+
+    const slabBody = await (await fetch(slabUrl(slab['id'] as string))).json() as Record<string, unknown>;
+    expect(slabBody['status']).toBe('reserved');
+  });
+
+  it('releases negotiating slabs when a sent quote is rejected', async () => {
+    const material = await createPriceListItem(priceListId, 'material', 1800, {
+      itemGroup: 'material',
+      unit: 'sqft',
+      chargeMethod: 'square_foot',
+      measurementBasis: 'countertop_sqft',
+      name: 'Uba Tuba'
+    });
+    const slab = await createSlab();
+
+    const selectionResponse = await fetch(pricingSelectionsUrl(quoteId), {
+      method: 'PATCH',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        areas: [
+          {
+            areaId,
+            materialItemId: material['id'],
+            materialSource: 'inventory',
+            materialSlabId: slab['id']
+          }
+        ]
+      })
+    });
+    expect(selectionResponse.status).toBe(200);
+
+    const sendResponse = await fetch(`${quotesUrl()}/${quoteId}/send`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ actorUserId: ACTOR_USER_ID })
+    });
+    expect(sendResponse.status).toBe(200);
+
+    const rejectResponse = await fetch(`${quotesUrl()}/${quoteId}/reject`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ actorUserId: ACTOR_USER_ID })
+    });
+    expect(rejectResponse.status).toBe(200);
+
+    const slabBody = await (await fetch(slabUrl(slab['id'] as string))).json() as Record<string, unknown>;
+    expect(slabBody['status']).toBe('available');
+  });
+
+  it('returns empty pricing lines when an area has no selections', async () => {
     const freshQuoteId = await createQuote();
     const { body: freshArea } = await createArea(freshQuoteId);
     const freshAreaId = freshArea['id'] as string;
@@ -286,31 +580,6 @@ describe('Quote pricing generate and list', () => {
 
     expect(response.status).toBe(200);
     expect(body.data).toEqual([]);
-  });
-
-  it('uses the price list item measurement basis when generating lines', async () => {
-    const customPriceListId = await createPriceList();
-    await createPriceListItem(customPriceListId, 'material', 2000, {
-      unit: 'linft',
-      chargeMethod: 'linear_foot',
-      measurementBasis: 'finished_edge_linft'
-    });
-    await setQuotePriceList(quoteId, customPriceListId);
-
-    const response = await fetch(`${pricingUrl(quoteId, areaId)}/generate`, {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' }
-    });
-    const body = await response.json() as { data: Array<Record<string, unknown>> };
-
-    expect(response.status).toBe(200);
-    expect(body.data).toHaveLength(1);
-    expect(body.data[0]).toMatchObject({
-      category: 'material',
-      quantity: 15,
-      unit: 'linft',
-      lineTotalCents: Math.round(15 * 2000)
-    });
   });
 
   it('generates pricing from quote selections and drawing measurements', async () => {
@@ -350,15 +619,35 @@ describe('Quote pricing generate and list', () => {
       measurementBasis: 'sink_count',
       name: '70/30 Sink'
     });
+    const faucet = await createPriceListItem(
+      catalogPriceListId,
+      "faucet_hole",
+      2500,
+      {
+        itemGroup: "faucet_hole",
+        unit: "ea",
+        chargeMethod: "each",
+        measurementBasis: "faucet_hole_count",
+        name: "Faucet Hole",
+      },
+    );
 
     const selectionResponse = await fetch(pricingSelectionsUrl(quoteId), {
-      method: 'PATCH',
-      headers: { 'content-type': 'application/json' },
+      method: "PATCH",
+      headers: { "content-type": "application/json" },
       body: JSON.stringify({
-        defaultFabricationItemId: fabrication['id'],
-        sinkItemId: sink['id'],
-        areas: [{ areaId, materialItemId: material['id'], edgeItemId: edge['id'], splashItemId: splash['id'] }]
-      })
+        defaultFabricationItemId: fabrication["id"],
+        areas: [
+          {
+            areaId,
+            materialItemId: material["id"],
+            edgeItemId: edge["id"],
+            splashItemId: splash["id"],
+            sinkItemId: sink["id"],
+            faucetHoleItemId: faucet["id"],
+          },
+        ],
+      }),
     });
 
     expect(selectionResponse.status).toBe(200);
@@ -370,23 +659,47 @@ describe('Quote pricing generate and list', () => {
     const body = await response.json() as { data: Array<Record<string, unknown>> };
 
     expect(response.status).toBe(200);
-    expect(body.data.map((line) => [
-      line['category'],
-      line['label'],
-      line['quantity'],
-      line['lineTotalCents']
-    ])).toEqual([
-      ['material', 'Uba Tuba', 35.708, Math.round(35.708 * 1800)],
-      ['fabrication', 'Retail Fabrication', 35.708, Math.round(35.708 * 2000)],
-      ['finished_edge', 'Bullnose', 15, Math.round(15 * 1400)],
-      ['splash', 'Standard Splash', 2.778, Math.round(2.778 * 1200)],
-      ['sink_item', '70/30 Sink', 1, 15000]
+    expect(
+      body.data.map((line) => [
+        line["category"],
+        line["label"],
+        line["quantity"],
+        line["lineTotalCents"],
+      ]),
+    ).toEqual([
+      ["material", "Uba Tuba", 35.708, Math.round(35.708 * 1800)],
+      ["fabrication", "Retail Fabrication", 35.708, Math.round(35.708 * 2000)],
+      ["finished_edge", "Bullnose", 15, Math.round(15 * 1400)],
+      ["splash", "Standard Splash", 2.778, Math.round(2.778 * 1200)],
+      ["sink_item", "70/30 Sink", 1, 15000],
+      ["faucet_hole", "Faucet Hole", 1, 2500],
     ]);
   });
 });
 
 describe('Quote pricing overrides', () => {
   it('overrides and clears a generated pricing line override', async () => {
+    const material = await createPriceListItem(priceListId, 'material', 1800, {
+      itemGroup: 'material',
+      unit: 'sqft',
+      chargeMethod: 'square_foot',
+      measurementBasis: 'countertop_sqft',
+      name: 'Uba Tuba'
+    });
+    const selectionResponse = await fetch(pricingSelectionsUrl(quoteId), {
+      method: 'PATCH',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        areas: [
+          {
+            areaId,
+            materialItemId: material['id']
+          }
+        ]
+      })
+    });
+    expect(selectionResponse.status).toBe(200);
+
     const generateBody = await (await fetch(`${pricingUrl(quoteId, areaId)}/generate`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' }
@@ -403,6 +716,15 @@ describe('Quote pricing overrides', () => {
     expect(overrideRes.status).toBe(200);
     expect(overrideBody['overridePriceCents']).toBe(50000);
 
+    const overriddenQuote = await (await fetch(`${quotesUrl()}/${quoteId}`)).json() as {
+      subtotalCents: number;
+      totalCents: number;
+      areas: Array<Record<string, unknown>>;
+    };
+    expect(overriddenQuote.subtotalCents).toBe(50000);
+    expect(overriddenQuote.totalCents).toBe(50000);
+    expect(overriddenQuote.areas.find((area) => area['id'] === areaId)?.['subtotalCents']).toBe(50000);
+
     const clearRes = await fetch(`${pricingUrl(quoteId, areaId)}/${lineId}/override`, {
       method: 'PATCH',
       headers: { 'content-type': 'application/json' },
@@ -412,6 +734,14 @@ describe('Quote pricing overrides', () => {
 
     expect(clearRes.status).toBe(200);
     expect(clearBody['overridePriceCents']).toBeNull();
+
+    const clearedQuote = await (await fetch(`${quotesUrl()}/${quoteId}`)).json() as {
+      subtotalCents: number;
+      areas: Array<Record<string, unknown>>;
+    };
+    const generatedMaterialTotal = Math.round(35.708 * 1800);
+    expect(clearedQuote.subtotalCents).toBe(generatedMaterialTotal);
+    expect(clearedQuote.areas.find((area) => area['id'] === areaId)?.['subtotalCents']).toBe(generatedMaterialTotal);
   });
 
   it('returns 404 for missing generated pricing line override', async () => {
@@ -444,6 +774,51 @@ describe('Quote pricing status rules', () => {
     const response = await fetch(`${pricingUrl(quoteId, areaId)}/generate`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' }
+    });
+    const body = await response.json() as Record<string, unknown>;
+
+    expect(response.status).toBe(409);
+    expect(body['code']).toBe('INVALID_QUOTE_STATUS');
+  });
+
+  it('rejects pricing line overrides on non-draft quotes', async () => {
+    const material = await createPriceListItem(priceListId, 'material', 1800, {
+      itemGroup: 'material',
+      unit: 'sqft',
+      chargeMethod: 'square_foot',
+      measurementBasis: 'countertop_sqft',
+      name: 'Uba Tuba'
+    });
+    const selectionResponse = await fetch(pricingSelectionsUrl(quoteId), {
+      method: 'PATCH',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        areas: [
+          {
+            areaId,
+            materialItemId: material['id']
+          }
+        ]
+      })
+    });
+    expect(selectionResponse.status).toBe(200);
+
+    const generateBody = await (await fetch(`${pricingUrl(quoteId, areaId)}/generate`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' }
+    })).json() as { data: Array<Record<string, unknown>> };
+    const lineId = generateBody.data[0]?.['id'] as string;
+
+    await fetch(`${quotesUrl()}/${quoteId}/send`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ actorUserId: ACTOR_USER_ID })
+    });
+
+    const response = await fetch(`${pricingUrl(quoteId, areaId)}/${lineId}/override`, {
+      method: 'PATCH',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ overridePriceCents: 50000, overrideReason: 'Special deal' })
     });
     const body = await response.json() as Record<string, unknown>;
 

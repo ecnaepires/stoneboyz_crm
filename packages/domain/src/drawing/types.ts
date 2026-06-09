@@ -87,14 +87,15 @@ export interface PieceLayout {
 
 export interface CornerLayout {
   pieceId: string;
-  corner: DrawingCornerKey;
+  vertexId: string;
   treatment: DrawingCornerTreatment;
   valueIn: number | null;
 }
 
 export interface EdgeLayout {
   pieceId: string;
-  edge: DrawingEdgeKey;
+  fromVertexId: string;
+  toVertexId: string;
   treatment: DrawingEdgeTreatment;
   splashHeightIn: number | null;
   label: string | null;
