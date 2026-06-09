@@ -17,6 +17,7 @@ import { CustomersRepository } from './customers/customers.repository.js';
 import { CustomersService } from './customers/customers.service.js';
 import { JobNotesModule } from './job-notes/job-notes.module.js';
 import { DashboardModule } from './dashboard/dashboard.module.js';
+import { ReportsModule } from './reports/reports.module.js';
 import { PipelineModule } from './pipeline/pipeline.module.js';
 import { ProjectPipelineListener } from './pipeline/project-pipeline.listener.js';
 import { PortalModule } from './portal/portal.module.js';
@@ -75,6 +76,7 @@ import { TagsModule } from "./tags/tags.module.js";
     PortalModule,
     PriceListsModule,
     QuoteNotesModule,
+    ReportsModule,
     ScheduledEventsModule,
     TagsModule,
     UsersModule

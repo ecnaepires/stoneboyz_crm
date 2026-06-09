@@ -5,6 +5,7 @@
 Inventory owns shop-owned stone slabs used by quotes and projects. Slabs are global inventory records, not customer-owned data.
 
 This module answers:
+
 - What stone slabs are available in the shop?
 - Which slabs are reserved for quote or project work?
 - Which slabs have been cut, and what remnants were produced?
@@ -14,18 +15,19 @@ This module answers:
 ### Slab
 
 Fields:
+
 - `id`: UUID
 - `parentSlabId`: nullable UUID FK to slabs; set for remnants
 - `stoneType`: required string
 - `finish`: one of `polished`, `honed`, `brushed`, `leathered`, `sandblasted`
 - `qualityGrade`: one of `A`, `B`, `C`
-- `lengthIn`, `widthIn`: positive numbers in inches
-- `thicknessCm`: positive number in centimeters
+- `lengthIn`, `widthIn`: positive numbers in inches; `lengthIn` must be <= 144 and `widthIn` must be <= 60
+- `thicknessCm`: one of `2` or `3`, in centimeters
 - `lotNumber`, `bundleNumber`, `warehouseLocation`: optional strings
-- `costCents`: integer cents, default 0
+- `costCents`: integer cents, default 0; on slab create/edit the UI calculates this total from slab square footage and value per square foot
 - `imageUrls`: array of URL strings, max 20
 - `notes`: optional text
-- `status`: one of `available`, `reserved`, `cut`, `remnant`
+- `status`: one of `available`, `negotiating`, `reserved`, `cut`, `remnant`
 - `archivedAt`: nullable ISO timestamp stored as `deleted_at`
 - `archivedByUserId`: nullable UUID stored as `deleted_by_user_id`
 - `createdAt`, `updatedAt`: ISO timestamps
@@ -35,6 +37,7 @@ Slabs MUST NOT have `customerId`; inventory is global to the shop.
 ### ProjectSlab
 
 Fields:
+
 - `id`: UUID
 - `projectId`: UUID FK to projects
 - `slabId`: UUID FK to slabs
@@ -47,15 +50,17 @@ Fields:
 
 - Slabs can be edited only when `status` is `available` or `remnant`.
 - Slabs can be archived only when `status` is `available` or `remnant`.
-- Reserving a slab requires `status` to be `available` or `remnant`; otherwise return `409` with code `SLAB_NOT_AVAILABLE`.
-- Releasing a slab is a no-op unless the current status is `reserved`.
+- Negotiating a slab requires `status` to be `available` or `remnant`, unless the same quote already negotiates it; otherwise return `409` with code `SLAB_NOT_AVAILABLE`.
+- Reserving a slab for accepted work promotes it from `negotiating` to `reserved`; quote acceptance must promote all candidate slabs atomically.
+- Releasing a slab is a no-op unless the current status is `negotiating` or `reserved`.
+- Quote Area Pricing Selections may reference `materialSlabId`. Saving an inventory material source moves that Slab to `negotiating` atomically with the pricing selection write.
+- Quote line items may optionally reference `slabId`. Creating or updating a line item with a slab reserves it atomically with the line-item write.
 - Cutting a slab marks it `cut` and creates remnant slab rows in the same transaction.
 - Remnant rows use `status = remnant` and `parentSlabId` set to the cut slab id.
-- Quote line items may optionally reference `slabId`. Creating or updating a line item with a slab reserves it atomically with the line-item write.
 - Removing a line item, rejecting a quote, or archiving a quote releases reserved slabs referenced by its line items.
 - Project slab attach reserves an available/remnant slab or validates that it is already reserved.
 - Monetary values are stored in integer cents.
-- Dimensions are stored as inches for length/width and centimeters for thickness.
+- Length and width are stored as inches; thickness is stored as centimeters.
 - All list endpoints use cursor pagination.
 
 ## API Endpoints

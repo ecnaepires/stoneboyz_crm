@@ -15,7 +15,23 @@ _Avoid_: Project when speaking to shop users
 
 ## Slab
 
-A physical piece of stone tracked in the shop's slab inventory. A Slab may be open shop stock or linked to a job, but it remains inventory while it is stored, reserved, cut, or kept as a remnant.
+A physical piece of stone tracked in the shop's slab inventory. A Slab may be open shop stock, negotiating on a quote, reserved for accepted work, cut, or kept as a remnant, but it remains inventory throughout that lifecycle.
+
+## Negotiating Slab
+
+A Slab soft-tagged to an active quote while the customer is deciding. A Negotiating Slab is visible to other Salespeople but cannot be negotiated by another quote. It is promoted to a Reserved Slab only when the quote is accepted.
+
+## Reserved Slab
+
+A Slab hard-held for accepted work. A Reserved Slab should not be offered to another quote unless released by inventory lifecycle rules.
+
+## Slab Thickness
+
+The material thickness of a Slab, recorded in centimeters because stone stock is commonly described as 2 cm or 3 cm. Slab length and width remain measured in inches for shop layout and cut-fit work.
+
+## Slab Value per Square Foot
+
+The monetary value assigned to each square foot of a Slab. Staff use it with the Slab's length and width to understand the total value of the Slab.
 
 ## Slab Tag
 
@@ -59,7 +75,7 @@ A planning view that places a Job's pieces onto its reserved Slabs and Remnants 
 
 ## Area (Sheet)
 
-A named, ordered drawing surface within a quote, presented to the user as a Sheet — like a tab at the bottom of a spreadsheet. Each Sheet holds its own separate drawing and its own pieces; pieces on one Sheet are isolated from another. The user divides work into Sheets manually, typically one room or location per Sheet ("Kitchen", "Master Bath", "Outdoor Kitchen"), and renames each Sheet freely. A Sheet carries a single material, color, and edge profile; when a room mixes materials, the user creates a second Sheet rather than mixing materials on one. "Sheet" is the user-facing word; "Area" is the same concept in the data model.
+A named, ordered drawing surface within a quote, presented to the user as a Sheet — like a tab at the bottom of a spreadsheet. Each A holds its own separate drawing and its own pieces; pieces on one Sheet are isolated from another. The user divides work into Sheets manually, typically one room or location per Sheet ("Kitchen", "Master Bath", "Outdoor Kitchen"), and renames each Sheet freely. A Sheet carries a single material, color, and edge profile; when a room mixes materials, the user creates a second Sheet rather than mixing materials on one. "Sheet" is the user-facing word; "Area" is the same concept in the data model.
 
 Each Sheet reports its own measurement rollup: counter square footage, backsplash square footage, the two combined, finished-edge linear footage, splash square footage, sink count, and faucet-hole count. The quote-wide total is the sum of all its Sheets.
 
@@ -125,6 +141,18 @@ A Price Item can have a zero price. This lets the Salesperson include an edge pr
 ## Quote Pricing Selection
 
 The Salesperson's chosen Price Items for a quote. Quote Pricing Selections combine user choices with drawing-derived quantities: material rates multiply square footage, edge rates multiply finished-edge linear footage, sink rates multiply sink count, and faucet-hole rates multiply faucet-hole count.
+
+## Material Source
+
+The Area-level choice of where selected quote material comes from. Inventory material references a Candidate Slab; external material comes from outside current inventory and may include an External Material Note.
+
+## Candidate Slab
+
+The inventory Slab selected as an Area's material source before quote acceptance. A Candidate Slab puts the Slab into Negotiating status until the quote is accepted, rejected, expired, archived, or the Area changes material source.
+
+## Manual Deposit
+
+An order-level amount requested from the customer before downstream work proceeds. The deposit is satisfied by recorded manual payments against the order; recorded payments reduce both the deposit due and the full order balance. Voided payments remain visible in payment history but do not count toward the deposit or balance. When a linked order's deposit is satisfied, the matching job checklist's Deposit Received gate is marked true.
 
 ## Charge Method
 

@@ -15,7 +15,15 @@ const toOptionalNullableString = (value: FormDataEntryValue | null) => {
 };
 
 const toRequiredNumber = (value: FormDataEntryValue | null) => parseFloat(String(value ?? '0'));
-const toCents = (value: FormDataEntryValue | null) => Math.round(parseFloat(String(value ?? '0')) * 100);
+const toRequiredSlabThicknessCm = (value: FormDataEntryValue | null): 2 | 3 => {
+  const parsed = toRequiredNumber(value);
+  if (parsed === 2 || parsed === 3) return parsed;
+  throw new Error('Slab thickness must be 2cm or 3cm');
+};
+const slabValueCents = (lengthIn: number, widthIn: number, valuePerSqFt: number) => {
+  const squareFeet = (lengthIn * widthIn) / 144;
+  return Math.round(squareFeet * valuePerSqFt * 100);
+};
 
 export async function createSlabAction(formData: FormData) {
   const client = await getApiClientWithAuth();
@@ -23,16 +31,19 @@ export async function createSlabAction(formData: FormData) {
   const bundleNumber = toOptionalString(formData.get('bundleNumber'));
   const warehouseLocation = toOptionalString(formData.get('warehouseLocation'));
   const notes = toOptionalString(formData.get('notes'));
+  const lengthIn = toRequiredNumber(formData.get('lengthIn'));
+  const widthIn = toRequiredNumber(formData.get('widthIn'));
+  const valuePerSqFt = toRequiredNumber(formData.get('valuePerSqFt'));
 
   const { data, error } = await client.POST('/inventory/slabs', {
     body: {
       stoneType: formData.get('stoneType') as string,
       finish: formData.get('finish') as 'polished' | 'honed' | 'brushed' | 'leathered' | 'sandblasted',
       qualityGrade: formData.get('qualityGrade') as 'A' | 'B' | 'C',
-      lengthIn: toRequiredNumber(formData.get('lengthIn')),
-      widthIn: toRequiredNumber(formData.get('widthIn')),
-      thicknessCm: toRequiredNumber(formData.get('thicknessCm')),
-      costCents: toCents(formData.get('cost')),
+      lengthIn,
+      widthIn,
+      thicknessCm: toRequiredSlabThicknessCm(formData.get('thicknessCm')),
+      costCents: slabValueCents(lengthIn, widthIn, valuePerSqFt),
       ...(lotNumber ? { lotNumber } : {}),
       ...(bundleNumber ? { bundleNumber } : {}),
       ...(warehouseLocation ? { warehouseLocation } : {}),
@@ -46,6 +57,9 @@ export async function createSlabAction(formData: FormData) {
 
 export async function updateSlabAction(slabId: string, formData: FormData) {
   const client = await getApiClientWithAuth();
+  const lengthIn = toRequiredNumber(formData.get('lengthIn'));
+  const widthIn = toRequiredNumber(formData.get('widthIn'));
+  const valuePerSqFt = toRequiredNumber(formData.get('valuePerSqFt'));
 
   const { error } = await client.PATCH('/inventory/slabs/{slabId}', {
     params: { path: { slabId } },
@@ -53,10 +67,10 @@ export async function updateSlabAction(slabId: string, formData: FormData) {
       stoneType: formData.get('stoneType') as string,
       finish: formData.get('finish') as 'polished' | 'honed' | 'brushed' | 'leathered' | 'sandblasted',
       qualityGrade: formData.get('qualityGrade') as 'A' | 'B' | 'C',
-      lengthIn: toRequiredNumber(formData.get('lengthIn')),
-      widthIn: toRequiredNumber(formData.get('widthIn')),
-      thicknessCm: toRequiredNumber(formData.get('thicknessCm')),
-      costCents: toCents(formData.get('cost')),
+      lengthIn,
+      widthIn,
+      thicknessCm: toRequiredSlabThicknessCm(formData.get('thicknessCm')),
+      costCents: slabValueCents(lengthIn, widthIn, valuePerSqFt),
       lotNumber: toOptionalNullableString(formData.get('lotNumber')),
       bundleNumber: toOptionalNullableString(formData.get('bundleNumber')),
       warehouseLocation: toOptionalNullableString(formData.get('warehouseLocation')),
@@ -105,6 +119,7 @@ export async function uploadSlabImageAction(slabId: string, formData: FormData) 
     throw new Error(`Failed to upload image: ${res.status} ${body}`);
   }
   revalidatePath(`/slabs/${slabId}`);
+  revalidatePath('/slabs');
 }
 
 export async function deleteSlabImageAction(slabId: string, url: string) {
@@ -125,4 +140,5 @@ export async function deleteSlabImageAction(slabId: string, url: string) {
   });
   if (!res.ok) throw new Error('Failed to delete image');
   revalidatePath(`/slabs/${slabId}`);
+  revalidatePath('/slabs');
 }

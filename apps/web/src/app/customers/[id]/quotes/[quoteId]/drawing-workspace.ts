@@ -233,6 +233,80 @@ export const DRAWING_WORKSPACE_ACTIVE_SHEET_CLASS =
 export const DRAWING_WORKSPACE_TOOL_PANEL_CLASS =
   "w-40 shrink-0 overflow-y-auto border-l bg-[#eeecea] py-1 text-sm shadow-inner min-h-0" as const;
 
+type DrawingMeasurementPiece = {
+  id: string;
+  lengthIn: number;
+  widthIn: number;
+  kind?: "countertop" | "backsplash";
+};
+
+type DrawingMeasurementPieceLayout = {
+  pieceId: string;
+  kind?: "countertop" | "backsplash";
+  shape?: unknown | null;
+};
+
+const DRAWING_RECTANGLE_MEASUREMENT_SCALE = 3;
+
+export function drawingRectangleChainShapeForMeasurement(
+  lengthIn: number,
+  widthIn: number,
+) {
+  const halfLengthIn = lengthIn / 2;
+
+  return {
+    type: "chain" as const,
+    segments: [
+      {
+        x: 0,
+        y: 0,
+        w: halfLengthIn * DRAWING_RECTANGLE_MEASUREMENT_SCALE,
+        h: widthIn * DRAWING_RECTANGLE_MEASUREMENT_SCALE,
+        lengthIn: halfLengthIn,
+        widthIn,
+        orientation: "horizontal" as const,
+      },
+      {
+        x: halfLengthIn * DRAWING_RECTANGLE_MEASUREMENT_SCALE,
+        y: 0,
+        w: halfLengthIn * DRAWING_RECTANGLE_MEASUREMENT_SCALE,
+        h: widthIn * DRAWING_RECTANGLE_MEASUREMENT_SCALE,
+        lengthIn: halfLengthIn,
+        widthIn,
+        orientation: "horizontal" as const,
+      },
+    ],
+  };
+}
+
+export function drawingLayoutWithRectangleMeasurementShapes<
+  TLayout extends { pieces: DrawingMeasurementPieceLayout[] },
+>(layout: TLayout, pieces: DrawingMeasurementPiece[]): TLayout {
+  const piecesById = new Map(pieces.map((piece) => [piece.id, piece]));
+
+  return {
+    ...layout,
+    pieces: layout.pieces.map((pieceLayout) => {
+      const piece = piecesById.get(pieceLayout.pieceId);
+      if (
+        piece === undefined ||
+        (pieceLayout.shape !== null && pieceLayout.shape !== undefined)
+      ) {
+        return pieceLayout;
+      }
+
+      return {
+        ...pieceLayout,
+        kind: pieceLayout.kind ?? piece.kind ?? "countertop",
+        shape: drawingRectangleChainShapeForMeasurement(
+          piece.lengthIn,
+          piece.widthIn,
+        ),
+      };
+    }),
+  };
+}
+
 type DrawingPaintedEdge = {
   from: [number, number];
   to: [number, number];
@@ -269,6 +343,7 @@ export const DRAWING_LAYOUT_HISTORY_LIMIT = 100;
 export const DRAWING_ZOOM_MIN = 0.45;
 export const DRAWING_ZOOM_MAX = 2.25;
 export const DRAWING_ZOOM_STEP = 0.15;
+export const DRAWING_ROUNDED_PIECE_BODY_LISTENING = true;
 
 function clampDrawingZoom(value: number) {
   return Math.min(DRAWING_ZOOM_MAX, Math.max(DRAWING_ZOOM_MIN, value));
@@ -282,7 +357,30 @@ export function drawingZoomOut(currentZoom: number) {
   return clampDrawingZoom(Number((currentZoom - DRAWING_ZOOM_STEP).toFixed(2)));
 }
 
+export function drawingReferenceLineStrokeWidth(params: {
+  paintActive: boolean;
+  active: boolean;
+  hovered: boolean;
+  centerlineSource: boolean;
+}) {
+  if (params.paintActive && (params.active || params.hovered)) {
+    return 1;
+  }
+  if (params.active || params.centerlineSource) {
+    return 4;
+  }
+  if (params.hovered) {
+    return 2;
+  }
+  return 1;
+}
+
 export type DrawingWorkspacePoint = { x: number; y: number };
+
+export type DrawingViewportTransform = {
+  pan: DrawingWorkspacePoint;
+  zoom: number;
+};
 
 export function drawingCanvasPointFromScreenPoint(params: {
   point: DrawingWorkspacePoint;
@@ -294,6 +392,59 @@ export function drawingCanvasPointFromScreenPoint(params: {
     x: (params.point.x - params.pan.x) / safeZoom,
     y: (params.point.y - params.pan.y) / safeZoom,
   };
+}
+
+export function drawingZoomAtCanvasPoint(params: {
+  canvasPoint: DrawingWorkspacePoint;
+  screenPoint: DrawingWorkspacePoint;
+  pan: DrawingWorkspacePoint;
+  zoom: number;
+  nextZoom: number;
+}): DrawingViewportTransform {
+  if (params.nextZoom === params.zoom) {
+    return {
+      pan: params.pan,
+      zoom: params.zoom,
+    };
+  }
+
+  return {
+    zoom: params.nextZoom,
+    pan: {
+      x: Number(
+        (params.screenPoint.x - params.canvasPoint.x * params.nextZoom).toFixed(
+          4,
+        ),
+      ),
+      y: Number(
+        (params.screenPoint.y - params.canvasPoint.y * params.nextZoom).toFixed(
+          4,
+        ),
+      ),
+    },
+  };
+}
+
+export function drawingZoomAroundScreenPoint(params: {
+  screenPoint: DrawingWorkspacePoint;
+  pan: DrawingWorkspacePoint;
+  zoom: number;
+  zoomAction: (zoom: number) => number;
+}): DrawingViewportTransform {
+  const canvasPoint = drawingCanvasPointFromScreenPoint({
+    point: params.screenPoint,
+    pan: params.pan,
+    zoom: params.zoom,
+  });
+  const nextZoom = params.zoomAction(params.zoom);
+
+  return drawingZoomAtCanvasPoint({
+    canvasPoint,
+    screenPoint: params.screenPoint,
+    pan: params.pan,
+    zoom: params.zoom,
+    nextZoom,
+  });
 }
 
 export function drawingDraggedPositionFromCanvasPoints(params: {

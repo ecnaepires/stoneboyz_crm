@@ -1,3 +1,5 @@
+import type { PolygonVertex } from '../drawing/polygon.js';
+
 export interface CanvasLShapeLayout {
   type: 'l';
   legX: number;
@@ -55,7 +57,7 @@ export interface CanvasChainShapeLayout {
 // angled edges) while stored chain/l/z revisions keep loading via converters.
 export interface CanvasPolygonShapeLayout {
   type: 'polygon';
-  vertices: Array<{ x: number; y: number }>;
+  vertices: PolygonVertex[];
 }
 
 export type CanvasPieceShape =

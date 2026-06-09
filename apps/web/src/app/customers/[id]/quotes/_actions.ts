@@ -82,6 +82,18 @@ const unwrapApiData = (value: unknown) => {
   return value;
 };
 
+const apiErrorMessage = (error: unknown, fallback: string) => {
+  if (error && typeof error === "object") {
+    const directMessage = (error as { message?: unknown }).message;
+    if (typeof directMessage === "string") return directMessage;
+
+    const nestedMessage = (error as { error?: { message?: unknown } }).error?.message;
+    if (typeof nestedMessage === "string") return nestedMessage;
+  }
+
+  return fallback;
+};
+
 type PricingMutationClient = {
   POST: (
     path: string,
@@ -419,6 +431,30 @@ export async function generatePricingAction(
   revalidatePath(`/customers/${customerId}/quotes/${quoteId}`);
 }
 
+export async function generateAllPricingAction(
+  customerId: string,
+  quoteId: string,
+  areaIds: string[],
+) {
+  const client =
+    (await getApiClientWithAuth()) as unknown as PricingMutationClient;
+
+  for (const areaId of areaIds) {
+    const { error } = await client.POST(
+      "/customers/{customerId}/quotes/{quoteId}/areas/{areaId}/pricing/generate",
+      {
+        params: { path: { customerId, quoteId, areaId } },
+      },
+    );
+
+    if (error) {
+      throw new Error("Failed to generate final price");
+    }
+  }
+
+  revalidatePath(`/customers/${customerId}/quotes/${quoteId}`);
+}
+
 export async function savePricingSelectionsAction(
   customerId: string,
   quoteId: string,
@@ -467,8 +503,7 @@ export async function savePricingSelectionsAction(
         | "edgeItemId"
         | "splashItemId"
         | "fabricationItemId"
-    ] =
-      value.trim() ? value : null;
+    ] = value.trim() ? value : null;
     areas.set(areaId, current);
   }
 
@@ -494,6 +529,55 @@ export async function savePricingSelectionsAction(
   }
 
   revalidatePath(`/customers/${customerId}/quotes/${quoteId}`);
+}
+
+type AreaPricingPicks = {
+  materialItemId: string | null;
+  materialSource: "inventory" | "external";
+  materialSlabId: string | null;
+  externalMaterialNote: string | null;
+  edgeItemId: string | null;
+  fabricationItemId: string | null;
+  splashItemId: string | null;
+  sinkItemId: string | null;
+  faucetHoleItemId: string | null;
+};
+
+export async function saveAreaPricingAction(
+  customerId: string,
+  quoteId: string,
+  areaId: string,
+  picks: AreaPricingPicks,
+) {
+  const client =
+    (await getApiClientWithAuth()) as unknown as PricingMutationClient;
+
+  const saveResult = await client.PATCH(
+    "/customers/{customerId}/quotes/{quoteId}/pricing-selections",
+    {
+      params: { path: { customerId, quoteId } },
+      body: { areas: [{ areaId, ...picks }] },
+    },
+  );
+  if (saveResult.error) {
+    return {
+      ok: false as const,
+      error: apiErrorMessage(saveResult.error, "Failed to save pricing selections"),
+    };
+  }
+
+  const generateResult = await client.POST(
+    "/customers/{customerId}/quotes/{quoteId}/areas/{areaId}/pricing/generate",
+    {
+      params: { path: { customerId, quoteId, areaId } },
+    },
+  );
+  if (generateResult.error) {
+    return { ok: false as const, error: "Failed to generate pricing" };
+  }
+
+  revalidatePath(`/customers/${customerId}/quotes/${quoteId}`);
+  return { ok: true as const };
 }
 
 export async function overridePricingLineAction(
@@ -637,7 +721,8 @@ export async function createCounterPieceForCanvasAction(
         lengthIn: Number(formData.get("lengthIn")),
         widthIn: Number(formData.get("widthIn")),
         quantity: Number(formData.get("quantity") || 1),
-        kind: (formData.get("kind") as "countertop" | "backsplash") || "countertop",
+        kind:
+          (formData.get("kind") as "countertop" | "backsplash") || "countertop",
       },
     },
   );

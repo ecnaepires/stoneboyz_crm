@@ -40,7 +40,16 @@ const canvasPieceShapeSchema = z.discriminatedUnion("type", [
   // polygonValidate in saveDrawingRevisionSchema, not here.
   z.object({
     type: z.literal("polygon"),
-    vertices: z.array(z.object({ x: z.number(), y: z.number() })).min(3),
+    vertices: z
+      .array(z.object({ id: z.string().min(1).optional(), x: z.number(), y: z.number() }))
+      .min(3)
+      .transform((vertices) =>
+        vertices.map((vertex, index) => ({
+          id: vertex.id ?? `legacy-v${index}`,
+          x: vertex.x,
+          y: vertex.y,
+        })),
+      ),
   }),
 ]);
 

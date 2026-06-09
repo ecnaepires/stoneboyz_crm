@@ -53,6 +53,7 @@ import {
   DRAWING_FILLET_MODE_LABELS,
   DRAWING_FILLET_SIZE_PRESETS,
   DRAWING_OFFSET_MODE_LABELS,
+  DRAWING_ROUNDED_PIECE_BODY_LISTENING,
   DRAWING_WORKSPACE_RESET_ACTION_LABEL,
   DRAWING_WORKSPACE_TOOL_PANEL_CLASS,
   type DrawingLayoutHistory,
@@ -70,7 +71,11 @@ import {
   drawingDirectCenterlineForRectangle,
   drawingDraggedPositionFromCanvasPoints,
   drawingFilletModeRequiresValue,
+  drawingLayoutWithRectangleMeasurementShapes,
   drawingRedoLayoutHistory,
+  drawingReferenceLineStrokeWidth,
+  drawingZoomAtCanvasPoint,
+  drawingZoomAroundScreenPoint,
   drawingZoomIn,
   drawingZoomOut,
   drawingPreviewShowsBoundingDimensions,
@@ -90,6 +95,7 @@ import {
   extendReferenceLineToEdges,
   isRectangularUnion,
   legacyShapeToChain,
+  measurementTotalsFromLayout,
   offsetCenterline,
   removeReferenceLine,
   visibleBoundaryEdges,
@@ -771,6 +777,10 @@ function formatInches(value: number) {
   return whole === 0
     ? `${numerator}/${denominator}"`
     : `${whole} ${numerator}/${denominator}"`;
+}
+
+function formatMeasurementNumber(value: number) {
+  return value.toLocaleString(undefined, { maximumFractionDigits: 2 });
 }
 
 function toolCursor(tool: Tool, isDraft: boolean) {
@@ -3899,14 +3909,21 @@ export function DrawingCanvasInner({
   );
 
   const withPieceKinds = useCallback(
-    (toSave: CanvasLayout): CanvasLayout => ({
-      ...toSave,
-      pieces: toSave.pieces.map((piece) => ({
-        ...piece,
-        kind: piece.kind ?? pieces.find((dp) => dp.id === piece.pieceId)?.kind ?? "countertop",
-      })),
-    }),
-    [pieces],
+    (toSave: CanvasLayout): CanvasLayout =>
+      drawingLayoutWithRectangleMeasurementShapes(
+        {
+          ...toSave,
+          pieces: toSave.pieces.map((piece) => ({
+            ...piece,
+            kind:
+              piece.kind ??
+              pieces.find((dp) => dp.id === piece.pieceId)?.kind ??
+              "countertop",
+          })),
+        },
+        pieces.map(getRenderedPiece),
+      ),
+    [pieces, getRenderedPiece],
   );
 
   const persistDrawing = useCallback(
@@ -4131,7 +4148,10 @@ export function DrawingCanvasInner({
         if (!saveResult.ok) {
           setLayout(snapshot);
           setCanvasError(saveResult.error);
+          return;
         }
+        setIsDirty(false);
+        router.refresh();
       });
     },
     [
@@ -4141,6 +4161,7 @@ export function DrawingCanvasInner({
       customerId,
       pieces,
       quoteId,
+      router,
       withPieceKinds,
     ],
   );
@@ -6329,7 +6350,7 @@ export function DrawingCanvasInner({
     {
       label: "Zoom In",
       icon: "+",
-      action: () => setZoom(drawingZoomIn),
+      action: () => zoomViewportFromToolbar(drawingZoomIn),
       disabled: zoom >= DRAWING_ZOOM_MAX,
       tone: "muted",
       dividerBefore: true,
@@ -6337,7 +6358,7 @@ export function DrawingCanvasInner({
     {
       label: "Zoom Out",
       icon: "-",
-      action: () => setZoom(drawingZoomOut),
+      action: () => zoomViewportFromToolbar(drawingZoomOut),
       disabled: zoom <= DRAWING_ZOOM_MIN,
       tone: "muted",
     },
@@ -6369,6 +6390,91 @@ export function DrawingCanvasInner({
   const selectedPiece = selectedPieceId
     ? (pieceMap.get(selectedPieceId) ?? null)
     : null;
+  const liveMeasurementTotals = useMemo(
+    () => measurementTotalsFromLayout(withPieceKinds(layout)),
+    [layout, withPieceKinds],
+  );
+  const selectedCanvasFocusPoint = useMemo(() => {
+    const pieceIds = selectedPieceIdsForAction.filter((pieceId) =>
+      pieceMap.has(pieceId),
+    );
+    if (pieceIds.length === 0) return null;
+
+    const bounds = pieceIds
+      .flatMap((pieceId) => {
+        const piece = pieceMap.get(pieceId);
+        const pieceLayout = layout.pieces.find((item) => item.pieceId === pieceId);
+        if (!piece || !pieceLayout) return [];
+        return [canvasBoundsForPiece(getRenderedPiece(piece), pieceLayout)];
+      })
+      .reduce<CanvasRect | null>((current, rect) => {
+        if (!current) return rect;
+        const minX = Math.min(current.x, rect.x);
+        const minY = Math.min(current.y, rect.y);
+        const maxX = Math.max(current.x + current.width, rect.x + rect.width);
+        const maxY = Math.max(current.y + current.height, rect.y + rect.height);
+        return {
+          x: minX,
+          y: minY,
+          width: maxX - minX,
+          height: maxY - minY,
+        };
+      }, null);
+
+    if (!bounds) return null;
+
+    return {
+      x: bounds.x + bounds.width / 2,
+      y: bounds.y + bounds.height / 2,
+    };
+  }, [getRenderedPiece, layout.pieces, pieceMap, selectedPieceIdsForAction]);
+
+  const zoomViewportToCanvasPoint = useCallback(
+    (
+      zoomAction: (zoom: number) => number,
+      canvasPoint: { x: number; y: number },
+      screenPoint: { x: number; y: number },
+    ) => {
+      const nextZoom = zoomAction(zoom);
+      const nextViewport = drawingZoomAtCanvasPoint({
+        canvasPoint,
+        screenPoint,
+        pan,
+        zoom,
+        nextZoom,
+      });
+
+      setZoom(nextViewport.zoom);
+      setPan(nextViewport.pan);
+    },
+    [pan, zoom],
+  );
+
+  const zoomViewportFromToolbar = useCallback(
+    (zoomAction: (zoom: number) => number) => {
+      const screenPoint = {
+        x: canvasWidth / 2,
+        y: canvasHeight / 2,
+      };
+      const canvasPoint =
+        selectedCanvasFocusPoint ??
+        drawingCanvasPointFromScreenPoint({
+          point: screenPoint,
+          pan,
+          zoom,
+        });
+
+      zoomViewportToCanvasPoint(zoomAction, canvasPoint, screenPoint);
+    },
+    [
+      canvasHeight,
+      canvasWidth,
+      pan,
+      selectedCanvasFocusPoint,
+      zoom,
+      zoomViewportToCanvasPoint,
+    ],
+  );
   const edgeLengthPreview = useMemo<EdgeLengthPreviewModel | null>(() => {
     if (!edgeEditor) return null;
     const basePiece = pieceMap.get(edgeEditor.pieceId);
@@ -6445,10 +6551,10 @@ export function DrawingCanvasInner({
         setRoundSixteenth((prev) => !prev);
       } else if (key === "j") {
         event.preventDefault();
-        setZoom(drawingZoomIn);
+        zoomViewportFromToolbar(drawingZoomIn);
       } else if (key === "k") {
         event.preventDefault();
-        setZoom(drawingZoomOut);
+        zoomViewportFromToolbar(drawingZoomOut);
       } else if (key === "l") {
         event.preventDefault();
         setZoom(1);
@@ -6479,7 +6585,7 @@ export function DrawingCanvasInner({
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [isDraft, redoLayout, undoLayout]);
+  }, [isDraft, redoLayout, undoLayout, zoomViewportFromToolbar]);
 
   useEffect(() => {
     if (tool !== "offset") {
@@ -6591,11 +6697,27 @@ export function DrawingCanvasInner({
               Exit
             </Button>
           </div>
-          <div className="text-xs text-muted-foreground">
-            {latestRevision
-              ? `Revision ${latestRevision.revisionNumber} saved ${formatDate(latestRevision.createdAt)}`
-              : "No saved revisions yet"}
-            {isDirty ? " • Unsaved changes" : ""}
+          <div className="flex flex-wrap items-center justify-end gap-x-4 gap-y-1 text-xs">
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[#1f3f1d]">
+              <span>
+                Countertop:{" "}
+                <strong>{formatMeasurementNumber(liveMeasurementTotals.countertopSqFt)} sq ft</strong>
+              </span>
+              <span>
+                Combined:{" "}
+                <strong>{formatMeasurementNumber(liveMeasurementTotals.combinedSqFt)} sq ft</strong>
+              </span>
+              <span>
+                Edge:{" "}
+                <strong>{formatMeasurementNumber(liveMeasurementTotals.finishedEdgeLinFt)} lin ft</strong>
+              </span>
+            </div>
+            <div className="text-muted-foreground">
+              {latestRevision
+                ? `Revision ${latestRevision.revisionNumber} saved ${formatDate(latestRevision.createdAt)}`
+                : "No saved revisions yet"}
+              {isDirty ? " • Unsaved changes" : ""}
+            </div>
           </div>
         </div>
 
@@ -6610,6 +6732,24 @@ export function DrawingCanvasInner({
                   width={canvasWidth}
                   height={canvasHeight}
                   style={{ cursor: toolCursor(tool, isDraft) }}
+                  onWheel={(event) => {
+                    event.evt.preventDefault();
+                    const stagePoint =
+                      stageRef.current?.getStage().getPointerPosition();
+                    if (!stagePoint) return;
+
+                    const zoomAction =
+                      event.evt.deltaY < 0 ? drawingZoomIn : drawingZoomOut;
+                    const nextViewport = drawingZoomAroundScreenPoint({
+                      screenPoint: stagePoint,
+                      pan,
+                      zoom,
+                      zoomAction,
+                    });
+
+                    setZoom(nextViewport.zoom);
+                    setPan(nextViewport.pan);
+                  }}
                   onMouseDown={handleStageMouseDown}
                   onMouseMove={handleStageMouseMove}
                   onMouseUp={handleStageMouseUp}
@@ -7533,7 +7673,7 @@ export function DrawingCanvasInner({
                               </>
                             ) : rectangleCornerVisuals.length > 0 ? (
                               <Shape
-                                listening={false}
+                                listening={DRAWING_ROUNDED_PIECE_BODY_LISTENING}
                                 fill={pieceFill}
                                 sceneFunc={(context, shape) => {
                                   drawRectangleWithCornerVisuals(
@@ -8195,16 +8335,13 @@ export function DrawingCanvasInner({
                                         : line.color
                                     }
                                     strokeWidth={
-                                      tool === "paint" &&
-                                      (isActionSelected || isHovered)
-                                        ? PAINTED_EDGE_STROKE_WIDTH
-                                        : isActionSelected
-                                          || isCenterlineSourceSelected
-                                          ? 4
-                                          : isHovered ||
-                                              line.color === PIECE_STROKE
-                                            ? 2
-                                            : 1
+                                      drawingReferenceLineStrokeWidth({
+                                        paintActive: tool === "paint",
+                                        active: isActionSelected,
+                                        hovered: isHovered,
+                                        centerlineSource:
+                                          isCenterlineSourceSelected,
+                                      })
                                     }
                                     dash={line.dash ? [6, 5] : []}
                                   />

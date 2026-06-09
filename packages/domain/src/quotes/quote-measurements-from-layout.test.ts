@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { measurementTotalsFromLayout } from './quote-measurements-from-layout.js';
+import { measurementTotalsFromLayout, netFinishedAreaSqInFromLayout } from './quote-measurements-from-layout.js';
 import type { CanvasLayout, CanvasChainShapeLayout } from './quote-drawing.types.js';
 
 const emptyLayout = (): CanvasLayout => ({
@@ -32,6 +32,19 @@ describe('measurementTotalsFromLayout', () => {
     ];
 
     expect(measurementTotalsFromLayout(layout).countertopSqFt).toBe(6.25);
+  });
+
+  it('subtracts radius corners from net finished area without changing billable square footage', () => {
+    const layout = emptyLayout();
+    layout.pieces = [
+      { pieceId: 'p1', x: 0, y: 0, rotation: 0, kind: 'countertop', shape: rectChain(100, 25) }
+    ];
+    layout.corners = [
+      { pieceId: 'p1', corner: 'topRight', treatment: 'radius', valueIn: 4 }
+    ];
+
+    expect(netFinishedAreaSqInFromLayout(layout)).toBe(2496.566);
+    expect(measurementTotalsFromLayout(layout).countertopSqFt).toBe(17.361);
   });
 
   it('splits backsplash pieces out of countertop square footage', () => {

@@ -1,4 +1,13 @@
-import type { Order, OrderArea, OrderLineItem, OrderPayment, OrderPaymentMethod, OrderPaymentStatus } from '@stoneboyz/domain';
+import type {
+  Order,
+  OrderArea,
+  OrderDepositStatus,
+  OrderLineItem,
+  OrderPayment,
+  OrderPaymentMethod,
+  OrderPaymentRecordStatus,
+  OrderPaymentStatus
+} from '@stoneboyz/domain';
 
 export interface OrderRow {
   id: string;
@@ -12,6 +21,9 @@ export interface OrderRow {
   tax_rate_bps: number;
   total_cents: number;
   total_paid_cents: number | string | null;
+  deposit_required_cents: number;
+  deposit_requested_at: Date | null;
+  deposit_requested_by_user_id: string | null;
   notes: string | null;
   terms_and_conditions: string | null;
   deleted_at: Date | null;
@@ -26,8 +38,12 @@ export interface OrderPaymentRow {
   payment_date: Date | string;
   amount_cents: number;
   payment_method: string;
+  status: string;
   reference_number: string | null;
   notes: string | null;
+  voided_at: Date | null;
+  voided_by_user_id: string | null;
+  void_reason: string | null;
   created_at: Date;
   updated_at: Date;
 }
@@ -76,9 +92,16 @@ const computePaymentStatus = (totalPaidCents: number, totalCents: number): Order
   return 'unpaid';
 };
 
+const computeDepositStatus = (depositRequiredCents: number, totalPaidCents: number): OrderDepositStatus => {
+  if (depositRequiredCents <= 0) return 'not_requested';
+  return totalPaidCents >= depositRequiredCents ? 'paid' : 'requested';
+};
+
 export const mapOrderRow = (row: OrderRow): Order => {
   const totalPaidCents = Number(row.total_paid_cents ?? 0);
   const totalCents = row.total_cents;
+  const depositRequiredCents = row.deposit_required_cents;
+  const depositPaidCents = depositRequiredCents > 0 ? Math.min(totalPaidCents, depositRequiredCents) : 0;
 
   return {
     id: row.id,
@@ -94,6 +117,12 @@ export const mapOrderRow = (row: OrderRow): Order => {
     totalPaidCents,
     balanceDueCents: Math.max(0, totalCents - totalPaidCents),
     paymentStatus: computePaymentStatus(totalPaidCents, totalCents),
+    depositRequiredCents,
+    depositPaidCents,
+    depositBalanceCents: Math.max(0, depositRequiredCents - totalPaidCents),
+    depositStatus: computeDepositStatus(depositRequiredCents, totalPaidCents),
+    depositRequestedAt: row.deposit_requested_at === null ? null : toIso(row.deposit_requested_at),
+    depositRequestedByUserId: row.deposit_requested_by_user_id,
     notes: row.notes,
     termsAndConditions: row.terms_and_conditions,
     archivedAt: row.deleted_at === null ? null : toIso(row.deleted_at),
@@ -109,8 +138,12 @@ export const mapOrderPaymentRow = (row: OrderPaymentRow): OrderPayment => ({
   paymentDate: toDateString(row.payment_date),
   amountCents: row.amount_cents,
   paymentMethod: row.payment_method as OrderPaymentMethod,
+  status: row.status as OrderPaymentRecordStatus,
   referenceNumber: row.reference_number,
   notes: row.notes,
+  voidedAt: row.voided_at === null ? null : toIso(row.voided_at),
+  voidedByUserId: row.voided_by_user_id,
+  voidReason: row.void_reason,
   createdAt: toIso(row.created_at),
   updatedAt: toIso(row.updated_at)
 });

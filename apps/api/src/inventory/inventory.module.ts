@@ -13,7 +13,6 @@ import { SlabsService } from './slabs.service.js';
   imports: [EventsModule, StorageModule],
   controllers: [SlabsController, ProjectSlabsController],
   providers: [databaseProvider, SlabsRepository, SlabsService, ProjectSlabsRepository, ProjectSlabsService],
-  exports: [SlabsService]
+  exports: [SlabsRepository, SlabsService]
 })
 export class InventoryModule {}
-

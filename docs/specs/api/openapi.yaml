@@ -180,7 +180,17 @@ components:
 
     RecentQuote:
       type: object
-      required: [id, quoteNumber, title, status, customerId, customerName, valueCents, createdAt]
+      required:
+        [
+          id,
+          quoteNumber,
+          title,
+          status,
+          customerId,
+          customerName,
+          valueCents,
+          createdAt,
+        ]
       properties:
         id:
           type: string
@@ -234,7 +244,16 @@ components:
 
     DashboardStats:
       type: object
-      required: [activeCustomers, openQuotes, ordersThisMonth, eventsThisWeek, pipeline, revenueSeries, recentQuotes]
+      required:
+        [
+          activeCustomers,
+          openQuotes,
+          ordersThisMonth,
+          eventsThisWeek,
+          pipeline,
+          revenueSeries,
+          recentQuotes,
+        ]
       properties:
         activeCustomers:
           type: integer
@@ -257,16 +276,16 @@ components:
         eventsThisWeek:
           type: integer
         pipeline:
-          $ref: '#/components/schemas/QuotePipeline'
+          $ref: "#/components/schemas/QuotePipeline"
         revenueSeries:
           type: array
           description: Last 6 months of quote and order revenue, oldest first.
           items:
-            $ref: '#/components/schemas/RevenuePoint'
+            $ref: "#/components/schemas/RevenuePoint"
         recentQuotes:
           type: array
           items:
-            $ref: '#/components/schemas/RecentQuote'
+            $ref: "#/components/schemas/RecentQuote"
 
     UserProfile:
       type: object
@@ -282,14 +301,42 @@ components:
           type: string
         role:
           type: string
-          enum: [admin, salesperson, templater, cutter, fabricator, installer, service_tech]
+          enum:
+            [
+              admin,
+              salesperson,
+              templater,
+              cutter,
+              fabricator,
+              installer,
+              service_tech,
+            ]
         createdAt:
           type: string
           format: date-time
 
     PortalQuote:
       type: object
-      required: [id, quoteNumber, title, status, customerId, customerName, discountCents, taxCents, subtotalCents, taxRateBps, shareToken, pipelineStage, pipelineStatus, nextActivityDate, phaseName, areas, lineItems]
+      required:
+        [
+          id,
+          quoteNumber,
+          title,
+          status,
+          customerId,
+          customerName,
+          discountCents,
+          taxCents,
+          subtotalCents,
+          taxRateBps,
+          shareToken,
+          pipelineStage,
+          pipelineStatus,
+          nextActivityDate,
+          phaseName,
+          areas,
+          lineItems,
+        ]
       properties:
         id:
           type: string
@@ -354,7 +401,16 @@ components:
           type: array
           items:
             type: object
-            required: [id, stoneType, qty, qtyUnit, unitPriceCents, laborPriceCents, sortOrder]
+            required:
+              [
+                id,
+                stoneType,
+                qty,
+                qtyUnit,
+                unitPriceCents,
+                laborPriceCents,
+                sortOrder,
+              ]
             properties:
               id:
                 type: string
@@ -419,7 +475,7 @@ components:
           type: string
           nullable: true
         status:
-          $ref: '#/components/schemas/PriceListStatus'
+          $ref: "#/components/schemas/PriceListStatus"
         revision:
           type: integer
         currencyCode:
@@ -499,7 +555,17 @@ components:
           enum: [square_foot, linear_foot, each]
         measurementBasis:
           type: string
-          enum: [countertop_sqft, backsplash_sqft, combined_sqft, finished_edge_linft, splash_sqft, sink_count, faucet_hole_count, each]
+          enum:
+            [
+              countertop_sqft,
+              backsplash_sqft,
+              combined_sqft,
+              finished_edge_linft,
+              splash_sqft,
+              sink_count,
+              faucet_hole_count,
+              each,
+            ]
         unit:
           type: string
         priceCents:
@@ -523,14 +589,14 @@ components:
 
     PriceListWithItems:
       allOf:
-        - $ref: '#/components/schemas/PriceList'
+        - $ref: "#/components/schemas/PriceList"
         - type: object
           required: [items]
           properties:
             items:
               type: array
               items:
-                $ref: '#/components/schemas/PriceListItem'
+                $ref: "#/components/schemas/PriceListItem"
 
     PriceListListResponse:
       type: object
@@ -539,7 +605,7 @@ components:
         data:
           type: array
           items:
-            $ref: '#/components/schemas/PriceList'
+            $ref: "#/components/schemas/PriceList"
         hasMore:
           type: boolean
         nextCursor:
@@ -553,7 +619,7 @@ components:
         data:
           type: array
           items:
-            $ref: '#/components/schemas/PriceListItem'
+            $ref: "#/components/schemas/PriceListItem"
 
     CreatePriceListRequest:
       type: object
@@ -618,7 +684,17 @@ components:
           enum: [square_foot, linear_foot, each]
         measurementBasis:
           type: string
-          enum: [countertop_sqft, backsplash_sqft, combined_sqft, finished_edge_linft, splash_sqft, sink_count, faucet_hole_count, each]
+          enum:
+            [
+              countertop_sqft,
+              backsplash_sqft,
+              combined_sqft,
+              finished_edge_linft,
+              splash_sqft,
+              sink_count,
+              faucet_hole_count,
+              each,
+            ]
         unit:
           type: string
         priceCents:
@@ -658,7 +734,17 @@ components:
           enum: [square_foot, linear_foot, each]
         measurementBasis:
           type: string
-          enum: [countertop_sqft, backsplash_sqft, combined_sqft, finished_edge_linft, splash_sqft, sink_count, faucet_hole_count, each]
+          enum:
+            [
+              countertop_sqft,
+              backsplash_sqft,
+              combined_sqft,
+              finished_edge_linft,
+              splash_sqft,
+              sink_count,
+              faucet_hole_count,
+              each,
+            ]
         unit:
           type: string
         priceCents:
@@ -714,7 +800,7 @@ components:
           type: string
           format: uuid
         customerKind:
-          $ref: '#/components/schemas/CustomerKind'
+          $ref: "#/components/schemas/CustomerKind"
         name:
           type: string
         companyName:
@@ -730,9 +816,9 @@ components:
           type: string
           nullable: true
         status:
-          $ref: '#/components/schemas/CustomerStatus'
+          $ref: "#/components/schemas/CustomerStatus"
         type:
-          $ref: '#/components/schemas/CustomerType'
+          $ref: "#/components/schemas/CustomerType"
         ownerUserId:
           type: string
           format: uuid
@@ -804,7 +890,7 @@ components:
       required: [customerKind, name, status, type, ownerUserId]
       properties:
         customerKind:
-          $ref: '#/components/schemas/CustomerKind'
+          $ref: "#/components/schemas/CustomerKind"
         name:
           type: string
           minLength: 1
@@ -817,9 +903,9 @@ components:
         displayName:
           type: string
         status:
-          $ref: '#/components/schemas/CustomerStatus'
+          $ref: "#/components/schemas/CustomerStatus"
         type:
-          $ref: '#/components/schemas/CustomerType'
+          $ref: "#/components/schemas/CustomerType"
         ownerUserId:
           type: string
           format: uuid
@@ -853,7 +939,7 @@ components:
       minProperties: 1
       properties:
         customerKind:
-          $ref: '#/components/schemas/CustomerKind'
+          $ref: "#/components/schemas/CustomerKind"
         name:
           type: string
           minLength: 1
@@ -870,9 +956,9 @@ components:
           type: string
           nullable: true
         status:
-          $ref: '#/components/schemas/CustomerStatus'
+          $ref: "#/components/schemas/CustomerStatus"
         type:
-          $ref: '#/components/schemas/CustomerType'
+          $ref: "#/components/schemas/CustomerType"
         ownerUserId:
           type: string
           format: uuid
@@ -951,7 +1037,7 @@ components:
           type: string
           nullable: true
         status:
-          $ref: '#/components/schemas/ProjectStatus'
+          $ref: "#/components/schemas/ProjectStatus"
         ownerUserId:
           type: string
         archivedAt:
@@ -978,7 +1064,7 @@ components:
         description:
           type: string
         status:
-          $ref: '#/components/schemas/ProjectStatus'
+          $ref: "#/components/schemas/ProjectStatus"
         ownerUserId:
           type: string
 
@@ -996,7 +1082,7 @@ components:
           type: string
           nullable: true
         status:
-          $ref: '#/components/schemas/ProjectStatus'
+          $ref: "#/components/schemas/ProjectStatus"
         ownerUserId:
           type: string
 
@@ -1045,7 +1131,7 @@ components:
         isBilling:
           type: boolean
         preferredChannel:
-          $ref: '#/components/schemas/ContactChannel'
+          $ref: "#/components/schemas/ContactChannel"
         createdAt:
           type: string
           format: date-time
@@ -1082,7 +1168,7 @@ components:
           type: boolean
           default: false
         preferredChannel:
-          $ref: '#/components/schemas/ContactChannel'
+          $ref: "#/components/schemas/ContactChannel"
 
     UpdateCustomerContactRequest:
       type: object
@@ -1112,7 +1198,7 @@ components:
         isBilling:
           type: boolean
         preferredChannel:
-          $ref: '#/components/schemas/ContactChannel'
+          $ref: "#/components/schemas/ContactChannel"
 
     CustomerAddressType:
       type: string
@@ -1140,7 +1226,7 @@ components:
           type: string
           format: uuid
         type:
-          $ref: '#/components/schemas/CustomerAddressType'
+          $ref: "#/components/schemas/CustomerAddressType"
         line1:
           type: string
         line2:
@@ -1176,7 +1262,7 @@ components:
       required: [type, line1, city, country]
       properties:
         type:
-          $ref: '#/components/schemas/CustomerAddressType'
+          $ref: "#/components/schemas/CustomerAddressType"
         line1:
           type: string
         line2:
@@ -1202,7 +1288,7 @@ components:
       minProperties: 2
       properties:
         type:
-          $ref: '#/components/schemas/CustomerAddressType'
+          $ref: "#/components/schemas/CustomerAddressType"
         line1:
           type: string
         line2:
@@ -1225,7 +1311,8 @@ components:
 
     CustomerNote:
       type: object
-      required: [id, customerId, authorUserId, body, createdAt, updatedAt, archivedAt]
+      required:
+        [id, customerId, authorUserId, body, createdAt, updatedAt, archivedAt]
       properties:
         id:
           type: string
@@ -1276,7 +1363,7 @@ components:
         data:
           type: array
           items:
-            $ref: '#/components/schemas/Customer'
+            $ref: "#/components/schemas/Customer"
         nextCursor:
           type: string
           nullable: true
@@ -1290,7 +1377,7 @@ components:
         data:
           type: array
           items:
-            $ref: '#/components/schemas/Project'
+            $ref: "#/components/schemas/Project"
         nextCursor:
           type: string
           nullable: true
@@ -1415,7 +1502,7 @@ components:
         subtotalCents:
           type: integer
         measurementTotals:
-          $ref: '#/components/schemas/QuoteMeasurementAreaTotals'
+          $ref: "#/components/schemas/QuoteMeasurementAreaTotals"
         createdAt:
           type: string
           format: date-time
@@ -1425,7 +1512,17 @@ components:
 
     QuoteMeasurementAreaTotals:
       type: object
-      required: [pieceCount, countertopSqFt, backsplashSqFt, combinedSqFt, finishedEdgeLinFt, splashSqFt, sinkCutoutCount, faucetHoleCount]
+      required:
+        [
+          pieceCount,
+          countertopSqFt,
+          backsplashSqFt,
+          combinedSqFt,
+          finishedEdgeLinFt,
+          splashSqFt,
+          sinkCutoutCount,
+          faucetHoleCount,
+        ]
       properties:
         pieceCount:
           type: integer
@@ -1472,7 +1569,16 @@ components:
           format: uuid
         category:
           type: string
-          enum: [material, fabrication, finished_edge, splash, sink_cutout, sink_item, faucet_hole]
+          enum:
+            [
+              material,
+              fabrication,
+              finished_edge,
+              splash,
+              sink_cutout,
+              sink_item,
+              faucet_hole,
+            ]
         label:
           type: string
           minLength: 1
@@ -1529,7 +1635,19 @@ components:
 
     QuoteAreaPricingSelection:
       type: object
-      required: [areaId, materialItemId, edgeItemId, splashItemId, fabricationItemId]
+      required:
+        [
+          areaId,
+          materialItemId,
+          materialSource,
+          materialSlabId,
+          externalMaterialNote,
+          edgeItemId,
+          splashItemId,
+          fabricationItemId,
+          sinkItemId,
+          faucetHoleItemId,
+        ]
       properties:
         areaId:
           type: string
@@ -1538,6 +1656,17 @@ components:
           type: string
           format: uuid
           nullable: true
+        materialSource:
+          type: string
+          enum: [inventory, external]
+        materialSlabId:
+          type: string
+          format: uuid
+          nullable: true
+        externalMaterialNote:
+          type: string
+          nullable: true
+          minLength: 1
         edgeItemId:
           type: string
           format: uuid
@@ -1550,10 +1679,18 @@ components:
           type: string
           format: uuid
           nullable: true
-
+        sinkItemId:
+          type: string
+          format: uuid
+          nullable: true
+        faucetHoleItemId:
+          type: string
+          format: uuid
+          nullable: true
     QuotePricingSelection:
       type: object
-      required: [quoteId, defaultFabricationItemId, sinkItemId, faucetHoleItemId, areas]
+      required:
+        [quoteId, defaultFabricationItemId, sinkItemId, faucetHoleItemId, areas]
       properties:
         quoteId:
           type: string
@@ -1573,7 +1710,7 @@ components:
         areas:
           type: array
           items:
-            $ref: '#/components/schemas/QuoteAreaPricingSelection'
+            $ref: "#/components/schemas/QuoteAreaPricingSelection"
 
     UpsertQuoteAreaPricingSelectionRequest:
       type: object
@@ -1585,6 +1722,17 @@ components:
         materialItemId:
           type: string
           format: uuid
+          nullable: true
+        materialSource:
+          type: string
+          enum: [inventory, external]
+        materialSlabId:
+          type: string
+          format: uuid
+          nullable: true
+        externalMaterialNote:
+          type: string
+          minLength: 1
           nullable: true
         edgeItemId:
           type: string
@@ -1598,7 +1746,14 @@ components:
           type: string
           format: uuid
           nullable: true
-
+        sinkItemId:
+          type: string
+          format: uuid
+          nullable: true
+        faucetHoleItemId:
+          type: string
+          format: uuid
+          nullable: true
     UpsertQuotePricingSelectionRequest:
       type: object
       properties:
@@ -1617,7 +1772,7 @@ components:
         areas:
           type: array
           items:
-            $ref: '#/components/schemas/UpsertQuoteAreaPricingSelectionRequest'
+            $ref: "#/components/schemas/UpsertQuoteAreaPricingSelectionRequest"
 
     CanvasPieceLayout:
       type: object
@@ -1654,15 +1809,16 @@ components:
         pieces:
           type: array
           items:
-            $ref: '#/components/schemas/CanvasPieceLayout'
+            $ref: "#/components/schemas/CanvasPieceLayout"
         sinks:
           type: array
           items:
-            $ref: '#/components/schemas/CanvasSinkLayout'
+            $ref: "#/components/schemas/CanvasSinkLayout"
 
     DrawingRevision:
       type: object
-      required: [id, quoteAreaId, revisionNumber, layout, createdAt, createdByUserId]
+      required:
+        [id, quoteAreaId, revisionNumber, layout, createdAt, createdByUserId]
       properties:
         id:
           type: string
@@ -1673,7 +1829,7 @@ components:
         revisionNumber:
           type: integer
         layout:
-          $ref: '#/components/schemas/CanvasLayout'
+          $ref: "#/components/schemas/CanvasLayout"
         createdAt:
           type: string
           format: date-time
@@ -1686,11 +1842,23 @@ components:
       required: [layout]
       properties:
         layout:
-          $ref: '#/components/schemas/CanvasLayout'
+          $ref: "#/components/schemas/CanvasLayout"
 
     CounterPiece:
       type: object
-      required: [id, quoteAreaId, sortOrder, name, lengthIn, widthIn, quantity, kind, createdAt, updatedAt]
+      required:
+        [
+          id,
+          quoteAreaId,
+          sortOrder,
+          name,
+          lengthIn,
+          widthIn,
+          quantity,
+          kind,
+          createdAt,
+          updatedAt,
+        ]
       properties:
         id:
           type: string
@@ -1776,7 +1944,17 @@ components:
 
     EdgeSegment:
       type: object
-      required: [id, quoteAreaId, sortOrder, lengthIn, treatment, splashHeightIn, createdAt, updatedAt]
+      required:
+        [
+          id,
+          quoteAreaId,
+          sortOrder,
+          lengthIn,
+          treatment,
+          splashHeightIn,
+          createdAt,
+          updatedAt,
+        ]
       properties:
         id:
           type: string
@@ -1791,7 +1969,7 @@ components:
           type: number
           exclusiveMinimum: 0
         treatment:
-          $ref: '#/components/schemas/EdgeTreatment'
+          $ref: "#/components/schemas/EdgeTreatment"
         splashHeightIn:
           type: number
           exclusiveMinimum: 0
@@ -1814,7 +1992,7 @@ components:
           type: number
           exclusiveMinimum: 0
         treatment:
-          $ref: '#/components/schemas/EdgeTreatment'
+          $ref: "#/components/schemas/EdgeTreatment"
         splashHeightIn:
           type: number
           exclusiveMinimum: 0
@@ -1830,7 +2008,7 @@ components:
           type: number
           exclusiveMinimum: 0
         treatment:
-          $ref: '#/components/schemas/EdgeTreatment'
+          $ref: "#/components/schemas/EdgeTreatment"
         splashHeightIn:
           type: number
           exclusiveMinimum: 0
@@ -1842,7 +2020,7 @@ components:
 
     SinkShape:
       type: string
-      enum: [rectangle, oval, double, '60_40', '40_60', '70_30', '30_70']
+      enum: [rectangle, oval, double, "60_40", "40_60", "70_30", "30_70"]
 
     SinkCenterline:
       type: string
@@ -1850,7 +2028,22 @@ components:
 
     SinkCutout:
       type: object
-      required: [id, quoteAreaId, sortOrder, quantity, model, sinkType, shape, cutoutLengthIn, cutoutWidthIn, faucetHoleCount, centerline, createdAt, updatedAt]
+      required:
+        [
+          id,
+          quoteAreaId,
+          sortOrder,
+          quantity,
+          model,
+          sinkType,
+          shape,
+          cutoutLengthIn,
+          cutoutWidthIn,
+          faucetHoleCount,
+          centerline,
+          createdAt,
+          updatedAt,
+        ]
       properties:
         id:
           type: string
@@ -1869,9 +2062,9 @@ components:
           type: string
           nullable: true
         sinkType:
-          $ref: '#/components/schemas/SinkType'
+          $ref: "#/components/schemas/SinkType"
         shape:
-          $ref: '#/components/schemas/SinkShape'
+          $ref: "#/components/schemas/SinkShape"
         cutoutLengthIn:
           type: number
           exclusiveMinimum: 0
@@ -1884,7 +2077,7 @@ components:
           maximum: 5
           default: 0
         centerline:
-          $ref: '#/components/schemas/SinkCenterline'
+          $ref: "#/components/schemas/SinkCenterline"
         createdAt:
           type: string
           format: date-time
@@ -1907,9 +2100,9 @@ components:
           type: string
           minLength: 1
         sinkType:
-          $ref: '#/components/schemas/SinkType'
+          $ref: "#/components/schemas/SinkType"
         shape:
-          $ref: '#/components/schemas/SinkShape'
+          $ref: "#/components/schemas/SinkShape"
         cutoutLengthIn:
           type: number
           exclusiveMinimum: 0
@@ -1922,7 +2115,7 @@ components:
           maximum: 5
           default: 0
         centerline:
-          $ref: '#/components/schemas/SinkCenterline'
+          $ref: "#/components/schemas/SinkCenterline"
 
     UpdateSinkCutoutRequest:
       type: object
@@ -1938,9 +2131,9 @@ components:
           type: string
           nullable: true
         sinkType:
-          $ref: '#/components/schemas/SinkType'
+          $ref: "#/components/schemas/SinkType"
         shape:
-          $ref: '#/components/schemas/SinkShape'
+          $ref: "#/components/schemas/SinkShape"
         cutoutLengthIn:
           type: number
           exclusiveMinimum: 0
@@ -1952,7 +2145,7 @@ components:
           minimum: 0
           maximum: 5
         centerline:
-          $ref: '#/components/schemas/SinkCenterline'
+          $ref: "#/components/schemas/SinkCenterline"
 
     Quote:
       type: object
@@ -1989,7 +2182,7 @@ components:
         title:
           type: string
         status:
-          $ref: '#/components/schemas/QuoteStatus'
+          $ref: "#/components/schemas/QuoteStatus"
         validUntil:
           type: string
           format: date
@@ -2047,18 +2240,18 @@ components:
 
     QuoteWithLineItems:
       allOf:
-        - $ref: '#/components/schemas/Quote'
+        - $ref: "#/components/schemas/Quote"
         - type: object
           required: [lineItems, areas]
           properties:
             lineItems:
               type: array
               items:
-                $ref: '#/components/schemas/QuoteLineItem'
+                $ref: "#/components/schemas/QuoteLineItem"
             areas:
               type: array
               items:
-                $ref: '#/components/schemas/QuoteArea'
+                $ref: "#/components/schemas/QuoteArea"
 
     CreateQuoteLineItemRequest:
       type: object
@@ -2223,7 +2416,7 @@ components:
           type: array
           description: Optional initial line items to create with the quote.
           items:
-            $ref: '#/components/schemas/CreateQuoteLineItemRequest'
+            $ref: "#/components/schemas/CreateQuoteLineItemRequest"
 
     UpdateQuoteRequest:
       type: object
@@ -2265,7 +2458,7 @@ components:
         data:
           type: array
           items:
-            $ref: '#/components/schemas/Quote'
+            $ref: "#/components/schemas/Quote"
         nextCursor:
           type: string
           nullable: true
@@ -2278,7 +2471,18 @@ components:
 
     AppointmentType:
       type: string
-      enum: [template, deposit, material, cut, fabrication, install, invoice, repair, other]
+      enum:
+        [
+          template,
+          deposit,
+          material,
+          cut,
+          fabrication,
+          install,
+          invoice,
+          repair,
+          other,
+        ]
 
     ScheduledEventStatus:
       type: string
@@ -2309,9 +2513,9 @@ components:
           format: uuid
           nullable: true
         eventType:
-          $ref: '#/components/schemas/ScheduledEventType'
+          $ref: "#/components/schemas/ScheduledEventType"
         appointmentType:
-          $ref: '#/components/schemas/AppointmentType'
+          $ref: "#/components/schemas/AppointmentType"
           nullable: true
           description: Required when eventType is appointment; must be null when eventType is shop_job.
         templateKind:
@@ -2344,7 +2548,7 @@ components:
           type: string
           nullable: true
         status:
-          $ref: '#/components/schemas/ScheduledEventStatus'
+          $ref: "#/components/schemas/ScheduledEventStatus"
         archivedAt:
           type: string
           format: date-time
@@ -2378,7 +2582,8 @@ components:
 
     CreateScheduledEventRequest:
       type: object
-      required: [title, eventType, scheduledAt, durationMinutes, assigneeUserIds]
+      required:
+        [title, eventType, scheduledAt, durationMinutes, assigneeUserIds]
       properties:
         customerId:
           type: string
@@ -2388,9 +2593,9 @@ components:
           type: string
           format: uuid
         eventType:
-          $ref: '#/components/schemas/ScheduledEventType'
+          $ref: "#/components/schemas/ScheduledEventType"
         appointmentType:
-          $ref: '#/components/schemas/AppointmentType'
+          $ref: "#/components/schemas/AppointmentType"
           description: Required when eventType is appointment; must be omitted or null when eventType is shop_job.
         templateKind:
           type: string
@@ -2428,7 +2633,7 @@ components:
           format: uuid
           nullable: true
         appointmentType:
-          $ref: '#/components/schemas/AppointmentType'
+          $ref: "#/components/schemas/AppointmentType"
           nullable: true
         templateKind:
           type: string
@@ -2464,7 +2669,7 @@ components:
         data:
           type: array
           items:
-            $ref: '#/components/schemas/ScheduledEvent'
+            $ref: "#/components/schemas/ScheduledEvent"
         nextCursor:
           type: string
           nullable: true
@@ -2485,7 +2690,21 @@ components:
 
     Slab:
       type: object
-      required: [id, stoneType, finish, qualityGrade, lengthIn, widthIn, thicknessCm, costCents, imageUrls, status, createdAt, updatedAt]
+      required:
+        [
+          id,
+          stoneType,
+          finish,
+          qualityGrade,
+          lengthIn,
+          widthIn,
+          thicknessCm,
+          costCents,
+          imageUrls,
+          status,
+          createdAt,
+          updatedAt,
+        ]
       properties:
         id:
           type: string
@@ -2497,18 +2716,20 @@ components:
         stoneType:
           type: string
         finish:
-          $ref: '#/components/schemas/SlabFinish'
+          $ref: "#/components/schemas/SlabFinish"
         qualityGrade:
-          $ref: '#/components/schemas/SlabQualityGrade'
+          $ref: "#/components/schemas/SlabQualityGrade"
         lengthIn:
           type: number
           minimum: 1
+          maximum: 144
         widthIn:
           type: number
           minimum: 1
+          maximum: 60
         thicknessCm:
           type: number
-          minimum: 1
+          enum: [2, 3]
         lotNumber:
           type: string
           nullable: true
@@ -2531,7 +2752,7 @@ components:
           type: string
           nullable: true
         status:
-          $ref: '#/components/schemas/SlabStatus'
+          $ref: "#/components/schemas/SlabStatus"
         archivedAt:
           type: string
           format: date-time
@@ -2549,24 +2770,27 @@ components:
 
     CreateSlabRequest:
       type: object
-      required: [stoneType, finish, qualityGrade, lengthIn, widthIn, thicknessCm]
+      required:
+        [stoneType, finish, qualityGrade, lengthIn, widthIn, thicknessCm]
       properties:
         stoneType:
           type: string
           minLength: 1
         finish:
-          $ref: '#/components/schemas/SlabFinish'
+          $ref: "#/components/schemas/SlabFinish"
         qualityGrade:
-          $ref: '#/components/schemas/SlabQualityGrade'
+          $ref: "#/components/schemas/SlabQualityGrade"
         lengthIn:
           type: number
           minimum: 1
+          maximum: 144
         widthIn:
           type: number
           minimum: 1
+          maximum: 60
         thicknessCm:
           type: number
-          minimum: 1
+          enum: [2, 3]
         lotNumber:
           type: string
         bundleNumber:
@@ -2594,18 +2818,20 @@ components:
           type: string
           minLength: 1
         finish:
-          $ref: '#/components/schemas/SlabFinish'
+          $ref: "#/components/schemas/SlabFinish"
         qualityGrade:
-          $ref: '#/components/schemas/SlabQualityGrade'
+          $ref: "#/components/schemas/SlabQualityGrade"
         lengthIn:
           type: number
           minimum: 1
+          maximum: 144
         widthIn:
           type: number
           minimum: 1
+          maximum: 60
         thicknessCm:
           type: number
-          minimum: 1
+          enum: [2, 3]
         lotNumber:
           type: string
           nullable: true
@@ -2634,18 +2860,18 @@ components:
         remnants:
           type: array
           items:
-            $ref: '#/components/schemas/CreateSlabRequest'
+            $ref: "#/components/schemas/CreateSlabRequest"
 
     CutSlabResponse:
       type: object
       required: [slab, remnants]
       properties:
         slab:
-          $ref: '#/components/schemas/Slab'
+          $ref: "#/components/schemas/Slab"
         remnants:
           type: array
           items:
-            $ref: '#/components/schemas/Slab'
+            $ref: "#/components/schemas/Slab"
 
     ProjectSlab:
       type: object
@@ -2692,7 +2918,7 @@ components:
         data:
           type: array
           items:
-            $ref: '#/components/schemas/Slab'
+            $ref: "#/components/schemas/Slab"
         nextCursor:
           type: string
           nullable: true
@@ -2701,11 +2927,29 @@ components:
 
     OrderPaymentMethod:
       type: string
-      enum: [cash, check, mastercard, visa, american_express, discover, bank_transfer, echeck]
+      enum:
+        [
+          cash,
+          check,
+          mastercard,
+          visa,
+          american_express,
+          discover,
+          bank_transfer,
+          echeck,
+        ]
 
     OrderPaymentStatus:
       type: string
       enum: [unpaid, partially_paid, paid]
+
+    OrderDepositStatus:
+      type: string
+      enum: [not_requested, requested, paid]
+
+    OrderPaymentRecordStatus:
+      type: string
+      enum: [recorded, void]
 
     OrderPayment:
       type: object
@@ -2715,8 +2959,12 @@ components:
         - paymentDate
         - amountCents
         - paymentMethod
+        - status
         - referenceNumber
         - notes
+        - voidedAt
+        - voidedByUserId
+        - voidReason
         - createdAt
         - updatedAt
       properties:
@@ -2732,11 +2980,24 @@ components:
         amountCents:
           type: integer
         paymentMethod:
-          $ref: '#/components/schemas/OrderPaymentMethod'
+          $ref: "#/components/schemas/OrderPaymentMethod"
+        status:
+          $ref: "#/components/schemas/OrderPaymentRecordStatus"
         referenceNumber:
           type: string
           nullable: true
         notes:
+          type: string
+          nullable: true
+        voidedAt:
+          type: string
+          format: date-time
+          nullable: true
+        voidedByUserId:
+          type: string
+          format: uuid
+          nullable: true
+        voidReason:
           type: string
           nullable: true
         createdAt:
@@ -2762,6 +3023,12 @@ components:
         - totalPaidCents
         - balanceDueCents
         - paymentStatus
+        - depositRequiredCents
+        - depositPaidCents
+        - depositBalanceCents
+        - depositStatus
+        - depositRequestedAt
+        - depositRequestedByUserId
         - notes
         - termsAndConditions
         - archivedAt
@@ -2798,7 +3065,23 @@ components:
         balanceDueCents:
           type: integer
         paymentStatus:
-          $ref: '#/components/schemas/OrderPaymentStatus'
+          $ref: "#/components/schemas/OrderPaymentStatus"
+        depositRequiredCents:
+          type: integer
+        depositPaidCents:
+          type: integer
+        depositBalanceCents:
+          type: integer
+        depositStatus:
+          $ref: "#/components/schemas/OrderDepositStatus"
+        depositRequestedAt:
+          type: string
+          format: date-time
+          nullable: true
+        depositRequestedByUserId:
+          type: string
+          format: uuid
+          nullable: true
         notes:
           type: string
           nullable: true
@@ -2822,11 +3105,11 @@ components:
         areas:
           type: array
           items:
-            $ref: '#/components/schemas/OrderArea'
+            $ref: "#/components/schemas/OrderArea"
         lineItems:
           type: array
           items:
-            $ref: '#/components/schemas/OrderLineItem'
+            $ref: "#/components/schemas/OrderLineItem"
 
     OrderArea:
       type: object
@@ -2931,14 +3214,14 @@ components:
 
     OrderWithPayments:
       allOf:
-        - $ref: '#/components/schemas/Order'
+        - $ref: "#/components/schemas/Order"
         - type: object
           required: [payments]
           properties:
             payments:
               type: array
               items:
-                $ref: '#/components/schemas/OrderPayment'
+                $ref: "#/components/schemas/OrderPayment"
 
     PaginatedOrdersResponse:
       type: object
@@ -2947,7 +3230,7 @@ components:
         data:
           type: array
           items:
-            $ref: '#/components/schemas/Order'
+            $ref: "#/components/schemas/Order"
         nextCursor:
           type: string
           nullable: true
@@ -2973,19 +3256,29 @@ components:
           type: integer
           minimum: 1
         paymentMethod:
-          $ref: '#/components/schemas/OrderPaymentMethod'
+          $ref: "#/components/schemas/OrderPaymentMethod"
         referenceNumber:
           type: string
         notes:
           type: string
 
-    RemoveOrderPaymentRequest:
+    VoidOrderPaymentRequest:
       type: object
       properties:
+        voidReason:
+          type: string
 
     ArchiveOrderRequest:
       type: object
       properties:
+
+    RequestOrderDepositRequest:
+      type: object
+      required: [depositRequiredCents]
+      properties:
+        depositRequiredCents:
+          type: integer
+          minimum: 1
 
 security:
   - bearerAuth: []
@@ -2998,24 +3291,169 @@ paths:
       security:
         - cookieAuth: []
       responses:
-        '200':
+        "200":
           description: Dashboard stats returned.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/DashboardStats'
+                $ref: "#/components/schemas/DashboardStats"
+
+  /reports/sales-by-month:
+    get:
+      operationId: getSalesByMonth
+      summary: Total order value per calendar month
+      security:
+        - cookieAuth: []
+      parameters:
+        - name: from
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: to
+          in: query
+          schema:
+            type: string
+            format: date
+      responses:
+        "200":
+          description: Sales-by-month rows returned, ordered by month ascending.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      required: [month, totalCents, orderCount]
+                      properties:
+                        month:
+                          type: string
+                          format: date
+                        totalCents:
+                          type: integer
+                        orderCount:
+                          type: integer
+
+  /reports/jobs-by-salesperson:
+    get:
+      operationId: getJobsBySalesperson
+      summary: Count of jobs (projects) per salesperson (owner)
+      security:
+        - cookieAuth: []
+      responses:
+        "200":
+          description: Jobs-by-salesperson rows, ordered by jobCount descending.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      required: [userId, name, jobCount]
+                      properties:
+                        userId:
+                          type: string
+                          format: uuid
+                        name:
+                          type: string
+                        jobCount:
+                          type: integer
+
+  /reports/installed-sqft-by-month:
+    get:
+      operationId: getInstalledSqFtByMonth
+      summary: Installed square footage per calendar month
+      security:
+        - cookieAuth: []
+      parameters:
+        - name: from
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: to
+          in: query
+          schema:
+            type: string
+            format: date
+      responses:
+        "200":
+          description: Installed-sqft-by-month rows, ordered by month ascending.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      required: [month, installedSqFt]
+                      properties:
+                        month:
+                          type: string
+                          format: date
+                        installedSqFt:
+                          type: number
+
+  /reports/installed-sqft-by-week:
+    get:
+      operationId: getInstalledSqFtByWeek
+      summary: Installed square footage per week
+      security:
+        - cookieAuth: []
+      parameters:
+        - name: from
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: to
+          in: query
+          schema:
+            type: string
+            format: date
+      responses:
+        "200":
+          description: Installed-sqft-by-week rows, ordered by week ascending.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      required: [week, installedSqFt]
+                      properties:
+                        week:
+                          type: string
+                          format: date
+                        installedSqFt:
+                          type: number
 
   /inventory/slabs:
     get:
       operationId: listSlabs
       summary: List global inventory slabs
       parameters:
-        - $ref: '#/components/parameters/Cursor'
-        - $ref: '#/components/parameters/Limit'
+        - $ref: "#/components/parameters/Cursor"
+        - $ref: "#/components/parameters/Limit"
         - name: status
           in: query
           schema:
-            $ref: '#/components/schemas/SlabStatus'
+            $ref: "#/components/schemas/SlabStatus"
         - name: stoneType
           in: query
           schema:
@@ -3023,14 +3461,14 @@ paths:
         - name: finish
           in: query
           schema:
-            $ref: '#/components/schemas/SlabFinish'
+            $ref: "#/components/schemas/SlabFinish"
       responses:
-        '200':
+        "200":
           description: Slabs returned.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/PaginatedSlabsResponse'
+                $ref: "#/components/schemas/PaginatedSlabsResponse"
     post:
       operationId: createSlab
       summary: Create a global inventory slab
@@ -3039,27 +3477,27 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/CreateSlabRequest'
+              $ref: "#/components/schemas/CreateSlabRequest"
       responses:
-        '201':
+        "201":
           description: Slab created.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Slab'
-        '400':
+                $ref: "#/components/schemas/Slab"
+        "400":
           description: Invalid request.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
+                $ref: "#/components/schemas/ErrorResponse"
 
   /price-lists:
     get:
       operationId: listPriceLists
       summary: List price lists
       parameters:
-        - $ref: '#/components/parameters/Cursor'
+        - $ref: "#/components/parameters/Cursor"
         - name: limit
           in: query
           schema:
@@ -3067,7 +3505,7 @@ paths:
         - name: status
           in: query
           schema:
-            $ref: '#/components/schemas/PriceListStatus'
+            $ref: "#/components/schemas/PriceListStatus"
         - name: search
           in: query
           schema:
@@ -3077,12 +3515,12 @@ paths:
           schema:
             type: boolean
       responses:
-        '200':
+        "200":
           description: Price lists returned.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/PriceListListResponse'
+                $ref: "#/components/schemas/PriceListListResponse"
     post:
       operationId: createPriceList
       summary: Create a price list
@@ -3091,172 +3529,172 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/CreatePriceListRequest'
+              $ref: "#/components/schemas/CreatePriceListRequest"
       responses:
-        '201':
+        "201":
           description: Price list created.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/PriceList'
+                $ref: "#/components/schemas/PriceList"
 
   /price-lists/{priceListId}:
     get:
       operationId: getPriceList
       summary: Get a price list
       parameters:
-        - $ref: '#/components/parameters/PriceListId'
+        - $ref: "#/components/parameters/PriceListId"
       responses:
-        '200':
+        "200":
           description: Price list returned.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/PriceListWithItems'
+                $ref: "#/components/schemas/PriceListWithItems"
     patch:
       operationId: updatePriceList
       summary: Update a draft price list
       parameters:
-        - $ref: '#/components/parameters/PriceListId'
+        - $ref: "#/components/parameters/PriceListId"
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/UpdatePriceListRequest'
+              $ref: "#/components/schemas/UpdatePriceListRequest"
       responses:
-        '200':
+        "200":
           description: Price list updated.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/PriceList'
+                $ref: "#/components/schemas/PriceList"
 
   /price-lists/{priceListId}/activate:
     post:
       operationId: activatePriceList
       summary: Activate a draft price list
       parameters:
-        - $ref: '#/components/parameters/PriceListId'
+        - $ref: "#/components/parameters/PriceListId"
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/ActorRequest'
+              $ref: "#/components/schemas/ActorRequest"
       responses:
-        '201':
+        "201":
           description: Price list activated.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/PriceList'
+                $ref: "#/components/schemas/PriceList"
 
   /price-lists/{priceListId}/archive:
     post:
       operationId: archivePriceList
       summary: Archive a draft price list
       parameters:
-        - $ref: '#/components/parameters/PriceListId'
+        - $ref: "#/components/parameters/PriceListId"
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/ActorRequest'
+              $ref: "#/components/schemas/ActorRequest"
       responses:
-        '201':
+        "201":
           description: Price list archived.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/PriceList'
+                $ref: "#/components/schemas/PriceList"
 
   /price-lists/{priceListId}/items:
     get:
       operationId: listPriceListItems
       summary: List price list items
       parameters:
-        - $ref: '#/components/parameters/PriceListId'
+        - $ref: "#/components/parameters/PriceListId"
       responses:
-        '200':
+        "200":
           description: Items returned.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/PriceListItemsResponse'
+                $ref: "#/components/schemas/PriceListItemsResponse"
     post:
       operationId: createPriceListItem
       summary: Create a price list item
       parameters:
-        - $ref: '#/components/parameters/PriceListId'
+        - $ref: "#/components/parameters/PriceListId"
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/CreatePriceListItemRequest'
+              $ref: "#/components/schemas/CreatePriceListItemRequest"
       responses:
-        '201':
+        "201":
           description: Item created.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/PriceListItem'
+                $ref: "#/components/schemas/PriceListItem"
 
   /price-lists/{priceListId}/items/{itemId}:
     patch:
       operationId: updatePriceListItem
       summary: Update a price list item
       parameters:
-        - $ref: '#/components/parameters/PriceListId'
-        - $ref: '#/components/parameters/PriceListItemId'
+        - $ref: "#/components/parameters/PriceListId"
+        - $ref: "#/components/parameters/PriceListItemId"
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/UpdatePriceListItemRequest'
+              $ref: "#/components/schemas/UpdatePriceListItemRequest"
       responses:
-        '200':
+        "200":
           description: Item updated.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/PriceListItem'
+                $ref: "#/components/schemas/PriceListItem"
     delete:
       operationId: deletePriceListItem
       summary: Hard-delete a price list item
       parameters:
-        - $ref: '#/components/parameters/PriceListId'
-        - $ref: '#/components/parameters/PriceListItemId'
+        - $ref: "#/components/parameters/PriceListId"
+        - $ref: "#/components/parameters/PriceListItemId"
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/ActorRequest'
+              $ref: "#/components/schemas/ActorRequest"
       responses:
-        '200':
+        "200":
           description: Item deleted.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/PriceListItem'
+                $ref: "#/components/schemas/PriceListItem"
 
   /customers/{customerId}/orders:
     get:
       operationId: listCustomerOrders
       summary: List customer orders
       parameters:
-        - $ref: '#/components/parameters/CustomerId'
-        - $ref: '#/components/parameters/Cursor'
-        - $ref: '#/components/parameters/Limit'
+        - $ref: "#/components/parameters/CustomerId"
+        - $ref: "#/components/parameters/Cursor"
+        - $ref: "#/components/parameters/Limit"
         - name: paymentStatus
           in: query
           required: false
           schema:
-            $ref: '#/components/schemas/OrderPaymentStatus'
+            $ref: "#/components/schemas/OrderPaymentStatus"
         - name: includeArchived
           in: query
           required: false
@@ -3264,44 +3702,44 @@ paths:
             type: boolean
             default: false
       responses:
-        '200':
+        "200":
           description: Orders returned.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/PaginatedOrdersResponse'
-        '400':
+                $ref: "#/components/schemas/PaginatedOrdersResponse"
+        "400":
           description: Invalid request.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
+                $ref: "#/components/schemas/ErrorResponse"
 
   /users/me:
     get:
       operationId: getMe
       summary: Get the current user profile
       responses:
-        '200':
+        "200":
           description: Current user returned.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/UserProfile'
+                $ref: "#/components/schemas/UserProfile"
 
   /users:
     get:
       operationId: listUsers
       summary: List users
       responses:
-        '200':
+        "200":
           description: Users returned.
           content:
             application/json:
               schema:
                 type: array
                 items:
-                  $ref: '#/components/schemas/UserProfile'
+                  $ref: "#/components/schemas/UserProfile"
 
   /users/{userId}/role:
     patch:
@@ -3324,251 +3762,293 @@ paths:
               properties:
                 role:
                   type: string
-                  enum: [admin, salesperson, templater, cutter, fabricator, installer, service_tech]
+                  enum:
+                    [
+                      admin,
+                      salesperson,
+                      templater,
+                      cutter,
+                      fabricator,
+                      installer,
+                      service_tech,
+                    ]
       responses:
-        '200':
+        "200":
           description: User role updated.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/UserProfile'
-        '404':
+                $ref: "#/components/schemas/UserProfile"
+        "404":
           description: Customer not found.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
+                $ref: "#/components/schemas/ErrorResponse"
 
   /customers/{customerId}/orders/{orderId}:
     get:
       operationId: getCustomerOrder
       summary: Get a customer order
       parameters:
-        - $ref: '#/components/parameters/CustomerId'
-        - $ref: '#/components/parameters/OrderId'
+        - $ref: "#/components/parameters/CustomerId"
+        - $ref: "#/components/parameters/OrderId"
       responses:
-        '200':
+        "200":
           description: Order returned.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/OrderWithPayments'
-        '400':
+                $ref: "#/components/schemas/OrderWithPayments"
+        "400":
           description: Invalid request.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '404':
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
           description: Order or customer not found.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
+                $ref: "#/components/schemas/ErrorResponse"
 
   /customers/{customerId}/orders/{orderId}/payments:
     post:
       operationId: addOrderPayment
       summary: Add a payment to an order
       parameters:
-        - $ref: '#/components/parameters/CustomerId'
-        - $ref: '#/components/parameters/OrderId'
+        - $ref: "#/components/parameters/CustomerId"
+        - $ref: "#/components/parameters/OrderId"
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/AddOrderPaymentRequest'
+              $ref: "#/components/schemas/AddOrderPaymentRequest"
       responses:
-        '201':
+        "201":
           description: Payment added.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/OrderPayment'
-        '400':
+                $ref: "#/components/schemas/OrderPayment"
+        "400":
           description: Invalid request.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '404':
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
           description: Order or customer not found.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
+                $ref: "#/components/schemas/ErrorResponse"
 
-  /customers/{customerId}/orders/{orderId}/payments/{paymentId}:
-    delete:
-      operationId: removeOrderPayment
-      summary: Remove a payment from an order
+  /customers/{customerId}/orders/{orderId}/deposit/request:
+    post:
+      operationId: requestOrderDeposit
+      summary: Request or update the manual deposit amount for an order
       parameters:
-        - $ref: '#/components/parameters/CustomerId'
-        - $ref: '#/components/parameters/OrderId'
-        - $ref: '#/components/parameters/PaymentId'
+        - $ref: "#/components/parameters/CustomerId"
+        - $ref: "#/components/parameters/OrderId"
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/RemoveOrderPaymentRequest'
+              $ref: "#/components/schemas/RequestOrderDepositRequest"
       responses:
-        '200':
-          description: Payment removed.
+        "200":
+          description: Deposit request updated.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/OrderPayment'
-        '400':
+                $ref: "#/components/schemas/OrderWithPayments"
+        "400":
           description: Invalid request.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '404':
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Order or customer not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /customers/{customerId}/orders/{orderId}/payments/{paymentId}:
+    delete:
+      operationId: voidOrderPayment
+      summary: Void a payment on an order
+      parameters:
+        - $ref: "#/components/parameters/CustomerId"
+        - $ref: "#/components/parameters/OrderId"
+        - $ref: "#/components/parameters/PaymentId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/VoidOrderPaymentRequest"
+      responses:
+        "200":
+          description: Payment voided.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OrderPayment"
+        "400":
+          description: Invalid request.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
           description: Order, customer, or payment not found.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
+                $ref: "#/components/schemas/ErrorResponse"
 
   /customers/{customerId}/orders/{orderId}/archive:
     post:
       operationId: archiveOrder
       summary: Archive an order
       parameters:
-        - $ref: '#/components/parameters/CustomerId'
-        - $ref: '#/components/parameters/OrderId'
+        - $ref: "#/components/parameters/CustomerId"
+        - $ref: "#/components/parameters/OrderId"
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/ArchiveOrderRequest'
+              $ref: "#/components/schemas/ArchiveOrderRequest"
       responses:
-        '200':
+        "200":
           description: Order archived.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Order'
-        '400':
+                $ref: "#/components/schemas/Order"
+        "400":
           description: Invalid request.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '404':
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
           description: Order or customer not found.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
+                $ref: "#/components/schemas/ErrorResponse"
 
   /inventory/slabs/{slabId}:
     get:
       operationId: getSlab
       summary: Get slab detail
       parameters:
-        - $ref: '#/components/parameters/SlabId'
+        - $ref: "#/components/parameters/SlabId"
       responses:
-        '200':
+        "200":
           description: Slab returned.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Slab'
-        '404':
+                $ref: "#/components/schemas/Slab"
+        "404":
           description: Slab not found.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
+                $ref: "#/components/schemas/ErrorResponse"
     patch:
       operationId: updateSlab
       summary: Update slab fields
       parameters:
-        - $ref: '#/components/parameters/SlabId'
+        - $ref: "#/components/parameters/SlabId"
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/UpdateSlabRequest'
+              $ref: "#/components/schemas/UpdateSlabRequest"
       responses:
-        '200':
+        "200":
           description: Slab updated.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Slab'
-        '400':
+                $ref: "#/components/schemas/Slab"
+        "400":
           description: Invalid request.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '404':
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
           description: Slab not found.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '409':
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
           description: Slab status does not allow update.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
+                $ref: "#/components/schemas/ErrorResponse"
     delete:
       operationId: archiveSlab
       summary: Archive slab
       parameters:
-        - $ref: '#/components/parameters/SlabId'
+        - $ref: "#/components/parameters/SlabId"
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/ActorRequest'
+              $ref: "#/components/schemas/ActorRequest"
       responses:
-        '200':
+        "200":
           description: Slab archived.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Slab'
+                $ref: "#/components/schemas/Slab"
 
   /inventory/slabs/{slabId}/cut:
     post:
       operationId: cutSlab
       summary: Mark slab cut and optionally create remnants
       parameters:
-        - $ref: '#/components/parameters/SlabId'
+        - $ref: "#/components/parameters/SlabId"
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/CutSlabRequest'
+              $ref: "#/components/schemas/CutSlabRequest"
       responses:
-        '200':
+        "200":
           description: Slab cut.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/CutSlabResponse'
+                $ref: "#/components/schemas/CutSlabResponse"
 
   /customers/{customerId}/projects/{projectId}/slabs:
     get:
       operationId: listProjectSlabs
       summary: List slabs attached to a project
       parameters:
-        - $ref: '#/components/parameters/CustomerId'
-        - $ref: '#/components/parameters/ProjectId'
+        - $ref: "#/components/parameters/CustomerId"
+        - $ref: "#/components/parameters/ProjectId"
       responses:
-        '200':
+        "200":
           description: Project slabs returned.
           content:
             application/json:
@@ -3579,74 +4059,74 @@ paths:
                   data:
                     type: array
                     items:
-                      $ref: '#/components/schemas/Slab'
+                      $ref: "#/components/schemas/Slab"
                   projectSlabs:
                     type: array
                     items:
-                      $ref: '#/components/schemas/ProjectSlab'
+                      $ref: "#/components/schemas/ProjectSlab"
     post:
       operationId: attachProjectSlab
       summary: Attach a slab to a project
       parameters:
-        - $ref: '#/components/parameters/CustomerId'
-        - $ref: '#/components/parameters/ProjectId'
+        - $ref: "#/components/parameters/CustomerId"
+        - $ref: "#/components/parameters/ProjectId"
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/AttachProjectSlabRequest'
+              $ref: "#/components/schemas/AttachProjectSlabRequest"
       responses:
-        '201':
+        "201":
           description: Slab attached to project.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ProjectSlab'
+                $ref: "#/components/schemas/ProjectSlab"
 
   /customers/{customerId}/projects/{projectId}/slabs/{slabId}:
     delete:
       operationId: detachProjectSlab
       summary: Detach a slab from a project
       parameters:
-        - $ref: '#/components/parameters/CustomerId'
-        - $ref: '#/components/parameters/ProjectId'
-        - $ref: '#/components/parameters/SlabId'
+        - $ref: "#/components/parameters/CustomerId"
+        - $ref: "#/components/parameters/ProjectId"
+        - $ref: "#/components/parameters/SlabId"
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/ActorRequest'
+              $ref: "#/components/schemas/ActorRequest"
       responses:
-        '200':
+        "200":
           description: Slab detached from project.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ProjectSlab'
+                $ref: "#/components/schemas/ProjectSlab"
 
   /customers/{customerId}/projects/{projectId}/slabs/{slabId}/cut:
     post:
       operationId: cutProjectSlab
       summary: Cut a slab from project context
       parameters:
-        - $ref: '#/components/parameters/CustomerId'
-        - $ref: '#/components/parameters/ProjectId'
-        - $ref: '#/components/parameters/SlabId'
+        - $ref: "#/components/parameters/CustomerId"
+        - $ref: "#/components/parameters/ProjectId"
+        - $ref: "#/components/parameters/SlabId"
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/CutSlabRequest'
+              $ref: "#/components/schemas/CutSlabRequest"
       responses:
-        '200':
+        "200":
           description: Project slab cut.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/CutSlabResponse'
+                $ref: "#/components/schemas/CutSlabResponse"
 
   /health:
     get:
@@ -3654,7 +4134,7 @@ paths:
       summary: Health check
       security: []
       responses:
-        '200':
+        "200":
           description: API is healthy
           content:
             application/json:
@@ -3674,8 +4154,8 @@ paths:
       operationId: listProjects
       summary: List projects
       parameters:
-        - $ref: '#/components/parameters/Cursor'
-        - $ref: '#/components/parameters/Limit'
+        - $ref: "#/components/parameters/Cursor"
+        - $ref: "#/components/parameters/Limit"
         - name: search
           in: query
           required: false
@@ -3685,7 +4165,7 @@ paths:
           in: query
           required: false
           schema:
-            $ref: '#/components/schemas/ProjectStatus'
+            $ref: "#/components/schemas/ProjectStatus"
         - name: customerId
           in: query
           required: false
@@ -3701,12 +4181,12 @@ paths:
           in: query
           required: false
           schema:
-            $ref: '#/components/schemas/ProjectSort'
+            $ref: "#/components/schemas/ProjectSort"
         - name: sortDirection
           in: query
           required: false
           schema:
-            $ref: '#/components/schemas/SortDirection'
+            $ref: "#/components/schemas/SortDirection"
         - name: includeArchived
           in: query
           required: false
@@ -3714,18 +4194,18 @@ paths:
             type: boolean
             default: false
       responses:
-        '200':
+        "200":
           description: Projects returned.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/PaginatedProjectsResponse'
-        '401':
+                $ref: "#/components/schemas/PaginatedProjectsResponse"
+        "401":
           description: Authentication required.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
+                $ref: "#/components/schemas/ErrorResponse"
 
     post:
       operationId: createProject
@@ -3735,34 +4215,34 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/CreateProjectRequest'
+              $ref: "#/components/schemas/CreateProjectRequest"
       responses:
-        '201':
+        "201":
           description: Project created.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Project'
-        '400':
+                $ref: "#/components/schemas/Project"
+        "400":
           description: Invalid request.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '404':
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
           description: Customer not found.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
+                $ref: "#/components/schemas/ErrorResponse"
 
   /projects/archived:
     get:
       operationId: listArchivedProjects
       summary: List archived projects
       parameters:
-        - $ref: '#/components/parameters/Cursor'
-        - $ref: '#/components/parameters/Limit'
+        - $ref: "#/components/parameters/Cursor"
+        - $ref: "#/components/parameters/Limit"
         - name: customerId
           in: query
           required: false
@@ -3773,105 +4253,105 @@ paths:
           in: query
           required: false
           schema:
-            $ref: '#/components/schemas/ProjectStatus'
+            $ref: "#/components/schemas/ProjectStatus"
       responses:
-        '200':
+        "200":
           description: Archived projects returned.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/PaginatedProjectsResponse'
+                $ref: "#/components/schemas/PaginatedProjectsResponse"
 
   /projects/{projectId}:
     get:
       operationId: getProject
       summary: Get project detail
       parameters:
-        - $ref: '#/components/parameters/ProjectId'
+        - $ref: "#/components/parameters/ProjectId"
       responses:
-        '200':
+        "200":
           description: Project returned.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Project'
-        '404':
+                $ref: "#/components/schemas/Project"
+        "404":
           description: Project not found.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
+                $ref: "#/components/schemas/ErrorResponse"
 
     patch:
       operationId: updateProject
       summary: Update project fields
       parameters:
-        - $ref: '#/components/parameters/ProjectId'
+        - $ref: "#/components/parameters/ProjectId"
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/UpdateProjectRequest'
+              $ref: "#/components/schemas/UpdateProjectRequest"
       responses:
-        '200':
+        "200":
           description: Project updated.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Project'
-        '400':
+                $ref: "#/components/schemas/Project"
+        "400":
           description: Invalid request.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '404':
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
           description: Project or customer not found.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
+                $ref: "#/components/schemas/ErrorResponse"
 
   /projects/{projectId}/archive:
     post:
       operationId: archiveProject
       summary: Archive project
       parameters:
-        - $ref: '#/components/parameters/ProjectId'
+        - $ref: "#/components/parameters/ProjectId"
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/ArchiveProjectRequest'
+              $ref: "#/components/schemas/ArchiveProjectRequest"
       responses:
-        '200':
+        "200":
           description: Project archived.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Project'
-        '400':
+                $ref: "#/components/schemas/Project"
+        "400":
           description: Invalid request.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '404':
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
           description: Project not found.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
+                $ref: "#/components/schemas/ErrorResponse"
 
   /customers:
     get:
       operationId: listCustomers
       summary: List customers
       parameters:
-        - $ref: '#/components/parameters/Cursor'
-        - $ref: '#/components/parameters/Limit'
+        - $ref: "#/components/parameters/Cursor"
+        - $ref: "#/components/parameters/Limit"
         - name: search
           in: query
           required: false
@@ -3881,12 +4361,12 @@ paths:
           in: query
           required: false
           schema:
-            $ref: '#/components/schemas/CustomerStatus'
+            $ref: "#/components/schemas/CustomerStatus"
         - name: type
           in: query
           required: false
           schema:
-            $ref: '#/components/schemas/CustomerType'
+            $ref: "#/components/schemas/CustomerType"
         - name: ownerUserId
           in: query
           required: false
@@ -3897,7 +4377,7 @@ paths:
           in: query
           required: false
           schema:
-            $ref: '#/components/schemas/CustomerKind'
+            $ref: "#/components/schemas/CustomerKind"
         - name: tag
           in: query
           required: false
@@ -3932,12 +4412,12 @@ paths:
           in: query
           required: false
           schema:
-            $ref: '#/components/schemas/CustomerSort'
+            $ref: "#/components/schemas/CustomerSort"
         - name: sortDirection
           in: query
           required: false
           schema:
-            $ref: '#/components/schemas/SortDirection'
+            $ref: "#/components/schemas/SortDirection"
         - name: includeArchived
           in: query
           required: false
@@ -3945,18 +4425,18 @@ paths:
             type: boolean
             default: false
       responses:
-        '200':
+        "200":
           description: Customers returned.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/PaginatedCustomersResponse'
-        '401':
+                $ref: "#/components/schemas/PaginatedCustomersResponse"
+        "401":
           description: Authentication required.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
+                $ref: "#/components/schemas/ErrorResponse"
 
     post:
       operationId: createCustomer
@@ -3966,162 +4446,162 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/CreateCustomerRequest'
+              $ref: "#/components/schemas/CreateCustomerRequest"
       responses:
-        '201':
+        "201":
           description: Customer created.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Customer'
-        '400':
+                $ref: "#/components/schemas/Customer"
+        "400":
           description: Invalid request.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '409':
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
           description: Customer conflicts with an existing non-archived customer.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
+                $ref: "#/components/schemas/ErrorResponse"
 
   /customers/{customerId}:
     get:
       operationId: getCustomer
       summary: Get customer detail
       parameters:
-        - $ref: '#/components/parameters/CustomerId'
+        - $ref: "#/components/parameters/CustomerId"
       responses:
-        '200':
+        "200":
           description: Customer returned.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Customer'
-        '404':
+                $ref: "#/components/schemas/Customer"
+        "404":
           description: Customer not found.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
+                $ref: "#/components/schemas/ErrorResponse"
 
     patch:
       operationId: updateCustomer
       summary: Update customer fields
       parameters:
-        - $ref: '#/components/parameters/CustomerId'
+        - $ref: "#/components/parameters/CustomerId"
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/UpdateCustomerRequest'
+              $ref: "#/components/schemas/UpdateCustomerRequest"
       responses:
-        '200':
+        "200":
           description: Customer updated.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Customer'
-        '400':
+                $ref: "#/components/schemas/Customer"
+        "400":
           description: Invalid request.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '404':
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
           description: Customer not found.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '409':
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
           description: Customer conflicts with an existing non-archived customer.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
+                $ref: "#/components/schemas/ErrorResponse"
 
   /customers/{customerId}/archive:
     post:
       operationId: archiveCustomer
       summary: Archive customer
       parameters:
-        - $ref: '#/components/parameters/CustomerId'
+        - $ref: "#/components/parameters/CustomerId"
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/ArchiveCustomerRequest'
+              $ref: "#/components/schemas/ArchiveCustomerRequest"
       responses:
-        '200':
+        "200":
           description: Customer archived.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Customer'
-        '400':
+                $ref: "#/components/schemas/Customer"
+        "400":
           description: Invalid request.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '404':
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
           description: Customer not found.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
+                $ref: "#/components/schemas/ErrorResponse"
 
   /customers/{customerId}/restore:
     post:
       operationId: restoreCustomer
       summary: Restore archived customer
       parameters:
-        - $ref: '#/components/parameters/CustomerId'
+        - $ref: "#/components/parameters/CustomerId"
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/RestoreCustomerRequest'
+              $ref: "#/components/schemas/RestoreCustomerRequest"
       responses:
-        '200':
+        "200":
           description: Customer restored.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Customer'
-        '400':
+                $ref: "#/components/schemas/Customer"
+        "400":
           description: Invalid request.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '404':
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
           description: Archived customer not found.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '409':
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
           description: Customer conflicts with an existing non-archived customer.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
+                $ref: "#/components/schemas/ErrorResponse"
 
   /customers/{customerId}/contacts:
     get:
       operationId: listCustomerContacts
       summary: List customer contacts
       parameters:
-        - $ref: '#/components/parameters/CustomerId'
+        - $ref: "#/components/parameters/CustomerId"
       responses:
-        '200':
+        "200":
           description: Customer contacts returned.
           content:
             application/json:
@@ -4132,57 +4612,57 @@ paths:
                   data:
                     type: array
                     items:
-                      $ref: '#/components/schemas/CustomerContact'
-        '404':
+                      $ref: "#/components/schemas/CustomerContact"
+        "404":
           description: Customer not found.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
+                $ref: "#/components/schemas/ErrorResponse"
 
     post:
       operationId: createCustomerContact
       summary: Create customer contact
       parameters:
-        - $ref: '#/components/parameters/CustomerId'
+        - $ref: "#/components/parameters/CustomerId"
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/CreateCustomerContactRequest'
+              $ref: "#/components/schemas/CreateCustomerContactRequest"
       responses:
-        '201':
+        "201":
           description: Customer contact created.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/CustomerContact'
-        '400':
+                $ref: "#/components/schemas/CustomerContact"
+        "400":
           description: Invalid request.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '404':
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
           description: Customer not found.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '409':
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
           description: Contact conflicts with an existing active contact rule.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
+                $ref: "#/components/schemas/ErrorResponse"
 
   /customers/{customerId}/contacts/{contactId}:
     patch:
       operationId: updateCustomerContact
       summary: Update customer contact
       parameters:
-        - $ref: '#/components/parameters/CustomerId'
+        - $ref: "#/components/parameters/CustomerId"
         - name: contactId
           in: path
           required: true
@@ -4194,32 +4674,32 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/UpdateCustomerContactRequest'
+              $ref: "#/components/schemas/UpdateCustomerContactRequest"
       responses:
-        '200':
+        "200":
           description: Customer contact updated.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/CustomerContact'
-        '400':
+                $ref: "#/components/schemas/CustomerContact"
+        "400":
           description: Invalid request.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '404':
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
           description: Customer contact not found.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
+                $ref: "#/components/schemas/ErrorResponse"
 
     delete:
       operationId: archiveCustomerContact
       summary: Archive customer contact
       parameters:
-        - $ref: '#/components/parameters/CustomerId'
+        - $ref: "#/components/parameters/CustomerId"
         - name: contactId
           in: path
           required: true
@@ -4231,33 +4711,33 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/ActorRequest'
+              $ref: "#/components/schemas/ActorRequest"
       responses:
-        '200':
+        "200":
           description: Customer contact archived.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/CustomerContact'
-        '400':
+                $ref: "#/components/schemas/CustomerContact"
+        "400":
           description: Invalid request.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '404':
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
           description: Customer contact not found.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
+                $ref: "#/components/schemas/ErrorResponse"
 
   /customers/{customerId}/contacts/{contactId}/make-primary:
     post:
       operationId: makeContactPrimary
       summary: Make customer contact primary
       parameters:
-        - $ref: '#/components/parameters/CustomerId'
+        - $ref: "#/components/parameters/CustomerId"
         - name: contactId
           in: path
           required: true
@@ -4269,33 +4749,33 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/ActorRequest'
+              $ref: "#/components/schemas/ActorRequest"
       responses:
-        '200':
+        "200":
           description: Customer contact made primary.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/CustomerContact'
-        '400':
+                $ref: "#/components/schemas/CustomerContact"
+        "400":
           description: Invalid request.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '404':
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
           description: Customer contact not found.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
+                $ref: "#/components/schemas/ErrorResponse"
 
   /customers/{customerId}/contacts/{contactId}/make-billing:
     post:
       operationId: makeContactBilling
       summary: Make customer contact billing
       parameters:
-        - $ref: '#/components/parameters/CustomerId'
+        - $ref: "#/components/parameters/CustomerId"
         - name: contactId
           in: path
           required: true
@@ -4307,35 +4787,35 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/ActorRequest'
+              $ref: "#/components/schemas/ActorRequest"
       responses:
-        '200':
+        "200":
           description: Customer contact made billing.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/CustomerContact'
-        '400':
+                $ref: "#/components/schemas/CustomerContact"
+        "400":
           description: Invalid request.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '404':
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
           description: Customer contact not found.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
+                $ref: "#/components/schemas/ErrorResponse"
 
   /customers/{customerId}/addresses:
     get:
       operationId: listCustomerAddresses
       summary: List customer addresses
       parameters:
-        - $ref: '#/components/parameters/CustomerId'
+        - $ref: "#/components/parameters/CustomerId"
       responses:
-        '200':
+        "200":
           description: Customer addresses returned.
           content:
             application/json:
@@ -4346,57 +4826,57 @@ paths:
                   data:
                     type: array
                     items:
-                      $ref: '#/components/schemas/CustomerAddress'
-        '404':
+                      $ref: "#/components/schemas/CustomerAddress"
+        "404":
           description: Customer not found.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
+                $ref: "#/components/schemas/ErrorResponse"
 
     post:
       operationId: createCustomerAddress
       summary: Create customer address
       parameters:
-        - $ref: '#/components/parameters/CustomerId'
+        - $ref: "#/components/parameters/CustomerId"
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/CreateCustomerAddressRequest'
+              $ref: "#/components/schemas/CreateCustomerAddressRequest"
       responses:
-        '201':
+        "201":
           description: Customer address created.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/CustomerAddress'
-        '400':
+                $ref: "#/components/schemas/CustomerAddress"
+        "400":
           description: Invalid request.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '404':
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
           description: Customer not found.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '409':
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
           description: Address conflicts with an existing active address rule.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
+                $ref: "#/components/schemas/ErrorResponse"
 
   /customers/{customerId}/addresses/{addressId}:
     patch:
       operationId: updateCustomerAddress
       summary: Update customer address
       parameters:
-        - $ref: '#/components/parameters/CustomerId'
+        - $ref: "#/components/parameters/CustomerId"
         - name: addressId
           in: path
           required: true
@@ -4408,38 +4888,38 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/UpdateCustomerAddressRequest'
+              $ref: "#/components/schemas/UpdateCustomerAddressRequest"
       responses:
-        '200':
+        "200":
           description: Customer address updated.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/CustomerAddress'
-        '400':
+                $ref: "#/components/schemas/CustomerAddress"
+        "400":
           description: Invalid request.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '404':
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
           description: Customer address not found.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '409':
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
           description: Address conflicts with an existing active address rule.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
+                $ref: "#/components/schemas/ErrorResponse"
 
     delete:
       operationId: archiveCustomerAddress
       summary: Archive customer address
       parameters:
-        - $ref: '#/components/parameters/CustomerId'
+        - $ref: "#/components/parameters/CustomerId"
         - name: addressId
           in: path
           required: true
@@ -4451,33 +4931,33 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/ActorRequest'
+              $ref: "#/components/schemas/ActorRequest"
       responses:
-        '200':
+        "200":
           description: Customer address archived.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/CustomerAddress'
-        '400':
+                $ref: "#/components/schemas/CustomerAddress"
+        "400":
           description: Invalid request.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '404':
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
           description: Customer address not found.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
+                $ref: "#/components/schemas/ErrorResponse"
 
   /customers/{customerId}/addresses/{addressId}/make-billing:
     post:
       operationId: makeAddressBilling
       summary: Make customer address billing
       parameters:
-        - $ref: '#/components/parameters/CustomerId'
+        - $ref: "#/components/parameters/CustomerId"
         - name: addressId
           in: path
           required: true
@@ -4489,35 +4969,35 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/ActorRequest'
+              $ref: "#/components/schemas/ActorRequest"
       responses:
-        '200':
+        "200":
           description: Customer address made billing.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/CustomerAddress'
-        '400':
+                $ref: "#/components/schemas/CustomerAddress"
+        "400":
           description: Invalid request.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '404':
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
           description: Customer address not found.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
+                $ref: "#/components/schemas/ErrorResponse"
 
   /customers/{customerId}/notes:
     get:
       operationId: listCustomerNotes
       summary: List customer notes
       parameters:
-        - $ref: '#/components/parameters/CustomerId'
+        - $ref: "#/components/parameters/CustomerId"
       responses:
-        '200':
+        "200":
           description: Customer notes returned.
           content:
             application/json:
@@ -4528,51 +5008,51 @@ paths:
                   data:
                     type: array
                     items:
-                      $ref: '#/components/schemas/CustomerNote'
-        '404':
+                      $ref: "#/components/schemas/CustomerNote"
+        "404":
           description: Customer not found.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
+                $ref: "#/components/schemas/ErrorResponse"
 
     post:
       operationId: createCustomerNote
       summary: Create customer note
       parameters:
-        - $ref: '#/components/parameters/CustomerId'
+        - $ref: "#/components/parameters/CustomerId"
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/CreateCustomerNoteRequest'
+              $ref: "#/components/schemas/CreateCustomerNoteRequest"
       responses:
-        '201':
+        "201":
           description: Customer note created.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/CustomerNote'
-        '400':
+                $ref: "#/components/schemas/CustomerNote"
+        "400":
           description: Invalid request.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '404':
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
           description: Customer not found.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
+                $ref: "#/components/schemas/ErrorResponse"
 
   /customers/{customerId}/notes/{noteId}:
     patch:
       operationId: updateCustomerNote
       summary: Update customer note
       parameters:
-        - $ref: '#/components/parameters/CustomerId'
+        - $ref: "#/components/parameters/CustomerId"
         - name: noteId
           in: path
           required: true
@@ -4584,32 +5064,32 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/UpdateCustomerNoteRequest'
+              $ref: "#/components/schemas/UpdateCustomerNoteRequest"
       responses:
-        '200':
+        "200":
           description: Customer note updated.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/CustomerNote'
-        '400':
+                $ref: "#/components/schemas/CustomerNote"
+        "400":
           description: Invalid request.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '404':
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
           description: Customer note not found.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
+                $ref: "#/components/schemas/ErrorResponse"
 
     delete:
       operationId: archiveCustomerNote
       summary: Archive customer note
       parameters:
-        - $ref: '#/components/parameters/CustomerId'
+        - $ref: "#/components/parameters/CustomerId"
         - name: noteId
           in: path
           required: true
@@ -4621,40 +5101,40 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/ActorRequest'
+              $ref: "#/components/schemas/ActorRequest"
       responses:
-        '200':
+        "200":
           description: Customer note archived.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/CustomerNote'
-        '400':
+                $ref: "#/components/schemas/CustomerNote"
+        "400":
           description: Invalid request.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '404':
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
           description: Customer note not found.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
+                $ref: "#/components/schemas/ErrorResponse"
 
   /customers/{customerId}/quotes:
     get:
       operationId: listCustomerQuotes
       summary: List quotes for a customer
       parameters:
-        - $ref: '#/components/parameters/CustomerId'
-        - $ref: '#/components/parameters/Cursor'
-        - $ref: '#/components/parameters/Limit'
+        - $ref: "#/components/parameters/CustomerId"
+        - $ref: "#/components/parameters/Cursor"
+        - $ref: "#/components/parameters/Limit"
         - name: status
           in: query
           required: false
           schema:
-            $ref: '#/components/schemas/QuoteStatus'
+            $ref: "#/components/schemas/QuoteStatus"
         - name: projectId
           in: query
           required: false
@@ -4668,157 +5148,157 @@ paths:
             type: boolean
             default: false
       responses:
-        '200':
+        "200":
           description: Quotes returned.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/PaginatedQuotesResponse'
-        '404':
+                $ref: "#/components/schemas/PaginatedQuotesResponse"
+        "404":
           description: Customer not found.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
+                $ref: "#/components/schemas/ErrorResponse"
 
     post:
       operationId: createCustomerQuote
       summary: Create a quote for a customer
       parameters:
-        - $ref: '#/components/parameters/CustomerId'
+        - $ref: "#/components/parameters/CustomerId"
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/CreateQuoteRequest'
+              $ref: "#/components/schemas/CreateQuoteRequest"
       responses:
-        '201':
+        "201":
           description: Quote created.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/QuoteWithLineItems'
-        '400':
+                $ref: "#/components/schemas/QuoteWithLineItems"
+        "400":
           description: Invalid request.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '404':
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
           description: Customer not found.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
+                $ref: "#/components/schemas/ErrorResponse"
 
   /customers/{customerId}/quotes/{quoteId}:
     get:
       operationId: getCustomerQuote
       summary: Get quote detail with embedded line items
       parameters:
-        - $ref: '#/components/parameters/CustomerId'
-        - $ref: '#/components/parameters/QuoteId'
+        - $ref: "#/components/parameters/CustomerId"
+        - $ref: "#/components/parameters/QuoteId"
       responses:
-        '200':
+        "200":
           description: Quote returned.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/QuoteWithLineItems'
-        '404':
+                $ref: "#/components/schemas/QuoteWithLineItems"
+        "404":
           description: Quote or customer not found.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
+                $ref: "#/components/schemas/ErrorResponse"
 
     patch:
       operationId: updateCustomerQuote
       summary: Update quote header fields (draft only)
       parameters:
-        - $ref: '#/components/parameters/CustomerId'
-        - $ref: '#/components/parameters/QuoteId'
+        - $ref: "#/components/parameters/CustomerId"
+        - $ref: "#/components/parameters/QuoteId"
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/UpdateQuoteRequest'
+              $ref: "#/components/schemas/UpdateQuoteRequest"
       responses:
-        '200':
+        "200":
           description: Quote updated.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Quote'
-        '400':
+                $ref: "#/components/schemas/Quote"
+        "400":
           description: Invalid request.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '404':
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
           description: Quote or customer not found.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '409':
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
           description: Quote is not in draft status.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
+                $ref: "#/components/schemas/ErrorResponse"
 
   /customers/{customerId}/quotes/{quoteId}/send:
     post:
       operationId: sendCustomerQuote
       summary: Transition quote from draft to sent
       parameters:
-        - $ref: '#/components/parameters/CustomerId'
-        - $ref: '#/components/parameters/QuoteId'
+        - $ref: "#/components/parameters/CustomerId"
+        - $ref: "#/components/parameters/QuoteId"
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/ActorRequest'
+              $ref: "#/components/schemas/ActorRequest"
       responses:
-        '200':
+        "200":
           description: Quote transitioned to sent.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Quote'
-        '400':
+                $ref: "#/components/schemas/Quote"
+        "400":
           description: Invalid request.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '404':
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
           description: Quote or customer not found.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '409':
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
           description: Quote is not in draft status — transition not allowed.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
+                $ref: "#/components/schemas/ErrorResponse"
 
   /customers/{customerId}/quotes/{quoteId}/send-email:
     post:
       operationId: sendCustomerQuoteEmail
       summary: Email a quote PDF to the customer's primary contact
       parameters:
-        - $ref: '#/components/parameters/CustomerId'
-        - $ref: '#/components/parameters/QuoteId'
+        - $ref: "#/components/parameters/CustomerId"
+        - $ref: "#/components/parameters/QuoteId"
       responses:
-        '200':
+        "200":
           description: Quote PDF emailed.
           content:
             application/json:
@@ -4831,313 +5311,313 @@ paths:
                   to:
                     type: string
                     format: email
-        '422':
+        "422":
           description: No primary contact with an email address exists.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
+                $ref: "#/components/schemas/ErrorResponse"
 
   /customers/{customerId}/quotes/{quoteId}/accept:
     post:
       operationId: acceptCustomerQuote
       summary: Transition quote from sent to accepted
       parameters:
-        - $ref: '#/components/parameters/CustomerId'
-        - $ref: '#/components/parameters/QuoteId'
+        - $ref: "#/components/parameters/CustomerId"
+        - $ref: "#/components/parameters/QuoteId"
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/ActorRequest'
+              $ref: "#/components/schemas/ActorRequest"
       responses:
-        '200':
+        "200":
           description: Quote transitioned to accepted.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Quote'
-        '400':
+                $ref: "#/components/schemas/Quote"
+        "400":
           description: Invalid request.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '404':
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
           description: Quote or customer not found.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '409':
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
           description: Quote is not in sent status — transition not allowed.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
+                $ref: "#/components/schemas/ErrorResponse"
 
   /customers/{customerId}/quotes/{quoteId}/reject:
     post:
       operationId: rejectCustomerQuote
       summary: Transition quote from sent to rejected
       parameters:
-        - $ref: '#/components/parameters/CustomerId'
-        - $ref: '#/components/parameters/QuoteId'
+        - $ref: "#/components/parameters/CustomerId"
+        - $ref: "#/components/parameters/QuoteId"
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/ActorRequest'
+              $ref: "#/components/schemas/ActorRequest"
       responses:
-        '200':
+        "200":
           description: Quote transitioned to rejected.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Quote'
-        '400':
+                $ref: "#/components/schemas/Quote"
+        "400":
           description: Invalid request.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '404':
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
           description: Quote or customer not found.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '409':
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
           description: Quote is not in sent status — transition not allowed.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
+                $ref: "#/components/schemas/ErrorResponse"
 
   /customers/{customerId}/quotes/{quoteId}/archive:
     post:
       operationId: archiveCustomerQuote
       summary: Archive (soft-delete) a quote
       parameters:
-        - $ref: '#/components/parameters/CustomerId'
-        - $ref: '#/components/parameters/QuoteId'
+        - $ref: "#/components/parameters/CustomerId"
+        - $ref: "#/components/parameters/QuoteId"
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/ActorRequest'
+              $ref: "#/components/schemas/ActorRequest"
       responses:
-        '200':
+        "200":
           description: Quote archived.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Quote'
-        '400':
+                $ref: "#/components/schemas/Quote"
+        "400":
           description: Invalid request.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '404':
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
           description: Quote or customer not found.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
+                $ref: "#/components/schemas/ErrorResponse"
 
   /customers/{customerId}/quotes/{quoteId}/convert:
     post:
       operationId: convertQuoteToOrder
       summary: Convert an accepted quote to an order
       parameters:
-        - $ref: '#/components/parameters/CustomerId'
-        - $ref: '#/components/parameters/QuoteId'
+        - $ref: "#/components/parameters/CustomerId"
+        - $ref: "#/components/parameters/QuoteId"
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/ConvertQuoteToOrderRequest'
+              $ref: "#/components/schemas/ConvertQuoteToOrderRequest"
       responses:
-        '201':
+        "201":
           description: Quote converted to order.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/OrderWithPayments'
-        '400':
+                $ref: "#/components/schemas/OrderWithPayments"
+        "400":
           description: Invalid request.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '404':
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
           description: Quote or customer not found.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '409':
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
           description: Quote cannot be converted.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
+                $ref: "#/components/schemas/ErrorResponse"
 
   /customers/{customerId}/quotes/{quoteId}/areas:
     get:
       operationId: listQuoteAreas
       summary: List all areas for a quote
       parameters:
-        - $ref: '#/components/parameters/CustomerId'
-        - $ref: '#/components/parameters/QuoteId'
+        - $ref: "#/components/parameters/CustomerId"
+        - $ref: "#/components/parameters/QuoteId"
       responses:
-        '200':
+        "200":
           description: Areas returned.
           content:
             application/json:
               schema:
                 type: array
                 items:
-                  $ref: '#/components/schemas/QuoteArea'
-        '404':
+                  $ref: "#/components/schemas/QuoteArea"
+        "404":
           description: Quote or customer not found.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
+                $ref: "#/components/schemas/ErrorResponse"
 
     post:
       operationId: createQuoteArea
       summary: Create a quote area (draft only)
       parameters:
-        - $ref: '#/components/parameters/CustomerId'
-        - $ref: '#/components/parameters/QuoteId'
+        - $ref: "#/components/parameters/CustomerId"
+        - $ref: "#/components/parameters/QuoteId"
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/CreateQuoteAreaRequest'
+              $ref: "#/components/schemas/CreateQuoteAreaRequest"
       responses:
-        '201':
+        "201":
           description: Area created.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/QuoteArea'
-        '400':
+                $ref: "#/components/schemas/QuoteArea"
+        "400":
           description: Invalid request.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '404':
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
           description: Quote or customer not found.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '409':
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
           description: Quote is not in draft status.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
+                $ref: "#/components/schemas/ErrorResponse"
 
   /customers/{customerId}/quotes/{quoteId}/areas/{areaId}:
     patch:
       operationId: updateQuoteArea
       summary: Update a quote area (draft only)
       parameters:
-        - $ref: '#/components/parameters/CustomerId'
-        - $ref: '#/components/parameters/QuoteId'
-        - $ref: '#/components/parameters/AreaId'
+        - $ref: "#/components/parameters/CustomerId"
+        - $ref: "#/components/parameters/QuoteId"
+        - $ref: "#/components/parameters/AreaId"
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/UpdateQuoteAreaRequest'
+              $ref: "#/components/schemas/UpdateQuoteAreaRequest"
       responses:
-        '200':
+        "200":
           description: Area updated.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/QuoteArea'
-        '400':
+                $ref: "#/components/schemas/QuoteArea"
+        "400":
           description: Invalid request.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '404':
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
           description: Area, quote, or customer not found.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '409':
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
           description: Quote is not in draft status.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
+                $ref: "#/components/schemas/ErrorResponse"
 
     delete:
       operationId: removeQuoteArea
       summary: Remove a quote area (draft only)
       parameters:
-        - $ref: '#/components/parameters/CustomerId'
-        - $ref: '#/components/parameters/QuoteId'
-        - $ref: '#/components/parameters/AreaId'
+        - $ref: "#/components/parameters/CustomerId"
+        - $ref: "#/components/parameters/QuoteId"
+        - $ref: "#/components/parameters/AreaId"
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/ActorRequest'
+              $ref: "#/components/schemas/ActorRequest"
       responses:
-        '200':
+        "200":
           description: Area removed.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/QuoteArea'
-        '400':
+                $ref: "#/components/schemas/QuoteArea"
+        "400":
           description: Invalid request.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '404':
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
           description: Area, quote, or customer not found.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '409':
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
           description: Area has line items or quote is not in draft status.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
+                $ref: "#/components/schemas/ErrorResponse"
 
   /customers/{customerId}/quotes/{quoteId}/areas/{areaId}/pieces:
     get:
       operationId: listQuoteAreaPieces
       summary: List counter pieces for a quote area
       parameters:
-        - $ref: '#/components/parameters/CustomerId'
-        - $ref: '#/components/parameters/QuoteId'
-        - $ref: '#/components/parameters/AreaId'
+        - $ref: "#/components/parameters/CustomerId"
+        - $ref: "#/components/parameters/QuoteId"
+        - $ref: "#/components/parameters/AreaId"
       responses:
-        '200':
+        "200":
           description: Counter pieces returned.
           content:
             application/json:
@@ -5148,142 +5628,142 @@ paths:
                   data:
                     type: array
                     items:
-                      $ref: '#/components/schemas/CounterPiece'
-        '404':
+                      $ref: "#/components/schemas/CounterPiece"
+        "404":
           description: Area, quote, or customer not found.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
+                $ref: "#/components/schemas/ErrorResponse"
     post:
       operationId: createQuoteAreaPiece
       summary: Add a counter piece to a quote area (draft only)
       parameters:
-        - $ref: '#/components/parameters/CustomerId'
-        - $ref: '#/components/parameters/QuoteId'
-        - $ref: '#/components/parameters/AreaId'
+        - $ref: "#/components/parameters/CustomerId"
+        - $ref: "#/components/parameters/QuoteId"
+        - $ref: "#/components/parameters/AreaId"
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/CreateCounterPieceRequest'
+              $ref: "#/components/schemas/CreateCounterPieceRequest"
       responses:
-        '201':
+        "201":
           description: Counter piece added.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/CounterPiece'
-        '400':
+                $ref: "#/components/schemas/CounterPiece"
+        "400":
           description: Invalid request.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '404':
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
           description: Area, quote, or customer not found.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '409':
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
           description: Quote is not in draft status.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
+                $ref: "#/components/schemas/ErrorResponse"
 
   /customers/{customerId}/quotes/{quoteId}/areas/{areaId}/pieces/{id}:
     patch:
       operationId: updateQuoteAreaPiece
       summary: Update a counter piece (draft only)
       parameters:
-        - $ref: '#/components/parameters/CustomerId'
-        - $ref: '#/components/parameters/QuoteId'
-        - $ref: '#/components/parameters/AreaId'
-        - $ref: '#/components/parameters/PieceId'
+        - $ref: "#/components/parameters/CustomerId"
+        - $ref: "#/components/parameters/QuoteId"
+        - $ref: "#/components/parameters/AreaId"
+        - $ref: "#/components/parameters/PieceId"
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/UpdateCounterPieceRequest'
+              $ref: "#/components/schemas/UpdateCounterPieceRequest"
       responses:
-        '200':
+        "200":
           description: Counter piece updated.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/CounterPiece'
-        '400':
+                $ref: "#/components/schemas/CounterPiece"
+        "400":
           description: Invalid request.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '404':
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
           description: Counter piece, area, quote, or customer not found.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '409':
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
           description: Quote is not in draft status.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
+                $ref: "#/components/schemas/ErrorResponse"
     delete:
       operationId: removeQuoteAreaPiece
       summary: Remove a counter piece (draft only)
       parameters:
-        - $ref: '#/components/parameters/CustomerId'
-        - $ref: '#/components/parameters/QuoteId'
-        - $ref: '#/components/parameters/AreaId'
-        - $ref: '#/components/parameters/PieceId'
+        - $ref: "#/components/parameters/CustomerId"
+        - $ref: "#/components/parameters/QuoteId"
+        - $ref: "#/components/parameters/AreaId"
+        - $ref: "#/components/parameters/PieceId"
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/ActorRequest'
+              $ref: "#/components/schemas/ActorRequest"
       responses:
-        '200':
+        "200":
           description: Counter piece removed.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/CounterPiece'
-        '400':
+                $ref: "#/components/schemas/CounterPiece"
+        "400":
           description: Invalid request.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '404':
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
           description: Counter piece, area, quote, or customer not found.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '409':
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
           description: Quote is not in draft status.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
+                $ref: "#/components/schemas/ErrorResponse"
 
   /customers/{customerId}/quotes/{quoteId}/areas/{areaId}/edges:
     get:
       operationId: listQuoteAreaEdges
       summary: List edge segments for a quote area
       parameters:
-        - $ref: '#/components/parameters/CustomerId'
-        - $ref: '#/components/parameters/QuoteId'
-        - $ref: '#/components/parameters/AreaId'
+        - $ref: "#/components/parameters/CustomerId"
+        - $ref: "#/components/parameters/QuoteId"
+        - $ref: "#/components/parameters/AreaId"
       responses:
-        '200':
+        "200":
           description: Edge segments returned.
           content:
             application/json:
@@ -5294,142 +5774,142 @@ paths:
                   data:
                     type: array
                     items:
-                      $ref: '#/components/schemas/EdgeSegment'
-        '404':
+                      $ref: "#/components/schemas/EdgeSegment"
+        "404":
           description: Area, quote, or customer not found.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
+                $ref: "#/components/schemas/ErrorResponse"
     post:
       operationId: createQuoteAreaEdge
       summary: Add an edge segment to a quote area (draft only)
       parameters:
-        - $ref: '#/components/parameters/CustomerId'
-        - $ref: '#/components/parameters/QuoteId'
-        - $ref: '#/components/parameters/AreaId'
+        - $ref: "#/components/parameters/CustomerId"
+        - $ref: "#/components/parameters/QuoteId"
+        - $ref: "#/components/parameters/AreaId"
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/CreateEdgeSegmentRequest'
+              $ref: "#/components/schemas/CreateEdgeSegmentRequest"
       responses:
-        '201':
+        "201":
           description: Edge segment added.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/EdgeSegment'
-        '400':
+                $ref: "#/components/schemas/EdgeSegment"
+        "400":
           description: Invalid request.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '404':
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
           description: Area, quote, or customer not found.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '409':
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
           description: Quote is not in draft status.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
+                $ref: "#/components/schemas/ErrorResponse"
 
   /customers/{customerId}/quotes/{quoteId}/areas/{areaId}/edges/{id}:
     patch:
       operationId: updateQuoteAreaEdge
       summary: Update an edge segment (draft only)
       parameters:
-        - $ref: '#/components/parameters/CustomerId'
-        - $ref: '#/components/parameters/QuoteId'
-        - $ref: '#/components/parameters/AreaId'
-        - $ref: '#/components/parameters/EdgeId'
+        - $ref: "#/components/parameters/CustomerId"
+        - $ref: "#/components/parameters/QuoteId"
+        - $ref: "#/components/parameters/AreaId"
+        - $ref: "#/components/parameters/EdgeId"
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/UpdateEdgeSegmentRequest'
+              $ref: "#/components/schemas/UpdateEdgeSegmentRequest"
       responses:
-        '200':
+        "200":
           description: Edge segment updated.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/EdgeSegment'
-        '400':
+                $ref: "#/components/schemas/EdgeSegment"
+        "400":
           description: Invalid request.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '404':
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
           description: Edge segment, area, quote, or customer not found.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '409':
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
           description: Quote is not in draft status.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
+                $ref: "#/components/schemas/ErrorResponse"
     delete:
       operationId: removeQuoteAreaEdge
       summary: Remove an edge segment (draft only)
       parameters:
-        - $ref: '#/components/parameters/CustomerId'
-        - $ref: '#/components/parameters/QuoteId'
-        - $ref: '#/components/parameters/AreaId'
-        - $ref: '#/components/parameters/EdgeId'
+        - $ref: "#/components/parameters/CustomerId"
+        - $ref: "#/components/parameters/QuoteId"
+        - $ref: "#/components/parameters/AreaId"
+        - $ref: "#/components/parameters/EdgeId"
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/ActorRequest'
+              $ref: "#/components/schemas/ActorRequest"
       responses:
-        '200':
+        "200":
           description: Edge segment removed.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/EdgeSegment'
-        '400':
+                $ref: "#/components/schemas/EdgeSegment"
+        "400":
           description: Invalid request.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '404':
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
           description: Edge segment, area, quote, or customer not found.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '409':
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
           description: Quote is not in draft status.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
+                $ref: "#/components/schemas/ErrorResponse"
 
   /customers/{customerId}/quotes/{quoteId}/areas/{areaId}/sinks:
     get:
       operationId: listQuoteAreaSinks
       summary: List sink cutouts for a quote area
       parameters:
-        - $ref: '#/components/parameters/CustomerId'
-        - $ref: '#/components/parameters/QuoteId'
-        - $ref: '#/components/parameters/AreaId'
+        - $ref: "#/components/parameters/CustomerId"
+        - $ref: "#/components/parameters/QuoteId"
+        - $ref: "#/components/parameters/AreaId"
       responses:
-        '200':
+        "200":
           description: Sink cutouts returned.
           content:
             application/json:
@@ -5440,200 +5920,200 @@ paths:
                   data:
                     type: array
                     items:
-                      $ref: '#/components/schemas/SinkCutout'
-        '404':
+                      $ref: "#/components/schemas/SinkCutout"
+        "404":
           description: Area, quote, or customer not found.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
+                $ref: "#/components/schemas/ErrorResponse"
     post:
       operationId: createQuoteAreaSink
       summary: Add a sink cutout to a quote area (draft only)
       parameters:
-        - $ref: '#/components/parameters/CustomerId'
-        - $ref: '#/components/parameters/QuoteId'
-        - $ref: '#/components/parameters/AreaId'
+        - $ref: "#/components/parameters/CustomerId"
+        - $ref: "#/components/parameters/QuoteId"
+        - $ref: "#/components/parameters/AreaId"
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/CreateSinkCutoutRequest'
+              $ref: "#/components/schemas/CreateSinkCutoutRequest"
       responses:
-        '201':
+        "201":
           description: Sink cutout added.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/SinkCutout'
-        '400':
+                $ref: "#/components/schemas/SinkCutout"
+        "400":
           description: Invalid request.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '404':
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
           description: Area, quote, or customer not found.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '409':
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
           description: Quote is not in draft status.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
+                $ref: "#/components/schemas/ErrorResponse"
 
   /customers/{customerId}/quotes/{quoteId}/areas/{areaId}/sinks/{id}:
     patch:
       operationId: updateQuoteAreaSink
       summary: Update a sink cutout (draft only)
       parameters:
-        - $ref: '#/components/parameters/CustomerId'
-        - $ref: '#/components/parameters/QuoteId'
-        - $ref: '#/components/parameters/AreaId'
-        - $ref: '#/components/parameters/SinkId'
+        - $ref: "#/components/parameters/CustomerId"
+        - $ref: "#/components/parameters/QuoteId"
+        - $ref: "#/components/parameters/AreaId"
+        - $ref: "#/components/parameters/SinkId"
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/UpdateSinkCutoutRequest'
+              $ref: "#/components/schemas/UpdateSinkCutoutRequest"
       responses:
-        '200':
+        "200":
           description: Sink cutout updated.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/SinkCutout'
-        '400':
+                $ref: "#/components/schemas/SinkCutout"
+        "400":
           description: Invalid request.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '404':
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
           description: Sink cutout, area, quote, or customer not found.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '409':
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
           description: Quote is not in draft status.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
+                $ref: "#/components/schemas/ErrorResponse"
     delete:
       operationId: removeQuoteAreaSink
       summary: Remove a sink cutout (draft only)
       parameters:
-        - $ref: '#/components/parameters/CustomerId'
-        - $ref: '#/components/parameters/QuoteId'
-        - $ref: '#/components/parameters/AreaId'
-        - $ref: '#/components/parameters/SinkId'
+        - $ref: "#/components/parameters/CustomerId"
+        - $ref: "#/components/parameters/QuoteId"
+        - $ref: "#/components/parameters/AreaId"
+        - $ref: "#/components/parameters/SinkId"
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/ActorRequest'
+              $ref: "#/components/schemas/ActorRequest"
       responses:
-        '200':
+        "200":
           description: Sink cutout removed.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/SinkCutout'
-        '400':
+                $ref: "#/components/schemas/SinkCutout"
+        "400":
           description: Invalid request.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '404':
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
           description: Sink cutout, area, quote, or customer not found.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '409':
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
           description: Quote is not in draft status.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
+                $ref: "#/components/schemas/ErrorResponse"
 
   /customers/{customerId}/quotes/{quoteId}/pricing-selections:
     get:
       operationId: getQuotePricingSelections
       summary: Get selected catalog pricing items for a quote
       parameters:
-        - $ref: '#/components/parameters/CustomerId'
-        - $ref: '#/components/parameters/QuoteId'
+        - $ref: "#/components/parameters/CustomerId"
+        - $ref: "#/components/parameters/QuoteId"
       responses:
-        '200':
+        "200":
           description: Pricing selections returned.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/QuotePricingSelection'
-        '404':
+                $ref: "#/components/schemas/QuotePricingSelection"
+        "404":
           description: Quote or customer not found.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
+                $ref: "#/components/schemas/ErrorResponse"
     patch:
       operationId: upsertQuotePricingSelections
       summary: Save selected catalog pricing items for a quote
       parameters:
-        - $ref: '#/components/parameters/CustomerId'
-        - $ref: '#/components/parameters/QuoteId'
+        - $ref: "#/components/parameters/CustomerId"
+        - $ref: "#/components/parameters/QuoteId"
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/UpsertQuotePricingSelectionRequest'
+              $ref: "#/components/schemas/UpsertQuotePricingSelectionRequest"
       responses:
-        '200':
+        "200":
           description: Pricing selections saved.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/QuotePricingSelection'
-        '400':
+                $ref: "#/components/schemas/QuotePricingSelection"
+        "400":
           description: Invalid request.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '404':
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
           description: Quote, customer, or area not found.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '409':
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
           description: Quote is not in draft status.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
+                $ref: "#/components/schemas/ErrorResponse"
 
   /customers/{customerId}/quotes/{quoteId}/areas/{areaId}/pricing:
     get:
       operationId: listQuoteAreaPricingLines
       summary: List generated pricing lines for a quote area
       parameters:
-        - $ref: '#/components/parameters/CustomerId'
-        - $ref: '#/components/parameters/QuoteId'
-        - $ref: '#/components/parameters/AreaId'
+        - $ref: "#/components/parameters/CustomerId"
+        - $ref: "#/components/parameters/QuoteId"
+        - $ref: "#/components/parameters/AreaId"
       responses:
-        '200':
+        "200":
           description: Generated pricing lines returned.
           content:
             application/json:
@@ -5644,24 +6124,24 @@ paths:
                   data:
                     type: array
                     items:
-                      $ref: '#/components/schemas/GeneratedPriceLine'
-        '404':
+                      $ref: "#/components/schemas/GeneratedPriceLine"
+        "404":
           description: Area, quote, or customer not found.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
+                $ref: "#/components/schemas/ErrorResponse"
 
   /customers/{customerId}/quotes/{quoteId}/areas/{areaId}/pricing/generate:
     post:
       operationId: generateQuoteAreaPricingLines
       summary: Generate pricing lines for a quote area (draft only)
       parameters:
-        - $ref: '#/components/parameters/CustomerId'
-        - $ref: '#/components/parameters/QuoteId'
-        - $ref: '#/components/parameters/AreaId'
+        - $ref: "#/components/parameters/CustomerId"
+        - $ref: "#/components/parameters/QuoteId"
+        - $ref: "#/components/parameters/AreaId"
       responses:
-        '201':
+        "201":
           description: Generated pricing lines replaced.
           content:
             application/json:
@@ -5672,28 +6152,28 @@ paths:
                   data:
                     type: array
                     items:
-                      $ref: '#/components/schemas/GeneratedPriceLine'
-        '404':
+                      $ref: "#/components/schemas/GeneratedPriceLine"
+        "404":
           description: Area, quote, or customer not found.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '409':
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
           description: Quote is not in draft status.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
+                $ref: "#/components/schemas/ErrorResponse"
 
   /customers/{customerId}/quotes/{quoteId}/areas/{areaId}/pricing/{lineId}/override:
     patch:
       operationId: overrideQuoteAreaPricingLine
       summary: Override a generated pricing line
       parameters:
-        - $ref: '#/components/parameters/CustomerId'
-        - $ref: '#/components/parameters/QuoteId'
-        - $ref: '#/components/parameters/AreaId'
+        - $ref: "#/components/parameters/CustomerId"
+        - $ref: "#/components/parameters/QuoteId"
+        - $ref: "#/components/parameters/AreaId"
         - name: lineId
           in: path
           required: true
@@ -5706,36 +6186,36 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/OverrideGeneratedPriceLineBody'
+              $ref: "#/components/schemas/OverrideGeneratedPriceLineBody"
       responses:
-        '200':
+        "200":
           description: Generated pricing line override updated.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/GeneratedPriceLine'
-        '400':
+                $ref: "#/components/schemas/GeneratedPriceLine"
+        "400":
           description: Invalid request.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '404':
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
           description: Generated price line, area, quote, or customer not found.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
+                $ref: "#/components/schemas/ErrorResponse"
 
   /customers/{customerId}/quotes/{quoteId}/line-items:
     get:
       operationId: listQuoteLineItems
       summary: List all line items for a quote
       parameters:
-        - $ref: '#/components/parameters/CustomerId'
-        - $ref: '#/components/parameters/QuoteId'
+        - $ref: "#/components/parameters/CustomerId"
+        - $ref: "#/components/parameters/QuoteId"
       responses:
-        '200':
+        "200":
           description: Line items returned.
           content:
             application/json:
@@ -5746,149 +6226,149 @@ paths:
                   data:
                     type: array
                     items:
-                      $ref: '#/components/schemas/QuoteLineItem'
-        '404':
+                      $ref: "#/components/schemas/QuoteLineItem"
+        "404":
           description: Quote or customer not found.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
+                $ref: "#/components/schemas/ErrorResponse"
 
     post:
       operationId: addQuoteLineItem
       summary: Add a line item to a quote (draft only)
       parameters:
-        - $ref: '#/components/parameters/CustomerId'
-        - $ref: '#/components/parameters/QuoteId'
+        - $ref: "#/components/parameters/CustomerId"
+        - $ref: "#/components/parameters/QuoteId"
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/CreateQuoteLineItemRequest'
+              $ref: "#/components/schemas/CreateQuoteLineItemRequest"
       responses:
-        '201':
+        "201":
           description: Line item added.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/QuoteLineItem'
-        '400':
+                $ref: "#/components/schemas/QuoteLineItem"
+        "400":
           description: Invalid request.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '404':
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
           description: Quote or customer not found.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '409':
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
           description: Quote is not in draft status.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
+                $ref: "#/components/schemas/ErrorResponse"
 
   /customers/{customerId}/quotes/{quoteId}/line-items/{lineItemId}:
     patch:
       operationId: updateQuoteLineItem
       summary: Update a quote line item (draft only)
       parameters:
-        - $ref: '#/components/parameters/CustomerId'
-        - $ref: '#/components/parameters/QuoteId'
-        - $ref: '#/components/parameters/LineItemId'
+        - $ref: "#/components/parameters/CustomerId"
+        - $ref: "#/components/parameters/QuoteId"
+        - $ref: "#/components/parameters/LineItemId"
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/UpdateQuoteLineItemRequest'
+              $ref: "#/components/schemas/UpdateQuoteLineItemRequest"
       responses:
-        '200':
+        "200":
           description: Line item updated.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/QuoteLineItem'
-        '400':
+                $ref: "#/components/schemas/QuoteLineItem"
+        "400":
           description: Invalid request.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '404':
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
           description: Line item, quote, or customer not found.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '409':
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
           description: Quote is not in draft status.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
+                $ref: "#/components/schemas/ErrorResponse"
 
     delete:
       operationId: removeQuoteLineItem
       summary: Remove a quote line item (draft only)
       parameters:
-        - $ref: '#/components/parameters/CustomerId'
-        - $ref: '#/components/parameters/QuoteId'
-        - $ref: '#/components/parameters/LineItemId'
+        - $ref: "#/components/parameters/CustomerId"
+        - $ref: "#/components/parameters/QuoteId"
+        - $ref: "#/components/parameters/LineItemId"
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/ActorRequest'
+              $ref: "#/components/schemas/ActorRequest"
       responses:
-        '200':
+        "200":
           description: Line item removed.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/QuoteLineItem'
-        '400':
+                $ref: "#/components/schemas/QuoteLineItem"
+        "400":
           description: Invalid request.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '404':
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
           description: Line item, quote, or customer not found.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '409':
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
           description: Quote is not in draft status.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
+                $ref: "#/components/schemas/ErrorResponse"
 
   /customers/{customerId}/events:
     get:
       operationId: listCustomerEvents
       summary: List scheduled events for a customer
       parameters:
-        - $ref: '#/components/parameters/CustomerId'
-        - $ref: '#/components/parameters/Cursor'
-        - $ref: '#/components/parameters/Limit'
+        - $ref: "#/components/parameters/CustomerId"
+        - $ref: "#/components/parameters/Cursor"
+        - $ref: "#/components/parameters/Limit"
         - name: eventType
           in: query
           required: false
           schema:
-            $ref: '#/components/schemas/ScheduledEventType'
+            $ref: "#/components/schemas/ScheduledEventType"
         - name: status
           in: query
           required: false
           schema:
-            $ref: '#/components/schemas/ScheduledEventStatus'
+            $ref: "#/components/schemas/ScheduledEventStatus"
         - name: projectId
           in: query
           required: false
@@ -5910,342 +6390,342 @@ paths:
             type: string
             format: date
       responses:
-        '200':
+        "200":
           description: Events returned. Default sort is scheduledAt ASC.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/PaginatedScheduledEventsResponse'
-        '404':
+                $ref: "#/components/schemas/PaginatedScheduledEventsResponse"
+        "404":
           description: Customer not found.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
+                $ref: "#/components/schemas/ErrorResponse"
 
     post:
       operationId: createCustomerEvent
       summary: Create a scheduled event for a customer
       parameters:
-        - $ref: '#/components/parameters/CustomerId'
+        - $ref: "#/components/parameters/CustomerId"
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/CreateScheduledEventRequest'
+              $ref: "#/components/schemas/CreateScheduledEventRequest"
       responses:
-        '201':
+        "201":
           description: Event created.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ScheduledEvent'
-        '400':
+                $ref: "#/components/schemas/ScheduledEvent"
+        "400":
           description: Invalid request.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '404':
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
           description: Customer not found.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
+                $ref: "#/components/schemas/ErrorResponse"
 
   /customers/{customerId}/events/{eventId}:
     get:
       operationId: getCustomerEvent
       summary: Get scheduled event detail
       parameters:
-        - $ref: '#/components/parameters/CustomerId'
-        - $ref: '#/components/parameters/EventId'
+        - $ref: "#/components/parameters/CustomerId"
+        - $ref: "#/components/parameters/EventId"
       responses:
-        '200':
+        "200":
           description: Event returned.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ScheduledEvent'
-        '404':
+                $ref: "#/components/schemas/ScheduledEvent"
+        "404":
           description: Event or customer not found.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
+                $ref: "#/components/schemas/ErrorResponse"
 
     patch:
       operationId: updateCustomerEvent
       summary: Update event fields (scheduled or confirmed only)
       parameters:
-        - $ref: '#/components/parameters/CustomerId'
-        - $ref: '#/components/parameters/EventId'
+        - $ref: "#/components/parameters/CustomerId"
+        - $ref: "#/components/parameters/EventId"
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/UpdateScheduledEventRequest'
+              $ref: "#/components/schemas/UpdateScheduledEventRequest"
       responses:
-        '200':
+        "200":
           description: Event updated.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ScheduledEvent'
-        '400':
+                $ref: "#/components/schemas/ScheduledEvent"
+        "400":
           description: Invalid request.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '404':
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
           description: Event or customer not found.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '409':
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
           description: Event status does not allow updates (must be scheduled or confirmed).
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
+                $ref: "#/components/schemas/ErrorResponse"
 
   /customers/{customerId}/events/{eventId}/confirm:
     post:
       operationId: confirmCustomerEvent
       summary: Transition event from scheduled to confirmed
       parameters:
-        - $ref: '#/components/parameters/CustomerId'
-        - $ref: '#/components/parameters/EventId'
+        - $ref: "#/components/parameters/CustomerId"
+        - $ref: "#/components/parameters/EventId"
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/ActorRequest'
+              $ref: "#/components/schemas/ActorRequest"
       responses:
-        '200':
+        "200":
           description: Event transitioned to confirmed.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ScheduledEvent'
-        '400':
+                $ref: "#/components/schemas/ScheduledEvent"
+        "400":
           description: Invalid request.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '404':
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
           description: Event or customer not found.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '409':
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
           description: Event is not in scheduled status — transition not allowed.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
+                $ref: "#/components/schemas/ErrorResponse"
 
   /customers/{customerId}/events/{eventId}/start:
     post:
       operationId: startCustomerEvent
       summary: Transition event from confirmed to in_progress
       parameters:
-        - $ref: '#/components/parameters/CustomerId'
-        - $ref: '#/components/parameters/EventId'
+        - $ref: "#/components/parameters/CustomerId"
+        - $ref: "#/components/parameters/EventId"
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/ActorRequest'
+              $ref: "#/components/schemas/ActorRequest"
       responses:
-        '200':
+        "200":
           description: Event transitioned to in_progress.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ScheduledEvent'
-        '400':
+                $ref: "#/components/schemas/ScheduledEvent"
+        "400":
           description: Invalid request.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '404':
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
           description: Event or customer not found.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '409':
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
           description: Event is not in confirmed status — transition not allowed.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
+                $ref: "#/components/schemas/ErrorResponse"
 
   /customers/{customerId}/events/{eventId}/finish:
     post:
       operationId: finishCustomerEvent
       summary: Transition event from in_progress to completed
       parameters:
-        - $ref: '#/components/parameters/CustomerId'
-        - $ref: '#/components/parameters/EventId'
+        - $ref: "#/components/parameters/CustomerId"
+        - $ref: "#/components/parameters/EventId"
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/ActorRequest'
+              $ref: "#/components/schemas/ActorRequest"
       responses:
-        '200':
+        "200":
           description: Event transitioned to completed.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ScheduledEvent'
-        '400':
+                $ref: "#/components/schemas/ScheduledEvent"
+        "400":
           description: Invalid request.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '404':
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
           description: Event or customer not found.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '409':
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
           description: Event is not in in_progress status â€” transition not allowed.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
+                $ref: "#/components/schemas/ErrorResponse"
 
   /customers/{customerId}/events/{eventId}/complete:
     post:
       operationId: completeCustomerEvent
       summary: Transition event from in_progress to completed
       parameters:
-        - $ref: '#/components/parameters/CustomerId'
-        - $ref: '#/components/parameters/EventId'
+        - $ref: "#/components/parameters/CustomerId"
+        - $ref: "#/components/parameters/EventId"
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/ActorRequest'
+              $ref: "#/components/schemas/ActorRequest"
       responses:
-        '200':
+        "200":
           description: Event transitioned to completed.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ScheduledEvent'
-        '400':
+                $ref: "#/components/schemas/ScheduledEvent"
+        "400":
           description: Invalid request.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '404':
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
           description: Event or customer not found.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '409':
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
           description: Event is not in in_progress status — transition not allowed.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
+                $ref: "#/components/schemas/ErrorResponse"
 
   /customers/{customerId}/events/{eventId}/cancel:
     post:
       operationId: cancelCustomerEvent
       summary: Transition event to cancelled (any status except completed)
       parameters:
-        - $ref: '#/components/parameters/CustomerId'
-        - $ref: '#/components/parameters/EventId'
+        - $ref: "#/components/parameters/CustomerId"
+        - $ref: "#/components/parameters/EventId"
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/ActorRequest'
+              $ref: "#/components/schemas/ActorRequest"
       responses:
-        '200':
+        "200":
           description: Event transitioned to cancelled.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ScheduledEvent'
-        '400':
+                $ref: "#/components/schemas/ScheduledEvent"
+        "400":
           description: Invalid request.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '404':
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
           description: Event or customer not found.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '409':
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
           description: Event is already completed — cancellation not allowed.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
+                $ref: "#/components/schemas/ErrorResponse"
 
   /customers/{customerId}/events/{eventId}/archive:
     post:
       operationId: archiveCustomerEvent
       summary: Soft-delete a scheduled event (completed or cancelled only)
       parameters:
-        - $ref: '#/components/parameters/CustomerId'
-        - $ref: '#/components/parameters/EventId'
+        - $ref: "#/components/parameters/CustomerId"
+        - $ref: "#/components/parameters/EventId"
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/ActorRequest'
+              $ref: "#/components/schemas/ActorRequest"
       responses:
-        '200':
+        "200":
           description: Event archived.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ScheduledEvent'
-        '400':
+                $ref: "#/components/schemas/ScheduledEvent"
+        "400":
           description: Invalid request.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '404':
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
           description: Event or customer not found.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '409':
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
           description: Event status is not completed or cancelled — archive not allowed.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
+                $ref: "#/components/schemas/ErrorResponse"
 
   /customers/{customerId}/quotes/{quoteId}/areas/{areaId}/drawing:
     get:
@@ -6253,11 +6733,11 @@ paths:
       summary: Get latest drawing revision for a quote area
       tags: [Quotes]
       parameters:
-        - $ref: '#/components/parameters/CustomerId'
-        - $ref: '#/components/parameters/QuoteId'
-        - $ref: '#/components/parameters/AreaId'
+        - $ref: "#/components/parameters/CustomerId"
+        - $ref: "#/components/parameters/QuoteId"
+        - $ref: "#/components/parameters/AreaId"
       responses:
-        '200':
+        "200":
           description: OK
           content:
             application/json:
@@ -6266,47 +6746,47 @@ paths:
                 properties:
                   data:
                     oneOf:
-                      - $ref: '#/components/schemas/DrawingRevision'
-                      - type: 'null'
-        '404':
+                      - $ref: "#/components/schemas/DrawingRevision"
+                      - type: "null"
+        "404":
           description: Quote or area not found
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
+                $ref: "#/components/schemas/ErrorResponse"
     post:
       operationId: saveAreaDrawingRevision
       summary: Save a new drawing revision for a quote area
       tags: [Quotes]
       parameters:
-        - $ref: '#/components/parameters/CustomerId'
-        - $ref: '#/components/parameters/QuoteId'
-        - $ref: '#/components/parameters/AreaId'
+        - $ref: "#/components/parameters/CustomerId"
+        - $ref: "#/components/parameters/QuoteId"
+        - $ref: "#/components/parameters/AreaId"
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/SaveDrawingRevisionBody'
+              $ref: "#/components/schemas/SaveDrawingRevisionBody"
       responses:
-        '201':
+        "201":
           description: Created
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/DrawingRevision'
-        '404':
+                $ref: "#/components/schemas/DrawingRevision"
+        "404":
           description: Quote or area not found
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '409':
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
           description: Quote is not in draft status
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
+                $ref: "#/components/schemas/ErrorResponse"
 
   /portal/quotes/{token}:
     get:
@@ -6320,18 +6800,18 @@ paths:
             type: string
             format: uuid
       responses:
-        '200':
+        "200":
           description: Quote for customer portal
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/PortalQuote'
-        '404':
+                $ref: "#/components/schemas/PortalQuote"
+        "404":
           description: Quote not found
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
+                $ref: "#/components/schemas/ErrorResponse"
 
   /portal/quotes/{token}/accept:
     post:
@@ -6345,7 +6825,7 @@ paths:
             type: string
             format: uuid
       responses:
-        '200':
+        "200":
           description: Accepted
           content:
             application/json:
@@ -6367,7 +6847,7 @@ paths:
             type: string
             format: uuid
       responses:
-        '200':
+        "200":
           description: Rejected
           content:
             application/json:

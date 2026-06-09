@@ -21,6 +21,74 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/reports/sales-by-month": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Total order value per calendar month */
+        get: operations["getSalesByMonth"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/reports/jobs-by-salesperson": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Count of jobs (projects) per salesperson (owner) */
+        get: operations["getJobsBySalesperson"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/reports/installed-sqft-by-month": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Installed square footage per calendar month */
+        get: operations["getInstalledSqFtByMonth"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/reports/installed-sqft-by-week": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Installed square footage per week */
+        get: operations["getInstalledSqFtByWeek"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/inventory/slabs": {
         parameters: {
             query?: never;
@@ -247,6 +315,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/customers/{customerId}/orders/{orderId}/deposit/request": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Request or update the manual deposit amount for an order */
+        post: operations["requestOrderDeposit"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/customers/{customerId}/orders/{orderId}/payments/{paymentId}": {
         parameters: {
             query?: never;
@@ -257,8 +342,8 @@ export interface paths {
         get?: never;
         put?: never;
         post?: never;
-        /** Remove a payment from an order */
-        delete: operations["removeOrderPayment"];
+        /** Void a payment on an order */
+        delete: operations["voidOrderPayment"];
         options?: never;
         head?: never;
         patch?: never;
@@ -1888,12 +1973,21 @@ export interface components {
             areaId: string;
             /** Format: uuid */
             materialItemId: string | null;
+            materialSource: "inventory" | "external";
+            /** Format: uuid */
+            materialSlabId: string | null;
+            /** @description Note for external material selection */
+            externalMaterialNote: string | null;
             /** Format: uuid */
             edgeItemId: string | null;
             /** Format: uuid */
             splashItemId: string | null;
             /** Format: uuid */
             fabricationItemId: string | null;
+            /** Format: uuid */
+            sinkItemId: string | null;
+            /** Format: uuid */
+            faucetHoleItemId: string | null;
         };
         QuotePricingSelection: {
             /** Format: uuid */
@@ -1911,12 +2005,20 @@ export interface components {
             areaId: string;
             /** Format: uuid */
             materialItemId?: string | null;
+            materialSource?: "inventory" | "external";
+            /** Format: uuid */
+            materialSlabId?: string | null;
+            externalMaterialNote?: string | null;
             /** Format: uuid */
             edgeItemId?: string | null;
             /** Format: uuid */
             splashItemId?: string | null;
             /** Format: uuid */
             fabricationItemId?: string | null;
+            /** Format: uuid */
+            sinkItemId?: string | null;
+            /** Format: uuid */
+            faucetHoleItemId?: string | null;
         };
         UpsertQuotePricingSelectionRequest: {
             /** Format: uuid */
@@ -2346,7 +2448,8 @@ export interface components {
             qualityGrade: components["schemas"]["SlabQualityGrade"];
             lengthIn: number;
             widthIn: number;
-            thicknessCm: number;
+            /** @enum {number} */
+            thicknessCm: 2 | 3;
             lotNumber?: string | null;
             bundleNumber?: string | null;
             warehouseLocation?: string | null;
@@ -2369,7 +2472,8 @@ export interface components {
             qualityGrade: components["schemas"]["SlabQualityGrade"];
             lengthIn: number;
             widthIn: number;
-            thicknessCm: number;
+            /** @enum {number} */
+            thicknessCm: 2 | 3;
             lotNumber?: string;
             bundleNumber?: string;
             warehouseLocation?: string;
@@ -2384,7 +2488,8 @@ export interface components {
             qualityGrade?: components["schemas"]["SlabQualityGrade"];
             lengthIn?: number;
             widthIn?: number;
-            thicknessCm?: number;
+            /** @enum {number} */
+            thicknessCm?: 2 | 3;
             lotNumber?: string | null;
             bundleNumber?: string | null;
             warehouseLocation?: string | null;
@@ -2428,6 +2533,10 @@ export interface components {
         OrderPaymentMethod: "cash" | "check" | "mastercard" | "visa" | "american_express" | "discover" | "bank_transfer" | "echeck";
         /** @enum {string} */
         OrderPaymentStatus: "unpaid" | "partially_paid" | "paid";
+        /** @enum {string} */
+        OrderDepositStatus: "not_requested" | "requested" | "paid";
+        /** @enum {string} */
+        OrderPaymentRecordStatus: "recorded" | "void";
         OrderPayment: {
             /** Format: uuid */
             id: string;
@@ -2437,8 +2546,14 @@ export interface components {
             paymentDate: string;
             amountCents: number;
             paymentMethod: components["schemas"]["OrderPaymentMethod"];
+            status: components["schemas"]["OrderPaymentRecordStatus"];
             referenceNumber: string | null;
             notes: string | null;
+            /** Format: date-time */
+            voidedAt: string | null;
+            /** Format: uuid */
+            voidedByUserId: string | null;
+            voidReason: string | null;
             /** Format: date-time */
             createdAt: string;
             /** Format: date-time */
@@ -2462,6 +2577,14 @@ export interface components {
             totalPaidCents: number;
             balanceDueCents: number;
             paymentStatus: components["schemas"]["OrderPaymentStatus"];
+            depositRequiredCents: number;
+            depositPaidCents: number;
+            depositBalanceCents: number;
+            depositStatus: components["schemas"]["OrderDepositStatus"];
+            /** Format: date-time */
+            depositRequestedAt: string | null;
+            /** Format: uuid */
+            depositRequestedByUserId: string | null;
             notes: string | null;
             termsAndConditions: string | null;
             /** Format: date-time */
@@ -2536,8 +2659,13 @@ export interface components {
             referenceNumber?: string;
             notes?: string;
         };
-        RemoveOrderPaymentRequest: Record<string, never>;
+        VoidOrderPaymentRequest: {
+            voidReason?: string;
+        };
         ArchiveOrderRequest: Record<string, never>;
+        RequestOrderDepositRequest: {
+            depositRequiredCents: number;
+        };
     };
     responses: never;
     parameters: {
@@ -2590,6 +2718,121 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["DashboardStats"];
+                };
+            };
+        };
+    };
+    getSalesByMonth: {
+        parameters: {
+            query?: {
+                from?: string;
+                to?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Sales-by-month rows returned, ordered by month ascending. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            /** Format: date */
+                            month: string;
+                            totalCents: number;
+                            orderCount: number;
+                        }[];
+                    };
+                };
+            };
+        };
+    };
+    getJobsBySalesperson: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Jobs-by-salesperson rows, ordered by jobCount descending. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            /** Format: uuid */
+                            userId: string;
+                            name: string;
+                            jobCount: number;
+                        }[];
+                    };
+                };
+            };
+        };
+    };
+    getInstalledSqFtByMonth: {
+        parameters: {
+            query?: {
+                from?: string;
+                to?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Installed-sqft-by-month rows, ordered by month ascending. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            /** Format: date */
+                            month: string;
+                            installedSqFt: number;
+                        }[];
+                    };
+                };
+            };
+        };
+    };
+    getInstalledSqFtByWeek: {
+        parameters: {
+            query?: {
+                from?: string;
+                to?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Installed-sqft-by-week rows, ordered by week ascending. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            /** Format: date */
+                            week: string;
+                            installedSqFt: number;
+                        }[];
+                    };
                 };
             };
         };
@@ -3107,7 +3350,53 @@ export interface operations {
             };
         };
     };
-    removeOrderPayment: {
+    requestOrderDeposit: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                customerId: components["parameters"]["CustomerId"];
+                /** @description UUID of the order */
+                orderId: components["parameters"]["OrderId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RequestOrderDepositRequest"];
+            };
+        };
+        responses: {
+            /** @description Deposit request updated. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OrderWithPayments"];
+                };
+            };
+            /** @description Invalid request. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Order or customer not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    voidOrderPayment: {
         parameters: {
             query?: never;
             header?: never;
@@ -3122,11 +3411,11 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["RemoveOrderPaymentRequest"];
+                "application/json": components["schemas"]["VoidOrderPaymentRequest"];
             };
         };
         responses: {
-            /** @description Payment removed. */
+            /** @description Payment voided. */
             200: {
                 headers: {
                     [name: string]: unknown;
