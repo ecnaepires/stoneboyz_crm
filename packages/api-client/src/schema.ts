@@ -2554,6 +2554,11 @@ export interface components {
             customerId: string;
             /** Format: uuid */
             projectId?: string | null;
+            /**
+             * Format: uuid
+             * @description The job activity linked to this event, when it was created by scheduling one.
+             */
+            jobActivityId?: string | null;
             eventType: components["schemas"]["ScheduledEventType"];
             /** @description Required when eventType is appointment; must be null when eventType is shop_job. */
             appointmentType?: components["schemas"]["AppointmentType"];

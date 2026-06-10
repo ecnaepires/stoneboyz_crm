@@ -2787,6 +2787,11 @@ components:
           type: string
           format: uuid
           nullable: true
+        jobActivityId:
+          type: string
+          format: uuid
+          nullable: true
+          description: The job activity linked to this event, when it was created by scheduling one.
         eventType:
           $ref: "#/components/schemas/ScheduledEventType"
         appointmentType:

@@ -150,10 +150,16 @@ export class ScheduledEventsRepository {
     );
 
     const rows = result.rows.slice(0, input.limit);
-    const assigneeIdsByEvent = await this.loadAssigneeIds(rows.map((row) => row.id));
+    const eventIds = rows.map((row) => row.id);
+    const [assigneeIdsByEvent, jobActivityIdByEvent] = await Promise.all([
+      this.loadAssigneeIds(eventIds),
+      this.loadJobActivityIds(eventIds)
+    ]);
 
     return {
-      data: rows.map((row) => mapScheduledEventRow(row, assigneeIdsByEvent.get(row.id) ?? [])),
+      data: rows.map((row) =>
+        mapScheduledEventRow(row, assigneeIdsByEvent.get(row.id) ?? [], jobActivityIdByEvent.get(row.id) ?? null)
+      ),
       hasMore: result.rows.length > input.limit,
       nextCursor:
         result.rows.length > input.limit && rows.at(-1) !== undefined
@@ -218,7 +224,9 @@ export class ScheduledEventsRepository {
 
       await client.query('COMMIT');
 
-      return mapScheduledEventRow(row, assigneeIds);
+      // A just-created event cannot be linked to a job activity yet; the
+      // activity links to it afterwards via markScheduled.
+      return mapScheduledEventRow(row, assigneeIds, null);
     } catch (error) {
       await client.query('ROLLBACK');
       throw error;
@@ -243,8 +251,29 @@ export class ScheduledEventsRepository {
   }
 
   private async withAssigneeIds(row: ScheduledEventRow): Promise<ScheduledEvent> {
-    const assigneeIdsByEvent = await this.loadAssigneeIds([row.id]);
-    return mapScheduledEventRow(row, assigneeIdsByEvent.get(row.id) ?? []);
+    const [assigneeIdsByEvent, jobActivityIdByEvent] = await Promise.all([
+      this.loadAssigneeIds([row.id]),
+      this.loadJobActivityIds([row.id])
+    ]);
+    return mapScheduledEventRow(row, assigneeIdsByEvent.get(row.id) ?? [], jobActivityIdByEvent.get(row.id) ?? null);
+  }
+
+  private async loadJobActivityIds(eventIds: string[]): Promise<Map<string, string>> {
+    if (eventIds.length === 0) {
+      return new Map();
+    }
+
+    const result = await this.pool.query<{ scheduled_event_id: string; job_activity_id: string }>(
+      `
+        SELECT scheduled_event_id, min(id::text) AS job_activity_id
+        FROM job_activities
+        WHERE scheduled_event_id = ANY($1::uuid[]) AND deleted_at IS NULL
+        GROUP BY scheduled_event_id
+      `,
+      [eventIds]
+    );
+
+    return new Map(result.rows.map((row) => [row.scheduled_event_id, row.job_activity_id]));
   }
 
   private async loadAssigneeIds(eventIds: string[]): Promise<Map<string, string[]>> {

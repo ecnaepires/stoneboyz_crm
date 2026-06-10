@@ -70,6 +70,7 @@ const normalizeEvent = (
   customerName: customer.name,
   projectId: event.projectId ?? null,
   projectTitle: event.projectId ? projectNames.get(event.projectId) ?? null : null,
+  jobActivityId: event.jobActivityId ?? null,
   eventType: event.eventType,
   appointmentType: event.appointmentType ?? null,
   title: event.title,

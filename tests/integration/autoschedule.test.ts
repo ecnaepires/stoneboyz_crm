@@ -174,6 +174,37 @@ describe('autoschedule engine', () => {
     }
   });
 
+  it('returns jobActivityId on activity-created events and null on standalone events', async () => {
+    const projectId = await createProject('Linked Event Job');
+    const activities = await listActivities(projectId);
+    const anchor = activities[0] as ActivityResponse;
+
+    await scheduleActivity(projectId, anchor.id, MONDAY_ANCHOR);
+
+    const scheduled = await listActivities(projectId);
+    const anchorAfter = scheduled.find((activity) => activity.id === anchor.id) as ActivityResponse;
+    const anchorEvent = await getEvent(anchorAfter.scheduledEventId as string);
+    expect(anchorEvent.jobActivityId).toBe(anchor.id);
+
+    const standaloneResponse = await fetch(`${baseUrl}/api/v1/customers/${SEEDED_CUSTOMER_ID}/events`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        eventType: 'appointment',
+        appointmentType: 'other',
+        title: 'Standalone Visit',
+        scheduledAt: MONDAY_ANCHOR,
+        durationMinutes: 30,
+        assigneeIds: []
+      })
+    });
+    expect(standaloneResponse.status).toBe(201);
+    const standalone = (await standaloneResponse.json()) as { id: string };
+
+    const standaloneEvent = await getEvent(standalone.id);
+    expect(standaloneEvent.jobActivityId).toBeNull();
+  });
+
   it('skips the weekend when the anchor lands on Friday', async () => {
     const projectId = await createProject('Weekend Skip Job');
     const activities = await listActivities(projectId);

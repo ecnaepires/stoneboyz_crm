@@ -13,6 +13,7 @@ export interface ScheduledEvent {
   customerId: string;
   projectId: string | null;
   phaseId: string | null;
+  jobActivityId: string | null;
   eventType: ScheduledEventType;
   appointmentType: AppointmentType | null;
   templateKind: TemplateKind | null;

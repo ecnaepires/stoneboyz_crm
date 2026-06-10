@@ -61,6 +61,7 @@ export const scheduledEventSchema = z.object({
   customerId: z.string().uuid(),
   projectId: z.string().uuid().nullable(),
   phaseId: z.string().uuid().nullable(),
+  jobActivityId: z.string().uuid().nullable(),
   eventType: scheduledEventTypeSchema,
   appointmentType: appointmentTypeSchema.nullable(),
   templateKind: templateKindSchema.nullable(),

@@ -26,11 +26,16 @@ export interface ScheduledEventRow {
 const toIso = (value: Date): string => value.toISOString();
 const toNullableIso = (value: Date | null): string | null => (value === null ? null : toIso(value));
 
-export const mapScheduledEventRow = (row: ScheduledEventRow, assigneeIds: string[]): ScheduledEvent => ({
+export const mapScheduledEventRow = (
+  row: ScheduledEventRow,
+  assigneeIds: string[],
+  jobActivityId: string | null
+): ScheduledEvent => ({
   id: row.id,
   customerId: row.customer_id,
   projectId: row.project_id,
   phaseId: row.phase_id,
+  jobActivityId,
   eventType: row.event_type,
   appointmentType: row.appointment_type,
   templateKind: row.template_kind,

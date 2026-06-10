@@ -38,6 +38,7 @@ export type CalendarEvent = {
   customerName: string;
   projectId: string | null;
   projectTitle: string | null;
+  jobActivityId: string | null;
   eventType: "appointment" | "shop_job";
   appointmentType: string | null;
   title: string;
@@ -202,6 +203,13 @@ const eventMinuteOfDay = (event: CalendarEvent) => {
   const date = new Date(event.scheduledAt);
   return date.getHours() * 60 + date.getMinutes();
 };
+
+// Events created by scheduling a job activity open the activity editor;
+// standalone events keep the event detail page.
+const eventHref = (event: CalendarEvent) =>
+  event.jobActivityId && event.projectId
+    ? `/projects/${event.projectId}/activities/${event.jobActivityId}`
+    : `/customers/${event.customerId}/events/${event.id}`;
 
 export function ScheduleCalendar({
   customers,
@@ -401,7 +409,7 @@ export function ScheduleCalendar({
                 return (
                   <Link
                     key={event.id}
-                    href={`/customers/${event.customerId}/events/${event.id}`}
+                    href={eventHref(event)}
                     className="absolute left-3 right-3 rounded-md border px-3 py-2 text-sm shadow-sm"
                     style={{
                       ...taskStyle(taskColorKey(event)),
@@ -628,7 +636,7 @@ export function ScheduleCalendar({
               selectedEvents.map((event) => (
                 <Link
                   key={event.id}
-                  href={`/customers/${event.customerId}/events/${event.id}`}
+                  href={eventHref(event)}
                   className="block px-4 py-3 text-sm hover:bg-muted/40"
                 >
                   <div className="flex items-center justify-between gap-3">
