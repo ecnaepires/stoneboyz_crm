@@ -18,6 +18,7 @@ import {
   SCHEDULE_APPOINTMENT_TYPES,
   type ScheduleAppointmentType,
 } from "@/lib/schedule-links";
+import { AssigneeSelect, type AssigneeOption } from "@/components/assignee-select";
 import { createScheduleEventAction } from "./_actions";
 
 type CustomerOption = {
@@ -31,12 +32,6 @@ type ProjectOption = {
   customerId: string;
 };
 
-type UserOption = {
-  id: string;
-  name: string;
-  email: string;
-};
-
 export type CalendarEvent = {
   id: string;
   customerId: string;
@@ -48,7 +43,7 @@ export type CalendarEvent = {
   title: string;
   scheduledAt: string;
   durationMinutes: number;
-  assigneeUserIds: string[];
+  assigneeIds: string[];
   address: string | null;
   status: "scheduled" | "confirmed" | "in_progress" | "completed" | "cancelled";
 };
@@ -64,7 +59,7 @@ type CalendarDay = {
 interface ScheduleCalendarProps {
   customers: CustomerOption[];
   projects: ProjectOption[];
-  users: UserOption[];
+  assignees: AssigneeOption[];
   events: CalendarEvent[];
   days: CalendarDay[];
   selectedDateKey: string;
@@ -211,7 +206,7 @@ const eventMinuteOfDay = (event: CalendarEvent) => {
 export function ScheduleCalendar({
   customers,
   projects,
-  users,
+  assignees,
   events,
   days,
   selectedDateKey,
@@ -590,22 +585,7 @@ export function ScheduleCalendar({
               </div>
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="assigneeUserIds">Assignees</Label>
-              <Select
-                id="assigneeUserIds"
-                name="assigneeUserIds"
-                multiple
-                className="min-h-28"
-                disabled={users.length === 0}
-              >
-                {users.map((user) => (
-                  <option key={user.id} value={user.id}>
-                    {user.name} ({user.email})
-                  </option>
-                ))}
-              </Select>
-            </div>
+            <AssigneeSelect assignees={assignees} />
 
             <Button type="submit" className="w-full">
               <Plus className="mr-2 size-4" aria-hidden="true" />

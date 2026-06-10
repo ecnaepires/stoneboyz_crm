@@ -82,6 +82,7 @@ export {
 export * from './orders/index.js';
 export * from './price-lists/index.js';
 export * from './job-templates/index.js';
+export * from './job-activities/index.js';
 export * from './job-checklists/index.js';
 export * from './issues/index.js';
 export * from './attachments/index.js';
@@ -97,4 +98,5 @@ export * from './activity-notes/activity-note.schemas.js';
 export * from './phases/index.js';
 export * from './quotes/index.js';
 export * from './scheduling/index.js';
+export * from './assignees/index.js';
 export * from './validators/slab-measurement.js';

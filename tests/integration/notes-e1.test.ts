@@ -8,6 +8,7 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { AppModule } from '../../apps/api/src/app.module.js';
 import { DATABASE_POOL } from '../../apps/api/src/database.provider.js';
 import { seedTestSession } from './helpers/auth.js';
+import { getDefaultJobTemplateId } from './helpers/job-templates.js';
 import { setTestAuthToken } from './helpers/test-auth.js';
 
 const ACTOR_USER_ID = '22222222-2222-4222-8222-222222222222';
@@ -55,6 +56,7 @@ const createCustomer = async (): Promise<Record<string, unknown>> => {
 };
 
 const createProject = async (customerId: string): Promise<Record<string, unknown>> => {
+  const jobTemplateId = await getDefaultJobTemplateId(baseUrl);
   const res = await fetch(`${baseUrl}/api/v1/projects`, {
     method: 'POST',
     headers: getAuthHeaders(),
@@ -62,6 +64,7 @@ const createProject = async (customerId: string): Promise<Record<string, unknown
       actorUserId: ACTOR_USER_ID,
       customerId,
       title: 'Kitchen Remodel',
+      jobTemplateId,
       description: 'Granite kitchen countertops',
       status: 'draft',
       ownerUserId: ACTOR_USER_ID

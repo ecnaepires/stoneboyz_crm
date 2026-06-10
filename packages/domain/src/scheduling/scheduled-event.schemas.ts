@@ -15,9 +15,9 @@ const actorSchema = z.object({});
 
 const dateTimeSchema = z.string().datetime({ offset: true });
 const nullableDateTimeSchema = dateTimeSchema.nullable();
-const assigneeUserIdsSchema = z.array(z.string().uuid()).min(1).refine(
+const assigneeIdsSchema = z.array(z.string().uuid()).refine(
   (ids) => new Set(ids).size === ids.length,
-  { message: 'Assignee user IDs must be unique' }
+  { message: 'Assignee IDs must be unique' }
 );
 
 const validateAppointmentType = (
@@ -67,7 +67,7 @@ export const scheduledEventSchema = z.object({
   title: z.string(),
   scheduledAt: dateTimeSchema,
   durationMinutes: z.number().int(),
-  assigneeUserIds: assigneeUserIdsSchema,
+  assigneeIds: assigneeIdsSchema,
   address: z.string().nullable(),
   status: scheduledEventStatusSchema,
   startedByUserId: z.string().uuid().nullable(),
@@ -90,7 +90,7 @@ export const createScheduledEventSchema = z.object({
   title: z.string().min(1),
   scheduledAt: dateTimeSchema,
   durationMinutes: z.number().int().min(1).default(60),
-  assigneeUserIds: assigneeUserIdsSchema,
+  assigneeIds: assigneeIdsSchema.default([]),
   address: z.string().min(1).optional()
 }).superRefine(validateAppointmentType);
 
@@ -102,7 +102,7 @@ export const updateScheduledEventSchema = z.object({
   title: z.string().min(1).optional(),
   scheduledAt: dateTimeSchema.optional(),
   durationMinutes: z.number().int().min(1).optional(),
-  assigneeUserIds: assigneeUserIdsSchema.optional(),
+  assigneeIds: assigneeIdsSchema.optional(),
   address: z.string().min(1).nullable().optional()
 }).refine((input) => Object.keys(input).length > 0, {
   message: 'At least one field is required',

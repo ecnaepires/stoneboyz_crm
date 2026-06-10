@@ -2,7 +2,6 @@
 
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
-import { getActorUserId } from '@/lib/actor';
 import { getApiClientWithAuth } from '@/lib/api';
 
 type ScheduledEventType = 'appointment' | 'shop_job';
@@ -23,7 +22,7 @@ const toIsoDateTime = (value: FormDataEntryValue | null) => {
   return new Date(stringValue).toISOString();
 };
 
-const toAssigneeUserIds = (values: FormDataEntryValue[]) => {
+const toAssigneeIds = (values: FormDataEntryValue[]) => {
   return values
     .filter((value): value is string => typeof value === 'string')
     .map((assignee) => assignee.trim())
@@ -32,7 +31,6 @@ const toAssigneeUserIds = (values: FormDataEntryValue[]) => {
 
 export async function createEventAction(customerId: string, formData: FormData) {
   const client = await getApiClientWithAuth();
-  const actorUserId = await getActorUserId();
 
   const eventType = formData.get('eventType') as ScheduledEventType;
   const projectId = toOptionalString(formData.get('projectId'));
@@ -41,7 +39,7 @@ export async function createEventAction(customerId: string, formData: FormData) 
     | undefined;
   const address = toOptionalString(formData.get('address'));
   const notes = toOptionalString(formData.get('notes'));
-  const assigneeUserIds = toAssigneeUserIds(formData.getAll('assigneeUserIds'));
+  const assigneeIds = toAssigneeIds(formData.getAll('assigneeIds'));
 
   const { data, error } = await client.POST('/customers/{customerId}/events', {
     params: { path: { customerId } },
@@ -50,7 +48,7 @@ export async function createEventAction(customerId: string, formData: FormData) 
       title: formData.get('title') as string,
       scheduledAt: toIsoDateTime(formData.get('scheduledAt')),
       durationMinutes: Number(formData.get('durationMinutes') || 60),
-      assigneeUserIds: assigneeUserIds.length > 0 ? assigneeUserIds : [actorUserId],
+      assigneeIds,
       ...(appointmentType ? { appointmentType } : {}),
       ...(projectId ? { projectId } : {}),
       ...(address ? { address } : {}),
@@ -67,12 +65,11 @@ export async function createEventAction(customerId: string, formData: FormData) 
 
 export async function updateEventAction(customerId: string, eventId: string, formData: FormData) {
   const client = await getApiClientWithAuth();
-  const actorUserId = await getActorUserId();
 
   const appointmentType = toOptionalString(formData.get('appointmentType')) as
     | AppointmentType
     | undefined;
-  const assigneeUserIds = toAssigneeUserIds(formData.getAll('assigneeUserIds'));
+  const assigneeIds = toAssigneeIds(formData.getAll('assigneeIds'));
 
   const { error } = await client.PATCH('/customers/{customerId}/events/{eventId}', {
     params: { path: { customerId, eventId } },
@@ -81,7 +78,7 @@ export async function updateEventAction(customerId: string, eventId: string, for
       title: formData.get('title') as string,
       scheduledAt: toIsoDateTime(formData.get('scheduledAt')),
       durationMinutes: Number(formData.get('durationMinutes') || 60),
-      assigneeUserIds: assigneeUserIds.length > 0 ? assigneeUserIds : [actorUserId],
+      assigneeIds,
       address: toOptionalNullableString(formData.get('address')),
       notes: toOptionalNullableString(formData.get('notes')),
       ...(appointmentType ? { appointmentType } : {}),

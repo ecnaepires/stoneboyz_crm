@@ -10,6 +10,6 @@ import { ScheduledEventsService } from './scheduled-events.service.js';
   imports: [EventsModule, JobChecklistsModule],
   controllers: [ScheduledEventsController],
   providers: [databaseProvider, ScheduledEventsRepository, ScheduledEventsService],
-  exports: [DATABASE_POOL]
+  exports: [DATABASE_POOL, ScheduledEventsRepository, ScheduledEventsService]
 })
 export class ScheduledEventsModule {}

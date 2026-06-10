@@ -8,6 +8,7 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { AppModule } from '../../apps/api/src/app.module.js';
 import { DATABASE_POOL } from '../../apps/api/src/database.provider.js';
 import { seedTestSession } from './helpers/auth.js';
+import { getDefaultJobTemplateId } from './helpers/job-templates.js';
 import { setTestAuthToken } from './helpers/test-auth.js';
 
 const SEEDED_CUSTOMER_ID = '11111111-1111-4111-8111-111111111111';
@@ -43,12 +44,14 @@ const ordersUrl = (customerId = SEEDED_CUSTOMER_ID): string =>
   `${baseUrl}/api/v1/customers/${customerId}/orders`;
 
 const createProject = async (title = 'Deposit Pipeline Job'): Promise<Record<string, unknown>> => {
+  const jobTemplateId = await getDefaultJobTemplateId(baseUrl);
   const response = await fetch(`${baseUrl}/api/v1/projects`, {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
     body: JSON.stringify({
       customerId: SEEDED_CUSTOMER_ID,
       title,
+      jobTemplateId,
       ownerUserId: ACTOR_USER_ID
     })
   });
@@ -445,9 +448,7 @@ describe('DELETE /customers/:customerId/orders/:orderId/payments/:paymentId', ()
     const paymentId = payment['id'] as string;
 
     const response = await fetch(`${ordersUrl()}/${orderId}/payments/${paymentId}`, {
-      method: 'DELETE',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ actorUserId: ACTOR_USER_ID })
+      method: 'DELETE'
     });
 
     expect(response.status).toBe(200);

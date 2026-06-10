@@ -11,7 +11,6 @@ export interface ScheduledEventRow {
   title: string;
   scheduled_at: Date;
   duration_minutes: number;
-  assignee_user_ids: string[];
   address: string | null;
   status: ScheduledEvent['status'];
   started_by_user_id: string | null;
@@ -27,7 +26,7 @@ export interface ScheduledEventRow {
 const toIso = (value: Date): string => value.toISOString();
 const toNullableIso = (value: Date | null): string | null => (value === null ? null : toIso(value));
 
-export const mapScheduledEventRow = (row: ScheduledEventRow): ScheduledEvent => ({
+export const mapScheduledEventRow = (row: ScheduledEventRow, assigneeIds: string[]): ScheduledEvent => ({
   id: row.id,
   customerId: row.customer_id,
   projectId: row.project_id,
@@ -38,7 +37,7 @@ export const mapScheduledEventRow = (row: ScheduledEventRow): ScheduledEvent => 
   title: row.title,
   scheduledAt: toIso(row.scheduled_at),
   durationMinutes: row.duration_minutes,
-  assigneeUserIds: row.assignee_user_ids,
+  assigneeIds,
   address: row.address,
   status: row.status,
   startedByUserId: row.started_by_user_id,

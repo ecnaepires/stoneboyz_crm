@@ -34,7 +34,7 @@ export default async function EventDetailPage({
   const { id: customerId, eventId } = await params;
   const client = await getApiClientWithAuth();
 
-  const [{ data: event, error }, { data: customer }, { data: notesRes }, { data: usersRes }] = await Promise.all([
+  const [{ data: event, error }, { data: customer }, { data: notesRes }, { data: usersRes }, { data: assigneesRes }] = await Promise.all([
     client.GET('/customers/{customerId}/events/{eventId}', {
       params: { path: { customerId, eventId } },
     }),
@@ -43,6 +43,7 @@ export default async function EventDetailPage({
       params: { path: { customerId, eventId } },
     }),
     client.GET('/users', {}),
+    client.GET('/assignees', {}),
   ]);
 
   if (error || !event) {
@@ -64,6 +65,7 @@ export default async function EventDetailPage({
   const addNoteWithIds = addActivityNoteAction.bind(null, customerId, eventId);
   const notes = notesRes ?? [];
   const authorById = new Map<string, string>((usersRes ?? []).map((user) => [user.id, user.name]));
+  const assigneeNameById = new Map<string, string>((assigneesRes ?? []).map((assignee) => [assignee.id, assignee.name]));
 
   return (
     <div className="max-w-3xl">
@@ -161,7 +163,7 @@ export default async function EventDetailPage({
               </div>
               <div className="col-span-2">
                 <dt className="text-muted-foreground">Assignees</dt>
-                <dd>{event.assigneeUserIds.join(', ') || '-'}</dd>
+                <dd>{event.assigneeIds.map((assigneeId) => assigneeNameById.get(assigneeId) ?? assigneeId).join(', ') || '-'}</dd>
               </div>
               <div>
                 <dt className="text-muted-foreground">Project</dt>

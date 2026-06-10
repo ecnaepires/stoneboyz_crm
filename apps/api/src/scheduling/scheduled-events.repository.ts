@@ -33,13 +33,18 @@ const UPDATE_COLUMNS = {
   title: 'title',
   scheduledAt: 'scheduled_at',
   durationMinutes: 'duration_minutes',
-  assigneeUserIds: 'assignee_user_ids',
   address: 'address'
-} satisfies Record<Exclude<keyof UpdateScheduledEventInput, 'actorUserId'>, string>;
+} satisfies Record<Exclude<keyof UpdateScheduledEventInput, 'actorUserId' | 'assigneeIds'>, string>;
 
 export class InvalidScheduledEventCursorError extends Error {
   constructor() {
     super('Invalid scheduled event cursor');
+  }
+}
+
+export class UnknownAssigneeError extends Error {
+  constructor() {
+    super('One or more assignees do not exist');
   }
 }
 
@@ -145,9 +150,10 @@ export class ScheduledEventsRepository {
     );
 
     const rows = result.rows.slice(0, input.limit);
+    const assigneeIdsByEvent = await this.loadAssigneeIds(rows.map((row) => row.id));
 
     return {
-      data: rows.map(mapScheduledEventRow),
+      data: rows.map((row) => mapScheduledEventRow(row, assigneeIdsByEvent.get(row.id) ?? [])),
       hasMore: result.rows.length > input.limit,
       nextCursor:
         result.rows.length > input.limit && rows.at(-1) !== undefined
@@ -157,40 +163,68 @@ export class ScheduledEventsRepository {
   }
 
   async create(customerId: string, input: CreateScheduledEventInput): Promise<ScheduledEvent> {
-    const result = await this.pool.query<ScheduledEventRow>(
-      `
-        INSERT INTO scheduled_events (
-          customer_id,
-          project_id,
-          phase_id,
-          event_type,
-          appointment_type,
-          template_kind,
-          title,
-          scheduled_at,
-          duration_minutes,
-          assignee_user_ids,
-          address
-        )
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10::uuid[], $11)
-        RETURNING *
-      `,
-      [
-        customerId,
-        input.projectId ?? null,
-        input.phaseId ?? null,
-        input.eventType,
-        input.appointmentType ?? null,
-        input.templateKind ?? null,
-        input.title,
-        input.scheduledAt,
-        input.durationMinutes ?? 60,
-        input.assigneeUserIds,
-        input.address ?? null
-      ]
-    );
+    const assigneeIds = input.assigneeIds ?? [];
+    const client = await this.pool.connect();
 
-    return mapScheduledEventRow(result.rows[0] as ScheduledEventRow);
+    try {
+      await client.query('BEGIN');
+
+      if (assigneeIds.length > 0) {
+        await this.ensureAssigneesExist(client, assigneeIds);
+      }
+
+      const result = await client.query<ScheduledEventRow>(
+        `
+          INSERT INTO scheduled_events (
+            customer_id,
+            project_id,
+            phase_id,
+            event_type,
+            appointment_type,
+            template_kind,
+            title,
+            scheduled_at,
+            duration_minutes,
+            address
+          )
+          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+          RETURNING *
+        `,
+        [
+          customerId,
+          input.projectId ?? null,
+          input.phaseId ?? null,
+          input.eventType,
+          input.appointmentType ?? null,
+          input.templateKind ?? null,
+          input.title,
+          input.scheduledAt,
+          input.durationMinutes ?? 60,
+          input.address ?? null
+        ]
+      );
+
+      const row = result.rows[0] as ScheduledEventRow;
+
+      if (assigneeIds.length > 0) {
+        await client.query(
+          `
+            INSERT INTO scheduled_event_assignees (scheduled_event_id, assignee_id)
+            SELECT $1, unnest($2::uuid[])
+          `,
+          [row.id, assigneeIds]
+        );
+      }
+
+      await client.query('COMMIT');
+
+      return mapScheduledEventRow(row, assigneeIds);
+    } catch (error) {
+      await client.query('ROLLBACK');
+      throw error;
+    } finally {
+      client.release();
+    }
   }
 
   async findById(customerId: string, eventId: string): Promise<ScheduledEvent | null> {
@@ -205,7 +239,48 @@ export class ScheduledEventsRepository {
 
     const row = result.rows[0];
 
-    return row === undefined ? null : mapScheduledEventRow(row);
+    return row === undefined ? null : this.withAssigneeIds(row);
+  }
+
+  private async withAssigneeIds(row: ScheduledEventRow): Promise<ScheduledEvent> {
+    const assigneeIdsByEvent = await this.loadAssigneeIds([row.id]);
+    return mapScheduledEventRow(row, assigneeIdsByEvent.get(row.id) ?? []);
+  }
+
+  private async loadAssigneeIds(eventIds: string[]): Promise<Map<string, string[]>> {
+    if (eventIds.length === 0) {
+      return new Map();
+    }
+
+    const result = await this.pool.query<{ scheduled_event_id: string; assignee_ids: string[] }>(
+      `
+        SELECT scheduled_event_id, array_agg(assignee_id ORDER BY created_at, assignee_id) AS assignee_ids
+        FROM scheduled_event_assignees
+        WHERE scheduled_event_id = ANY($1::uuid[])
+        GROUP BY scheduled_event_id
+      `,
+      [eventIds]
+    );
+
+    return new Map(result.rows.map((row) => [row.scheduled_event_id, row.assignee_ids]));
+  }
+
+  private async ensureAssigneesExist(
+    client: { query: Pool['query'] },
+    assigneeIds: string[]
+  ): Promise<void> {
+    const result = await client.query<{ count: string }>(
+      `
+        SELECT count(*)::text AS count
+        FROM assignees
+        WHERE id = ANY($1::uuid[]) AND archived_at IS NULL
+      `,
+      [assigneeIds]
+    );
+
+    if (Number(result.rows[0]?.count ?? 0) !== assigneeIds.length) {
+      throw new UnknownAssigneeError();
+    }
   }
 
   async update(customerId: string, eventId: string, input: UpdateScheduledEventInput): Promise<ScheduledEvent | null> {
@@ -220,8 +295,7 @@ export class ScheduledEventsRepository {
       const typedFieldName = fieldName as keyof UpdateScheduledEventInput;
 
       if (Object.hasOwn(input, typedFieldName)) {
-        const placeholder = addValue(input[typedFieldName]);
-        assignments.push(`${columnName} = ${fieldName === 'assigneeUserIds' ? `${placeholder}::uuid[]` : placeholder}`);
+        assignments.push(`${columnName} = ${addValue(input[typedFieldName])}`);
       }
     }
 
@@ -230,31 +304,66 @@ export class ScheduledEventsRepository {
     const customerPlaceholder = addValue(customerId);
     const eventPlaceholder = addValue(eventId);
 
-    const result = await this.pool.query<ScheduledEventRow>(
-      `
-        UPDATE scheduled_events
-        SET ${assignments.join(', ')}
-        WHERE customer_id = ${customerPlaceholder}
-          AND id = ${eventPlaceholder}
-          AND deleted_at IS NULL
-          AND status IN ('scheduled', 'confirmed')
-        RETURNING *
-      `,
-      values
-    );
+    const client = await this.pool.connect();
 
-    const row = result.rows[0];
+    try {
+      await client.query('BEGIN');
 
-    if (row !== undefined) {
-      return mapScheduledEventRow(row);
+      const result = await client.query<ScheduledEventRow>(
+        `
+          UPDATE scheduled_events
+          SET ${assignments.join(', ')}
+          WHERE customer_id = ${customerPlaceholder}
+            AND id = ${eventPlaceholder}
+            AND deleted_at IS NULL
+            AND status IN ('scheduled', 'confirmed')
+          RETURNING *
+        `,
+        values
+      );
+
+      const row = result.rows[0];
+
+      if (row === undefined) {
+        await client.query('ROLLBACK');
+
+        const current = await this.findById(customerId, eventId);
+        if (current !== null) {
+          throw new InvalidScheduledEventStatusError();
+        }
+
+        return null;
+      }
+
+      if (input.assigneeIds !== undefined) {
+        if (input.assigneeIds.length > 0) {
+          await this.ensureAssigneesExist(client, input.assigneeIds);
+        }
+
+        await client.query('DELETE FROM scheduled_event_assignees WHERE scheduled_event_id = $1', [row.id]);
+
+        if (input.assigneeIds.length > 0) {
+          await client.query(
+            `
+              INSERT INTO scheduled_event_assignees (scheduled_event_id, assignee_id)
+              SELECT $1, unnest($2::uuid[])
+            `,
+            [row.id, input.assigneeIds]
+          );
+        }
+      }
+
+      await client.query('COMMIT');
+
+      return this.withAssigneeIds(row);
+    } catch (error) {
+      if (!(error instanceof InvalidScheduledEventStatusError)) {
+        await client.query('ROLLBACK').catch(() => undefined);
+      }
+      throw error;
+    } finally {
+      client.release();
     }
-
-    const current = await this.findById(customerId, eventId);
-    if (current !== null) {
-      throw new InvalidScheduledEventStatusError();
-    }
-
-    return null;
   }
 
   async confirm(customerId: string, eventId: string): Promise<ScheduledEvent | null> {
@@ -298,7 +407,7 @@ export class ScheduledEventsRepository {
     const row = result.rows[0];
 
     if (row !== undefined) {
-      return mapScheduledEventRow(row);
+      return this.withAssigneeIds(row);
     }
 
     const current = await this.findById(customerId, eventId);
@@ -331,7 +440,7 @@ export class ScheduledEventsRepository {
     const row = result.rows[0];
 
     if (row !== undefined) {
-      return mapScheduledEventRow(row);
+      return this.withAssigneeIds(row);
     }
 
     const current = await this.findById(customerId, eventId);
@@ -366,7 +475,7 @@ export class ScheduledEventsRepository {
     const row = result.rows[0];
 
     if (row !== undefined) {
-      return mapScheduledEventRow(row);
+      return this.withAssigneeIds(row);
     }
 
     const current = await this.findById(customerId, eventId);

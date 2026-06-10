@@ -53,7 +53,6 @@ const createEvent = async (
       title: 'Measure kitchen countertops',
       scheduledAt: '2026-06-01T14:00:00.000Z',
       durationMinutes: 90,
-      assigneeUserIds: [ASSIGNEE_USER_ID],
       address: '123 Main St',
       notes: 'Bring laser measure',
       ...body
@@ -111,7 +110,7 @@ describe('scheduled events', () => {
       title: 'Measure kitchen countertops',
       scheduledAt: '2026-06-01T14:00:00.000Z',
       durationMinutes: 90,
-      assigneeUserIds: [ASSIGNEE_USER_ID],
+      assigneeIds: [],
       status: 'scheduled',
       archivedAt: null,
       archivedByUserId: null

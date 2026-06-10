@@ -7,7 +7,7 @@ import { ScheduleCalendar, type CalendarEvent } from './ScheduleCalendar';
 type Customer = components['schemas']['Customer'];
 type Project = components['schemas']['Project'];
 type ScheduledEvent = components['schemas']['ScheduledEvent'];
-type UserProfile = components['schemas']['UserProfile'];
+type Assignee = components['schemas']['Assignee'];
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
 
@@ -75,7 +75,7 @@ const normalizeEvent = (
   title: event.title,
   scheduledAt: event.scheduledAt,
   durationMinutes: event.durationMinutes,
-  assigneeUserIds: event.assigneeUserIds,
+  assigneeIds: event.assigneeIds,
   address: event.address ?? null,
   status: event.status,
 });
@@ -90,10 +90,10 @@ export default async function SchedulePage({
   const todayKey = dateKey(new Date());
   const client = await getApiClientWithAuth();
 
-  const [{ data: customersRes, error: customersError }, { data: projectsRes }, { data: usersRes }] = await Promise.all([
+  const [{ data: customersRes, error: customersError }, { data: projectsRes }, { data: assigneesRes }] = await Promise.all([
     client.GET('/customers', { params: { query: { limit: 100 } } }),
     client.GET('/projects', { params: { query: { limit: 100 } } }),
-    client.GET('/users', {}),
+    client.GET('/assignees', {}),
   ]);
 
   if (customersError) {
@@ -106,7 +106,7 @@ export default async function SchedulePage({
 
   const customers = customersRes?.data ?? [];
   const projects = projectsRes?.data ?? [];
-  const users = (usersRes ?? []) as UserProfile[];
+  const assignees = (assigneesRes ?? []) as Assignee[];
   const selectedProject = projectId ? projects.find((project) => project.id === projectId) ?? null : null;
   const selectedCustomerId = selectedProject?.customerId ?? requestedCustomerId;
   const selectedProjectId = selectedProject?.customerId === selectedCustomerId ? selectedProject.id : '';
@@ -144,7 +144,11 @@ export default async function SchedulePage({
     <ScheduleCalendar
       customers={customers.map((customer) => ({ id: customer.id, name: customer.name }))}
       projects={projects.map((project) => ({ id: project.id, title: project.title, customerId: project.customerId }))}
-      users={users.map((user) => ({ id: user.id, name: user.name, email: user.email }))}
+      assignees={assignees.map((assignee) => ({
+        id: assignee.id,
+        name: assignee.name,
+        assigneeType: assignee.assigneeType,
+      }))}
       events={events}
       days={buildMonthDays(selectedDate, todayKey)}
       selectedDateKey={dateKey(selectedDate)}

@@ -9,6 +9,7 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { AppModule } from '../../apps/api/src/app.module.js';
 import { DATABASE_POOL } from '../../apps/api/src/database.provider.js';
 import { seedTestSession, TEST_ACTOR_USER_ID } from './helpers/auth.js';
+import { getDefaultJobTemplateId } from './helpers/job-templates.js';
 import { setTestAuthToken } from './helpers/test-auth.js';
 
 const SEEDED_CUSTOMER_ID = '11111111-1111-4111-8111-111111111111';
@@ -29,10 +30,11 @@ let app: INestApplication;
 let baseUrl: string;
 
 const createProject = async (title = 'Auto Advance Job'): Promise<string> => {
+  const jobTemplateId = await getDefaultJobTemplateId(baseUrl);
   const response = await fetch(`${baseUrl}/api/v1/projects`, {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ customerId: SEEDED_CUSTOMER_ID, title, ownerUserId: TEST_ACTOR_USER_ID })
+    body: JSON.stringify({ customerId: SEEDED_CUSTOMER_ID, title, jobTemplateId, ownerUserId: TEST_ACTOR_USER_ID })
   });
   expect(response.status).toBe(201);
   return ((await response.json()) as { id: string }).id;
@@ -62,7 +64,6 @@ const createEvent = async (params: { projectId?: string; appointmentType: string
       appointmentType: params.appointmentType,
       title: 'Appt',
       scheduledAt: new Date(Date.now() + 3_600_000).toISOString(),
-      assigneeUserIds: [TEST_ACTOR_USER_ID],
       ...(params.projectId ? { projectId: params.projectId } : {})
     })
   });

@@ -101,12 +101,12 @@ const formatDateTime = (value: string | null | undefined) =>
 const labelize = (value: string | null | undefined) =>
   value ? value.replace(/_/g, ' ') : '-';
 
-const assigneeLabel = (assigneeUserIds: string[] | undefined) => {
-  if (!assigneeUserIds?.length) {
+const assigneeLabel = (assigneeIds: string[] | undefined, assigneeNameById: Map<string, string>) => {
+  if (!assigneeIds?.length) {
     return '-';
   }
 
-  return assigneeUserIds.length === 1 ? '1 user' : `${assigneeUserIds.length} users`;
+  return assigneeIds.map((assigneeId) => assigneeNameById.get(assigneeId) ?? assigneeId).join(', ');
 };
 
 const statusClass = (status: string) => {
@@ -178,6 +178,7 @@ export default async function ProjectDetailPage({ params }: ProjectDetailPagePro
     { data: notesRes },
     { data: usersRes },
     { data: phasesRes },
+    { data: assigneesRes },
   ] = await Promise.all([
     client.GET('/customers/{customerId}', {
       params: { path: { customerId: project.customerId } },
@@ -213,6 +214,7 @@ export default async function ProjectDetailPage({ params }: ProjectDetailPagePro
     (client as unknown as ProjectDetailQueryClient).GET('/customers/{customerId}/projects/{projectId}/phases', {
       params: { path: { customerId: project.customerId, projectId: id } },
     }),
+    client.GET('/assignees', {}),
   ]);
 
   const contacts = contactsRes?.data ?? [];
@@ -236,6 +238,7 @@ export default async function ProjectDetailPage({ params }: ProjectDetailPagePro
       ).data
     : undefined;
   const authorById = new Map<string, string>((usersRes ?? []).map((user) => [user.id, user.name]));
+  const assigneeNameById = new Map<string, string>((assigneesRes ?? []).map((assignee) => [assignee.id, assignee.name]));
   const primaryContact = contacts.find((contact) => contact.isPrimary) ?? contacts[0];
   const primaryAddress = addresses.find((address) => address.isPrimary) ?? addresses[0];
   const firstQuote = quotes[0];
@@ -455,7 +458,7 @@ export default async function ProjectDetailPage({ params }: ProjectDetailPagePro
                     </TableCell>
                     <TableCell>{formatDate(event?.scheduledAt)}</TableCell>
                     <TableCell>{activity.durationMinutes} min</TableCell>
-                    <TableCell>{assigneeLabel(event?.assigneeUserIds)}</TableCell>
+                    <TableCell>{assigneeLabel(event?.assigneeIds, assigneeNameById)}</TableCell>
                     <TableCell>
                       <Button asChild variant="outline" size="sm">
                         <Link href={`/projects/${id}/activities/${activity.id}`}>

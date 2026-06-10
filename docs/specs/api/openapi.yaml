@@ -1274,7 +1274,7 @@ components:
 
     ScheduleJobActivityRequest:
       type: object
-      required: [scheduledAt, assigneeUserIds]
+      required: [scheduledAt]
       properties:
         scheduledAt:
           type: string
@@ -1282,12 +1282,12 @@ components:
         durationMinutes:
           type: integer
           minimum: 1
-        assigneeUserIds:
+        assigneeIds:
           type: array
-          minItems: 1
           items:
             type: string
             format: uuid
+          description: Assignee resource IDs; may be empty.
 
     UpdateProjectRequest:
       type: object
@@ -2711,6 +2711,58 @@ components:
       type: string
       enum: [scheduled, confirmed, in_progress, completed, cancelled]
 
+    Assignee:
+      type: object
+      required:
+        - id
+        - name
+        - assigneeType
+        - active
+        - createdAt
+        - updatedAt
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        assigneeType:
+          type: string
+          enum: [person, team, crew, truck, equipment, machine, department, contractor]
+        active:
+          type: boolean
+        linkedUserId:
+          type: string
+          nullable: true
+        notes:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+        archivedAt:
+          type: string
+          format: date-time
+          nullable: true
+
+    CreateAssigneeRequest:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+          minLength: 1
+        assigneeType:
+          type: string
+          enum: [person, team, crew, truck, equipment, machine, department, contractor]
+          default: person
+        notes:
+          type: string
+          minLength: 1
+
     ScheduledEvent:
       type: object
       required:
@@ -2720,7 +2772,7 @@ components:
         - title
         - scheduledAt
         - durationMinutes
-        - assigneeUserIds
+        - assigneeIds
         - status
         - createdAt
         - updatedAt
@@ -2756,13 +2808,12 @@ components:
           type: integer
           minimum: 1
           default: 60
-        assigneeUserIds:
+        assigneeIds:
           type: array
           items:
             type: string
             format: uuid
-          minItems: 1
-          description: At least one assignee UUID required; no duplicates.
+          description: Assignee resource IDs; no duplicates.
         address:
           type: string
           nullable: true
@@ -2806,7 +2857,7 @@ components:
     CreateScheduledEventRequest:
       type: object
       required:
-        [title, eventType, scheduledAt, durationMinutes, assigneeUserIds]
+        [title, eventType, scheduledAt, durationMinutes]
       properties:
         customerId:
           type: string
@@ -2835,12 +2886,12 @@ components:
           type: integer
           minimum: 1
           default: 60
-        assigneeUserIds:
+        assigneeIds:
           type: array
           items:
             type: string
             format: uuid
-          minItems: 1
+          description: Assignee resource IDs; may be empty.
         address:
           type: string
         notes:
@@ -2872,12 +2923,12 @@ components:
         durationMinutes:
           type: integer
           minimum: 1
-        assigneeUserIds:
+        assigneeIds:
           type: array
           items:
             type: string
             format: uuid
-          minItems: 1
+          description: Assignee resource IDs; may be empty.
         address:
           type: string
           nullable: true
@@ -3931,6 +3982,42 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/PaginatedOrdersResponse"
+        "400":
+          description: Invalid request.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /assignees:
+    get:
+      operationId: listAssignees
+      summary: List active assignees
+      responses:
+        "200":
+          description: Assignees returned.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Assignee"
+    post:
+      operationId: createAssignee
+      summary: Create an assignee
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateAssigneeRequest"
+      responses:
+        "201":
+          description: Assignee created.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Assignee"
         "400":
           description: Invalid request.
           content:

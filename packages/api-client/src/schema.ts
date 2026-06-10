@@ -230,6 +230,24 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/assignees": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List active assignees */
+        get: operations["listAssignees"];
+        put?: never;
+        /** Create an assignee */
+        post: operations["createAssignee"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/users/me": {
         parameters: {
             query?: never;
@@ -1898,7 +1916,8 @@ export interface components {
             /** Format: date-time */
             scheduledAt: string;
             durationMinutes?: number;
-            assigneeUserIds: string[];
+            /** @description Assignee resource IDs; may be empty. */
+            assigneeIds?: string[];
         };
         UpdateProjectRequest: {
             /** Format: uuid */
@@ -2503,6 +2522,31 @@ export interface components {
         AppointmentType: "template" | "deposit" | "material" | "cut" | "fabrication" | "install" | "invoice" | "repair" | "other";
         /** @enum {string} */
         ScheduledEventStatus: "scheduled" | "confirmed" | "in_progress" | "completed" | "cancelled";
+        Assignee: {
+            /** Format: uuid */
+            id: string;
+            name: string;
+            /** @enum {string} */
+            assigneeType: "person" | "team" | "crew" | "truck" | "equipment" | "machine" | "department" | "contractor";
+            active: boolean;
+            linkedUserId?: string | null;
+            notes?: string | null;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+            /** Format: date-time */
+            archivedAt?: string | null;
+        };
+        CreateAssigneeRequest: {
+            name: string;
+            /**
+             * @default person
+             * @enum {string}
+             */
+            assigneeType: "person" | "team" | "crew" | "truck" | "equipment" | "machine" | "department" | "contractor";
+            notes?: string;
+        };
         ScheduledEvent: {
             /** Format: uuid */
             id: string;
@@ -2526,8 +2570,8 @@ export interface components {
             scheduledAt: string;
             /** @default 60 */
             durationMinutes: number;
-            /** @description At least one assignee UUID required; no duplicates. */
-            assigneeUserIds: string[];
+            /** @description Assignee resource IDs; no duplicates. */
+            assigneeIds: string[];
             /** @description Site address; most relevant for appointment events. */
             address?: string | null;
             notes?: string | null;
@@ -2570,7 +2614,8 @@ export interface components {
             scheduledAt: string;
             /** @default 60 */
             durationMinutes: number;
-            assigneeUserIds: string[];
+            /** @description Assignee resource IDs; may be empty. */
+            assigneeIds?: string[];
             address?: string;
             notes?: string;
         };
@@ -2588,7 +2633,8 @@ export interface components {
              */
             scheduledAt?: string;
             durationMinutes?: number;
-            assigneeUserIds?: string[];
+            /** @description Assignee resource IDs; may be empty. */
+            assigneeIds?: string[];
             address?: string | null;
             notes?: string | null;
         };
@@ -3336,6 +3382,59 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PaginatedOrdersResponse"];
+                };
+            };
+            /** @description Invalid request. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    listAssignees: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Assignees returned. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Assignee"][];
+                };
+            };
+        };
+    };
+    createAssignee: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateAssigneeRequest"];
+            };
+        };
+        responses: {
+            /** @description Assignee created. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Assignee"];
                 };
             };
             /** @description Invalid request. */

@@ -20,7 +20,8 @@ import {
 import {
   InvalidScheduledEventCursorError,
   InvalidScheduledEventStatusError,
-  ScheduledEventsRepository
+  ScheduledEventsRepository,
+  UnknownAssigneeError
 } from './scheduled-events.repository.js';
 
 const FOREIGN_KEY_VIOLATION_CODE = '23503';
@@ -78,6 +79,14 @@ export class ScheduledEventsService {
 
       return scheduledEvent;
     } catch (error) {
+      if (error instanceof UnknownAssigneeError) {
+        throw new BadRequestException({
+          code: 'VALIDATION_ERROR',
+          message: 'Request validation failed',
+          details: { assigneeIds: ['One or more assignees do not exist'] }
+        });
+      }
+
       if (isDatabaseError(error) && error.code === FOREIGN_KEY_VIOLATION_CODE) {
         throw new NotFoundException({ code: 'NOT_FOUND', message: 'Project not found' });
       }
@@ -125,6 +134,14 @@ export class ScheduledEventsService {
     } catch (error) {
       if (error instanceof InvalidScheduledEventStatusError) {
         throw this.invalidStatus('Event status does not allow updates');
+      }
+
+      if (error instanceof UnknownAssigneeError) {
+        throw new BadRequestException({
+          code: 'VALIDATION_ERROR',
+          message: 'Request validation failed',
+          details: { assigneeIds: ['One or more assignees do not exist'] }
+        });
       }
 
       if (isDatabaseError(error) && error.code === FOREIGN_KEY_VIOLATION_CODE) {

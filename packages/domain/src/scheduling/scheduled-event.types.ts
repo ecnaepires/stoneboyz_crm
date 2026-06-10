@@ -19,7 +19,7 @@ export interface ScheduledEvent {
   title: string;
   scheduledAt: string;
   durationMinutes: number;
-  assigneeUserIds: string[];
+  assigneeIds: string[];
   address: string | null;
   status: ScheduledEventStatus;
   startedByUserId: string | null;
@@ -43,7 +43,7 @@ export interface CreateScheduledEventInput {
   title: string;
   scheduledAt: string;
   durationMinutes?: number | undefined;
-  assigneeUserIds: string[];
+  assigneeIds: string[];
   address?: string | undefined;
 }
 
@@ -56,7 +56,7 @@ export interface UpdateScheduledEventInput {
   title?: string | undefined;
   scheduledAt?: string | undefined;
   durationMinutes?: number | undefined;
-  assigneeUserIds?: string[] | undefined;
+  assigneeIds?: string[] | undefined;
   address?: string | null | undefined;
 }
 

@@ -8,6 +8,7 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { AppModule } from '../../apps/api/src/app.module.js';
 import { DATABASE_POOL } from '../../apps/api/src/database.provider.js';
 import { seedTestSession } from './helpers/auth.js';
+import { getDefaultJobTemplateId } from './helpers/job-templates.js';
 import { setTestAuthToken } from './helpers/test-auth.js';
 
 const SEEDED_CUSTOMER_ID = '11111111-1111-4111-8111-111111111111';
@@ -229,6 +230,7 @@ describe('slabs', () => {
 
   it('attaches, detaches, and cuts slabs in project context', async () => {
     const slab = await createSlab();
+    const jobTemplateId = await getDefaultJobTemplateId(baseUrl);
     const projectResponse = await fetch(projectsUrl(), {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
@@ -236,6 +238,7 @@ describe('slabs', () => {
         actorUserId: ACTOR_USER_ID,
         customerId: SEEDED_CUSTOMER_ID,
         title: 'Kitchen project',
+        jobTemplateId,
         ownerUserId: ACTOR_USER_ID
       })
     });

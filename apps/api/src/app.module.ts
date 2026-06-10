@@ -12,6 +12,7 @@ import { CustomerNotesController } from './customers/customer-notes.controller.j
 import { CustomerNotesRepository } from './customers/customer-notes.repository.js';
 import { CustomerNotesService } from './customers/customer-notes.service.js';
 import { ActivityNotesModule } from './activity-notes/activity-notes.module.js';
+import { AssigneesModule } from './assignees/assignees.module.js';
 import { CustomersController } from './customers/customers.controller.js';
 import { CustomersRepository } from './customers/customers.repository.js';
 import { CustomersService } from './customers/customers.service.js';
@@ -55,6 +56,7 @@ import { ScheduledEventsModule } from './scheduling/scheduled-events.module.js';
 import { UsersModule } from './users/users.module.js';
 import { AttachmentsModule } from "./attachments/attachments.module.js";
 import { IssuesModule } from "./issues/issues.module.js";
+import { JobActivitiesModule } from "./job-activities/job-activities.module.js";
 import { JobTemplatesModule } from "./job-templates/job-templates.module.js";
 import { PhasesModule } from "./phases/phases.module.js";
 import { TagsModule } from "./tags/tags.module.js";
@@ -63,12 +65,14 @@ import { TagsModule } from "./tags/tags.module.js";
 @Module({
   imports: [
     ActivityNotesModule,
+    AssigneesModule,
     AttachmentsModule,
     DashboardModule,
     EmailModule,
     EventsModule,
     InventoryModule,
     IssuesModule,
+    JobActivitiesModule,
     JobNotesModule,
     JobTemplatesModule,
     PhasesModule,

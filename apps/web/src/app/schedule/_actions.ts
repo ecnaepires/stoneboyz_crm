@@ -2,7 +2,6 @@
 
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
-import { getActorUserId } from '@/lib/actor';
 import { getApiClientWithAuth } from '@/lib/api';
 import { buildScheduleHref } from '@/lib/schedule-links';
 
@@ -23,7 +22,7 @@ const toOptionalString = (value: FormDataEntryValue | null) => {
   return stringValue ? stringValue : undefined;
 };
 
-const toAssigneeUserIds = (values: FormDataEntryValue[]) => {
+const toAssigneeIds = (values: FormDataEntryValue[]) => {
   return values
     .filter((value): value is string => typeof value === 'string')
     .map((assignee) => assignee.trim())
@@ -50,7 +49,6 @@ const activityTitle = (eventType: ScheduledEventType, appointmentType: Appointme
 
 export async function createScheduleEventAction(formData: FormData) {
   const client = await getApiClientWithAuth();
-  const actorUserId = await getActorUserId();
 
   const customerId = toOptionalString(formData.get('customerId'));
   if (!customerId) {
@@ -62,7 +60,7 @@ export async function createScheduleEventAction(formData: FormData) {
   const projectId = toOptionalString(formData.get('projectId'));
   const address = toOptionalString(formData.get('address'));
   const scheduledDate = toOptionalString(formData.get('scheduledDate'));
-  const assigneeUserIds = toAssigneeUserIds(formData.getAll('assigneeUserIds'));
+  const assigneeIds = toAssigneeIds(formData.getAll('assigneeIds'));
 
   if (!scheduledDate) {
     throw new Error('Date is required');
@@ -75,7 +73,7 @@ export async function createScheduleEventAction(formData: FormData) {
       title: String(formData.get('title') || '').trim() || activityTitle(eventType, appointmentType),
       scheduledAt: toIsoDateTime(formData.get('scheduledDate'), formData.get('startTime')),
       durationMinutes: Number(formData.get('durationMinutes') || 60),
-      assigneeUserIds: assigneeUserIds.length > 0 ? assigneeUserIds : [actorUserId],
+      assigneeIds,
       ...(eventType === 'appointment' ? { appointmentType: appointmentType ?? 'other' } : {}),
       ...(projectId ? { projectId } : {}),
       ...(address ? { address } : {}),

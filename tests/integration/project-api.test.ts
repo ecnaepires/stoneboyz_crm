@@ -173,7 +173,7 @@ describe('project API', () => {
         body: JSON.stringify({
           scheduledAt,
           durationMinutes: 75,
-          assigneeUserIds: [ACTOR_USER_ID]
+          assigneeIds: []
         })
       }
     );
@@ -201,7 +201,7 @@ describe('project API', () => {
       title: 'Template',
       durationMinutes: 75,
       status: 'scheduled',
-      assigneeUserIds: [ACTOR_USER_ID]
+      assigneeIds: []
     });
   });
 
@@ -222,7 +222,7 @@ describe('project API', () => {
         body: JSON.stringify({
           scheduledAt,
           durationMinutes: 75,
-          assigneeUserIds: [ACTOR_USER_ID]
+          assigneeIds: []
         })
       }
     );
@@ -237,7 +237,7 @@ describe('project API', () => {
         body: JSON.stringify({
           scheduledAt: rescheduledAt,
           durationMinutes: 105,
-          assigneeUserIds: [ACTOR_USER_ID]
+          assigneeIds: []
         })
       }
     );

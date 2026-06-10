@@ -8,6 +8,7 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { AppModule } from '../../apps/api/src/app.module.js';
 import { DATABASE_POOL } from '../../apps/api/src/database.provider.js';
 import { seedTestSession } from './helpers/auth.js';
+import { getDefaultJobTemplateId } from './helpers/job-templates.js';
 import { setTestAuthToken } from './helpers/test-auth.js';
 
 const ACTOR_USER_ID = '22222222-2222-4222-8222-222222222222';
@@ -58,6 +59,7 @@ const createCustomer = async (): Promise<Record<string, unknown>> => {
 };
 
 const createProject = async (customerId: string): Promise<Record<string, unknown>> => {
+  const jobTemplateId = await getDefaultJobTemplateId(baseUrl);
   const response = await fetch(`${baseUrl}/api/v1/projects`, {
     method: 'POST',
     headers: getAuthHeaders(),
@@ -65,6 +67,7 @@ const createProject = async (customerId: string): Promise<Record<string, unknown
       actorUserId: ACTOR_USER_ID,
       customerId,
       title: 'Snapshot Job',
+      jobTemplateId,
       description: 'Snapshot job description',
       status: 'draft',
       ownerUserId: ACTOR_USER_ID
@@ -307,8 +310,7 @@ describe('Order snapshot', () => {
         appointmentType: 'template',
         title: 'Template Appointment',
         scheduledAt: '2026-06-01T09:00:00Z',
-        durationMinutes: 60,
-        assigneeUserIds: ['22222222-2222-4222-8222-222222222222']
+        durationMinutes: 60
       })
     });
     expect(createResponse.status).toBe(201);
@@ -368,8 +370,7 @@ describe('Order snapshot', () => {
         appointmentType: 'template',
         title: 'Template Appointment',
         scheduledAt: '2026-06-01T09:00:00Z',
-        durationMinutes: 60,
-        assigneeUserIds: ['22222222-2222-4222-8222-222222222222']
+        durationMinutes: 60
       })
     });
     expect(createResponse.status).toBe(201);
@@ -427,8 +428,7 @@ describe('Order snapshot', () => {
         appointmentType: 'material',
         title: 'Material Pickup',
         scheduledAt: '2026-06-02T09:00:00Z',
-        durationMinutes: 60,
-        assigneeUserIds: ['22222222-2222-4222-8222-222222222222']
+        durationMinutes: 60
       })
     });
     expect(createResponse.status).toBe(201);
@@ -486,8 +486,7 @@ describe('Order snapshot', () => {
         appointmentType: 'install',
         title: 'Install Day',
         scheduledAt: '2026-06-03T09:00:00Z',
-        durationMinutes: 120,
-        assigneeUserIds: ['22222222-2222-4222-8222-222222222222']
+        durationMinutes: 120
       })
     });
     expect(createResponse.status).toBe(201);
@@ -545,8 +544,7 @@ describe('Order snapshot', () => {
         appointmentType: 'install',
         title: 'Install Day',
         scheduledAt: '2026-06-04T09:00:00Z',
-        durationMinutes: 120,
-        assigneeUserIds: ['22222222-2222-4222-8222-222222222222']
+        durationMinutes: 120
       })
     });
     expect(createResponse.status).toBe(201);
