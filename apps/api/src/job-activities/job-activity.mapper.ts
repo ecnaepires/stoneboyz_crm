@@ -14,7 +14,7 @@ export interface JobActivityRow {
   sort_order: number;
   duration_minutes: number;
   scheduled_event_id: string | null;
-  autoschedule_state: string | null;
+  autoschedule_state: JobActivity['autoscheduleState'];
   autoschedule_offset_amount: number | null;
   autoschedule_offset_unit: string | null;
   depends_on_activity_id: string | null;

@@ -455,6 +455,16 @@ export default async function ProjectDetailPage({ params }: ProjectDetailPagePro
                       <span className={`inline-flex rounded-full border px-2 py-0.5 text-xs font-medium capitalize ${statusClass(activity.status)}`}>
                         {labelize(activity.status)}
                       </span>
+                      {activity.autoscheduleState === 'autoscheduled' ? (
+                        <span className="ml-1 inline-flex rounded-full border border-violet-200 bg-violet-50 px-2 py-0.5 text-xs font-medium text-violet-700">
+                          Auto
+                        </span>
+                      ) : null}
+                      {activity.autoscheduleState === 'manual_override' ? (
+                        <span className="ml-1 inline-flex rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-xs font-medium text-slate-700">
+                          Edited
+                        </span>
+                      ) : null}
                     </TableCell>
                     <TableCell>{formatDate(event?.scheduledAt)}</TableCell>
                     <TableCell>{activity.durationMinutes} min</TableCell>

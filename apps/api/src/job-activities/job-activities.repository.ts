@@ -46,7 +46,11 @@ export class JobActivitiesRepository {
     customerId: string,
     projectId: string,
     activityId: string,
-    params: { scheduledEventId: string; durationMinutes: number }
+    params: {
+      scheduledEventId: string;
+      durationMinutes: number;
+      autoscheduleState?: JobActivity['autoscheduleState'];
+    }
   ): Promise<JobActivity | null> {
     const result = await this.pool.query<JobActivityRow>(
       `
@@ -54,6 +58,7 @@ export class JobActivitiesRepository {
         SET
           scheduled_event_id = $4,
           duration_minutes = $5,
+          autoschedule_state = $6,
           status = 'scheduled',
           updated_at = now()
         WHERE customer_id = $1
@@ -64,7 +69,14 @@ export class JobActivitiesRepository {
           AND scheduled_event_id IS NULL
         RETURNING *
       `,
-      [customerId, projectId, activityId, params.scheduledEventId, params.durationMinutes]
+      [
+        customerId,
+        projectId,
+        activityId,
+        params.scheduledEventId,
+        params.durationMinutes,
+        params.autoscheduleState ?? null
+      ]
     );
 
     const row = result.rows[0];
@@ -76,12 +88,16 @@ export class JobActivitiesRepository {
     customerId: string,
     projectId: string,
     activityId: string,
-    params: { durationMinutes: number }
+    params: { durationMinutes: number; markManualOverride?: boolean }
   ): Promise<JobActivity | null> {
     const result = await this.pool.query<JobActivityRow>(
       `
         UPDATE job_activities
-        SET duration_minutes = $4, updated_at = now()
+        SET
+          duration_minutes = $4,
+          autoschedule_state = CASE WHEN $5 THEN 'manual_override' ELSE autoschedule_state END,
+          manual_override_at = CASE WHEN $5 THEN now() ELSE manual_override_at END,
+          updated_at = now()
         WHERE customer_id = $1
           AND project_id = $2
           AND id = $3
@@ -90,7 +106,7 @@ export class JobActivitiesRepository {
           AND scheduled_event_id IS NOT NULL
         RETURNING *
       `,
-      [customerId, projectId, activityId, params.durationMinutes]
+      [customerId, projectId, activityId, params.durationMinutes, params.markManualOverride ?? false]
     );
 
     const row = result.rows[0];

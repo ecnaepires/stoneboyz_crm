@@ -11,6 +11,10 @@ export const JOB_ACTIVITY_STATUS_VALUES = [
 
 export type JobActivityStatus = typeof JOB_ACTIVITY_STATUS_VALUES[number];
 
+export const AUTOSCHEDULE_STATE_VALUES = ['autoscheduled', 'manual_override'] as const;
+
+export type AutoscheduleState = typeof AUTOSCHEDULE_STATE_VALUES[number];
+
 export interface JobActivity {
   id: string;
   customerId: string;
@@ -25,7 +29,7 @@ export interface JobActivity {
   sortOrder: number;
   durationMinutes: number;
   scheduledEventId: string | null;
-  autoscheduleState: string | null;
+  autoscheduleState: AutoscheduleState | null;
   autoscheduleOffsetAmount: number | null;
   autoscheduleOffsetUnit: string | null;
   dependsOnActivityId: string | null;

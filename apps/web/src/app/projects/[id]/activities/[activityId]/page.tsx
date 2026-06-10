@@ -132,6 +132,16 @@ export default async function JobActivityPage({ params }: ActivityPageProps) {
           <span className={`inline-flex rounded-full border px-3 py-1 text-xs font-medium capitalize ${statusClass(activity.status)}`}>
             {labelize(activity.status)}
           </span>
+          {activity.autoscheduleState === 'autoscheduled' ? (
+            <span className="inline-flex rounded-full border border-violet-200 bg-violet-50 px-3 py-1 text-xs font-medium text-violet-700">
+              Auto-scheduled
+            </span>
+          ) : null}
+          {activity.autoscheduleState === 'manual_override' ? (
+            <span className="inline-flex rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-medium text-slate-700">
+              Manually edited
+            </span>
+          ) : null}
           {event?.status === 'scheduled' ? (
             <>
               <form action={confirmActivityAction.bind(null, project.customerId, projectId, activity.id, event.id)}>

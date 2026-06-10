@@ -1,8 +1,9 @@
 import { z } from 'zod';
 import { appointmentTypeSchema, scheduledEventTypeSchema, templateKindSchema } from '../scheduling/scheduled-event.schemas.js';
-import { JOB_ACTIVITY_STATUS_VALUES } from './job-activity.types.js';
+import { AUTOSCHEDULE_STATE_VALUES, JOB_ACTIVITY_STATUS_VALUES } from './job-activity.types.js';
 
 export const jobActivityStatusSchema = z.enum(JOB_ACTIVITY_STATUS_VALUES);
+export const autoscheduleStateSchema = z.enum(AUTOSCHEDULE_STATE_VALUES);
 
 export const jobActivitySchema = z.object({
   id: z.string().uuid(),
@@ -18,7 +19,7 @@ export const jobActivitySchema = z.object({
   sortOrder: z.number().int().min(1),
   durationMinutes: z.number().int().min(1),
   scheduledEventId: z.string().uuid().nullable(),
-  autoscheduleState: z.string().nullable(),
+  autoscheduleState: autoscheduleStateSchema.nullable(),
   autoscheduleOffsetAmount: z.number().int().nullable(),
   autoscheduleOffsetUnit: z.string().nullable(),
   dependsOnActivityId: z.string().uuid().nullable(),
