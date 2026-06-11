@@ -1,5 +1,5 @@
 import {
-  BadRequestException, Body, Controller, Delete, Get, HttpCode, Param, Patch, Post, Query
+  BadRequestException, Body, Controller, Delete, Get, HttpCode, Param, Patch, Post, Put, Query
 } from '@nestjs/common';
 import { createHolidaySchema, listHolidaysSchema, patchWorkDaysSchema } from '@stoneboyz/domain';
 import { z } from 'zod';
@@ -8,6 +8,15 @@ import { Roles } from '../auth/roles.decorator.js';
 import { ShopSettingsService } from './shop-settings.service.js';
 
 const holidayIdSchema = z.string().uuid();
+const depthPresetsSchema = z.object({
+  counterDepthPresets: z
+    .array(
+      z.number().min(1).max(60).refine((v) => Number.isInteger(v * 16), {
+        message: 'depths must be a multiple of 1/16"',
+      }),
+    )
+    .max(12),
+});
 const formatZodError = (error: z.ZodError): Record<string, string[]> => z.flattenError(error).fieldErrors;
 const badRequest = (details: Record<string, string[]>): BadRequestException =>
   new BadRequestException({ code: 'VALIDATION_ERROR', message: 'Request validation failed', details });
@@ -17,8 +26,8 @@ export class ShopSettingsController {
   constructor(private readonly shopSettingsService: ShopSettingsService) {}
 
   @Get()
-  async getWorkDays() {
-    const result = await this.shopSettingsService.getWorkDays();
+  async getSettings() {
+    const result = await this.shopSettingsService.getSettings();
     return { data: result };
   }
 
@@ -28,6 +37,14 @@ export class ShopSettingsController {
     const parsed = patchWorkDaysSchema.safeParse(body);
     if (!parsed.success) throw badRequest(formatZodError(parsed.error));
     const result = await this.shopSettingsService.patchWorkDays(parsed.data.workDays, actorUserId);
+    return { data: result };
+  }
+
+  @Put('depth-presets')
+  async putDepthPresets(@Body() body: unknown) {
+    const parsed = depthPresetsSchema.safeParse(body);
+    if (!parsed.success) throw badRequest(formatZodError(parsed.error));
+    const result = await this.shopSettingsService.putCounterDepthPresets(parsed.data.counterDepthPresets);
     return { data: result };
   }
 

@@ -6,6 +6,7 @@ export interface Shop {
   slug: string;
   name: string;
   workDays: number[];
+  counterDepthPresets: number[];
   createdAt: string;
   updatedAt: string;
 }

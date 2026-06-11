@@ -23,9 +23,16 @@ export class ShopSettingsService {
     private readonly eventBus: EventBus
   ) {}
 
-  async getWorkDays(): Promise<{ workDays: number[] }> {
+  async getSettings(): Promise<{ workDays: number[]; counterDepthPresets: number[] }> {
     const shop = await this.shopsRepository.currentShop();
-    return { workDays: shop.workDays };
+    return { workDays: shop.workDays, counterDepthPresets: shop.counterDepthPresets };
+  }
+
+  async putCounterDepthPresets(presets: number[]): Promise<{ workDays: number[]; counterDepthPresets: number[] }> {
+    const shop = await this.shopsRepository.currentShop();
+    const cleaned = [...new Set(presets.map((p) => Math.round(p * 16) / 16))].sort((a, b) => a - b);
+    await this.shopSettingsRepository.putCounterDepthPresets(shop.id, cleaned);
+    return { workDays: shop.workDays, counterDepthPresets: cleaned };
   }
 
   async patchWorkDays(workDays: number[], actorUserId: string): Promise<{ workDays: number[] }> {

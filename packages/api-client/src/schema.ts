@@ -1318,6 +1318,23 @@ export interface paths {
         patch: operations["patchShopSettings"];
         trace?: never;
     };
+    "/shop-settings/depth-presets": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Replace the company-wide custom counter depth presets */
+        put: operations["putCounterDepthPresets"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/shop-settings/holidays": {
         parameters: {
             query?: never;
@@ -2753,6 +2770,8 @@ export interface components {
         };
         ShopSettings: {
             workDays: number[];
+            /** @description Custom counter depths in inches, company-wide, sorted ascending. */
+            counterDepthPresets: number[];
         };
         ShopSettingsResponse: {
             data: components["schemas"]["ShopSettings"];
@@ -7779,6 +7798,41 @@ export interface operations {
             };
             /** @description Admin role required. */
             403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    putCounterDepthPresets: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    counterDepthPresets: number[];
+                };
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ShopSettingsResponse"];
+                };
+            };
+            /** @description Validation failed */
+            400: {
                 headers: {
                     [name: string]: unknown;
                 };

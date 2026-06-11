@@ -2855,7 +2855,7 @@ components:
 
     ShopSettings:
       type: object
-      required: [workDays]
+      required: [workDays, counterDepthPresets]
       properties:
         workDays:
           type: array
@@ -2864,6 +2864,11 @@ components:
             minimum: 0
             maximum: 6
           minItems: 1
+        counterDepthPresets:
+          type: array
+          items:
+            type: number
+          description: Custom counter depths in inches, company-wide, sorted ascending.
 
     ShopSettingsResponse:
       type: object
@@ -7533,6 +7538,38 @@ paths:
                 $ref: "#/components/schemas/ErrorResponse"
         "403":
           description: Admin role required.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /shop-settings/depth-presets:
+    put:
+      operationId: putCounterDepthPresets
+      summary: Replace the company-wide custom counter depth presets
+      tags: [ShopSettings]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [counterDepthPresets]
+              properties:
+                counterDepthPresets:
+                  type: array
+                  maxItems: 12
+                  items:
+                    type: number
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ShopSettingsResponse"
+        "400":
+          description: Validation failed
           content:
             application/json:
               schema:

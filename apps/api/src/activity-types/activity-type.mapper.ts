@@ -5,6 +5,7 @@ export interface ShopRow {
   slug: string;
   name: string;
   work_days: number[];
+  counter_depth_presets: number[];
   created_at: Date;
   updated_at: Date;
 }
@@ -34,6 +35,7 @@ export const mapShopRow = (row: ShopRow): Shop => ({
   slug: row.slug,
   name: row.name,
   workDays: row.work_days,
+  counterDepthPresets: row.counter_depth_presets,
   createdAt: toIso(row.created_at),
   updatedAt: toIso(row.updated_at),
 });

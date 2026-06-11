@@ -15,6 +15,13 @@ export class ShopSettingsRepository {
     );
   }
 
+  async putCounterDepthPresets(shopId: string, presets: number[]): Promise<void> {
+    await this.pool.query(
+      'UPDATE shops SET counter_depth_presets = $1, updated_at = now() WHERE id = $2',
+      [presets, shopId]
+    );
+  }
+
   async listHolidays(shopId: string, from?: string, to?: string): Promise<ShopHoliday[]> {
     const today = new Date().toISOString().slice(0, 10);
     const twoYearsOut = new Date(Date.now() + 2 * 365 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
