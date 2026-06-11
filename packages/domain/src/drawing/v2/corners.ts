@@ -27,7 +27,11 @@ export function filletCorner(
   const i = vertexIndex(outline, vertexId);
   if (i < 0) return { ok: false, error: `unknown vertex ${vertexId}` };
   if (type === "sharp") {
-    const vertices = outline.vertices.map((v, k) => (k === i ? { ...v, corner: undefined } : v));
+    const vertices = outline.vertices.map((v, k) => {
+      if (k !== i) return v;
+      const { corner: _c, ...rest } = v;
+      return rest;
+    });
     return validateOutline({ vertices });
   }
   if (valueIn <= 0) return { ok: false, error: "corner value must be positive" };
@@ -78,7 +82,7 @@ export function cornerToAngle(
   const B = ptAdd(V, ptScale(u2, s2));
   const inserted = [
     { vertexId: newVertexId(), xIn: A.x, yIn: A.y },
-    { vertexId: newVertexId(), xIn: B.x, yIn: B.y, bulge: cur.bulge },
+    { vertexId: newVertexId(), xIn: B.x, yIn: B.y, ...(cur.bulge !== undefined ? { bulge: cur.bulge } : {}) },
   ];
   const vertices = [...vs.slice(0, i), ...inserted, ...vs.slice(i + 1)];
   return validateOutline({ vertices });
@@ -101,7 +105,7 @@ export function cornerTo90(outline: OutlineV2, diagStartVertexId: string): Valid
   const t = cross(diff, d2) / denom;
   const Vx = prev.xIn + d1.x * t;
   const Vy = prev.yIn + d1.y * t;
-  const corner = { vertexId: newVertexId(), xIn: Vx, yIn: Vy, bulge: B.bulge };
+  const corner = { vertexId: newVertexId(), xIn: Vx, yIn: Vy, ...(B.bulge !== undefined ? { bulge: B.bulge } : {}) };
   const vertices = vs.filter((_, k) => k !== i && k !== j);
   vertices.splice(Math.min(i, vertices.length), 0, corner);
   return validateOutline({ vertices });
