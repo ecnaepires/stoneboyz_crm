@@ -45,6 +45,7 @@ export class JobActivitiesService {
       actorUserId: input.actorUserId,
       projectId,
       eventType: activity.activityType,
+      activityTypeId: activity.activityTypeId,
       appointmentType: activity.appointmentType,
       templateKind: activity.templateKind,
       title: activity.title,
@@ -99,23 +100,26 @@ export class JobActivitiesService {
       const scheduledAt = addBusinessDays(previousAt, offsetDays);
       scheduledAt.setUTCHours(DEFAULT_AUTOSCHEDULE_HOUR_UTC, 0, 0, 0);
 
-      const event = await this.scheduledEventsService.create(customerId, {
-        actorUserId,
-        projectId,
-        eventType: follower.activityType,
-        appointmentType: follower.appointmentType,
-        templateKind: follower.templateKind,
-        title: follower.title,
-        scheduledAt: scheduledAt.toISOString(),
-        durationMinutes: follower.durationMinutes,
-        assigneeIds: []
-      });
+      if (follower.autoscheduleEligible) {
+        const event = await this.scheduledEventsService.create(customerId, {
+          actorUserId,
+          projectId,
+          eventType: follower.activityType,
+          activityTypeId: follower.activityTypeId,
+          appointmentType: follower.appointmentType,
+          templateKind: follower.templateKind,
+          title: follower.title,
+          scheduledAt: scheduledAt.toISOString(),
+          durationMinutes: follower.durationMinutes,
+          assigneeIds: []
+        });
 
-      await this.jobActivitiesRepository.markScheduled(customerId, projectId, follower.id, {
-        scheduledEventId: event.id,
-        durationMinutes: follower.durationMinutes,
-        autoscheduleState: 'autoscheduled'
-      });
+        await this.jobActivitiesRepository.markScheduled(customerId, projectId, follower.id, {
+          scheduledEventId: event.id,
+          durationMinutes: follower.durationMinutes,
+          autoscheduleState: 'autoscheduled'
+        });
+      }
 
       previousAt = scheduledAt;
     }
@@ -191,6 +195,7 @@ export class JobActivitiesService {
       scheduledAt.setUTCHours(DEFAULT_AUTOSCHEDULE_HOUR_UTC, 0, 0, 0);
 
       const movable =
+        follower.autoscheduleEligible &&
         follower.autoscheduleState === 'autoscheduled' &&
         (follower.status === 'scheduled' || follower.status === 'confirmed') &&
         follower.scheduledEventId !== null;

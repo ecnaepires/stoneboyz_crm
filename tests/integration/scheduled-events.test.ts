@@ -271,6 +271,6 @@ describe('scheduled events', () => {
 
     expect(response.status).toBe(400);
     expect(body.code).toBe('VALIDATION_ERROR');
-    expect(body.details.appointmentType).toBeDefined();
+    expect(body.details.activityTypeId).toBeDefined();
   });
 });

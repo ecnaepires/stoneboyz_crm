@@ -193,9 +193,9 @@ describe('project API', () => {
     const eventsBody = await eventsResponse.json() as { data: Array<Record<string, unknown>> };
 
     expect(eventsResponse.status).toBe(200);
-    // Scheduling the anchor autoschedules every follower, so all 8 template
-    // activities now have events.
-    expect(eventsBody.data).toHaveLength(8);
+    // Repair is not autoschedule eligible, so scheduling the anchor creates
+    // events for the anchor plus the 6 eligible followers.
+    expect(eventsBody.data).toHaveLength(7);
     const anchorEvent = eventsBody.data.find((event) => event.id === scheduledActivity.scheduledEventId);
     expect(anchorEvent).toMatchObject({
       id: scheduledActivity.scheduledEventId,

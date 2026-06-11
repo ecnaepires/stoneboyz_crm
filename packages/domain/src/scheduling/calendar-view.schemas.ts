@@ -18,7 +18,7 @@ export const calendarGroupBySchema = z.enum(CALENDAR_GROUP_BY_VALUES);
 export const calendarColorBySchema = z.enum(CALENDAR_COLOR_BY_VALUES);
 export const calendarDisplayFieldSchema = z.enum(CALENDAR_DISPLAY_FIELD_VALUES);
 
-export const calendarViewFiltersSchema = z
+const calendarViewFiltersV1Schema = z
   .object({
     eventTypes: z.array(scheduledEventTypeSchema).default([]),
     appointmentTypes: z.array(appointmentTypeSchema).default([]),
@@ -36,8 +36,54 @@ export const calendarViewFiltersSchema = z
     hideCompleted: false,
   });
 
-export const calendarViewConfigSchema = z.object({
+export const calendarViewConfigV1Schema = z.object({
   version: z.literal(1),
+  displayType: calendarDisplayTypeSchema.default("week"),
+  rangeDays: z.number().int().min(2).max(31).optional(),
+  groupBy: calendarGroupBySchema.default("none"),
+  filters: calendarViewFiltersV1Schema,
+  displayFields: z
+    .array(calendarDisplayFieldSchema)
+    .default([
+      "projectTitle",
+      "customerName",
+      "address",
+      "activityTitle",
+      "time",
+      "status",
+      "assignees",
+    ]),
+  colorBy: calendarColorBySchema.default("appointmentType"),
+  wrapText: z.boolean().default(true),
+  autoRefreshSeconds: z
+    .number()
+    .int()
+    .min(15)
+    .max(600)
+    .nullable()
+    .default(null),
+});
+
+export const calendarViewFiltersSchema = z
+  .object({
+    eventTypes: z.array(scheduledEventTypeSchema).default([]),
+    activityTypeIds: z.array(z.string().uuid()).default([]),
+    statuses: z.array(scheduledEventStatusSchema).default([]),
+    assigneeIds: z.array(z.string().uuid()).default([]),
+    customerId: z.string().uuid().optional(),
+    projectId: z.string().uuid().optional(),
+    hideCompleted: z.boolean().default(false),
+  })
+  .default({
+    eventTypes: [],
+    activityTypeIds: [],
+    statuses: [],
+    assigneeIds: [],
+    hideCompleted: false,
+  });
+
+export const calendarViewConfigSchema = z.object({
+  version: z.literal(2),
   displayType: calendarDisplayTypeSchema.default("week"),
   rangeDays: z.number().int().min(2).max(31).optional(),
   groupBy: calendarGroupBySchema.default("none"),
@@ -62,6 +108,7 @@ export const calendarViewConfigSchema = z.object({
     .max(600)
     .nullable()
     .default(null),
+  showDaySubtotals: z.boolean().default(false),
 });
 
 export const calendarViewSchema = z.object({

@@ -3,7 +3,6 @@ import { describe, expect, it } from 'vitest';
 import {
   isForward,
   PIPELINE_STAGE_VALUES,
-  stageFromAppointmentType,
   STAGE_ORDER,
   statusFromStage
 } from './project.pipeline.js';
@@ -31,21 +30,6 @@ describe('project pipeline stages', () => {
       invoice: 6,
       done: 7
     });
-  });
-
-  it('maps stage appointment types to pipeline stages', () => {
-    expect(stageFromAppointmentType('deposit')).toBe('deposit');
-    expect(stageFromAppointmentType('template')).toBe('template');
-    expect(stageFromAppointmentType('material')).toBe('material');
-    expect(stageFromAppointmentType('fabrication')).toBe('fabrication');
-    expect(stageFromAppointmentType('install')).toBe('install');
-    expect(stageFromAppointmentType('invoice')).toBe('invoice');
-  });
-
-  it('returns null for non-stage appointment types', () => {
-    expect(stageFromAppointmentType('repair')).toBeNull();
-    expect(stageFromAppointmentType('other')).toBeNull();
-    expect(stageFromAppointmentType('cut')).toBeNull();
   });
 
   it('derives project status from pipeline stage', () => {

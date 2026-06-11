@@ -2,7 +2,6 @@
 
 import type { CSSProperties } from "react";
 import type { components } from "@stoneboyz/api-client";
-import { SCHEDULE_APPOINTMENT_TYPES, type ScheduleAppointmentType } from "@/lib/schedule-links";
 import type { CalendarEvent } from "./ScheduleCalendar";
 
 type CalendarViewConfig = components["schemas"]["CalendarViewConfig"];
@@ -16,62 +15,12 @@ type EventColor = {
   chipBackground: string;
 };
 
-const TASK_COLOR_PALETTE = {
-  template: {
-    background: "#00ff8018",
-    border: "#00ff4c",
-    text: "#1d955d",
-    chipBackground: "#ede9fe",
-  },
-  deposit: {
-    background: "#ff000017",
-    border: "#ff0000",
-    text: "#065f46",
-    chipBackground: "#d1fae5",
-  },
-  material: {
-    background: "#fff7ed",
-    border: "#ff00dd",
-    text: "#9a3412",
-    chipBackground: "#ffedd5",
-  },
-  cut: {
-    background: "#fef2f2",
-    border: "#fecaca",
-    text: "#991b1b",
-    chipBackground: "#fee2e2",
-  },
-  fabrication: {
-    background: "#fffbeb",
-    border: "#fde68a",
-    text: "#78350f",
-    chipBackground: "#fef3c7",
-  },
-  install: {
-    background: "#eff6ff",
-    border: "#bfdbfe",
-    text: "#1e3a8a",
-    chipBackground: "#dbeafe",
-  },
-  invoice: {
-    background: "#f8fafc",
-    border: "#cbd5e1",
-    text: "#334155",
-    chipBackground: "#e2e8f0",
-  },
-  repair: {
-    background: "#fdf2f8",
-    border: "#fbcfe8",
-    text: "#9d174d",
-    chipBackground: "#fce7f3",
-  },
-  other: {
-    background: "#f4f4f5",
-    border: "#d4d4d8",
-    text: "#3f3f46",
-    chipBackground: "#e4e4e7",
-  },
-} satisfies Record<ScheduleAppointmentType, EventColor>;
+const DEFAULT_TASK_COLOR = {
+  background: "#f4f4f5",
+  border: "#d4d4d8",
+  text: "#3f3f46",
+  chipBackground: "#e4e4e7",
+} satisfies EventColor;
 
 const STATUS_COLOR_PALETTE = {
   scheduled: {
@@ -127,12 +76,15 @@ const hashString = (value: string) => {
   return hash;
 };
 
-const taskColorKey = (event: CalendarEvent): ScheduleAppointmentType =>
-  SCHEDULE_APPOINTMENT_TYPES.includes(
-    event.appointmentType as ScheduleAppointmentType,
-  )
-    ? (event.appointmentType as ScheduleAppointmentType)
-    : "other";
+const taskColorForEvent = (event: CalendarEvent): EventColor => {
+  const border = event.activityTypeColor ?? DEFAULT_TASK_COLOR.border;
+  return {
+    background: `${border}18`,
+    border,
+    text: DEFAULT_TASK_COLOR.text,
+    chipBackground: `${border}18`,
+  };
+};
 
 const colorForEvent = (
   event: CalendarEvent,
@@ -145,16 +97,16 @@ const colorForEvent = (
   if (colorBy === "assignee") {
     const assigneeId = event.assigneeIds[0];
     if (!assigneeId) {
-      return TASK_COLOR_PALETTE.other;
+      return DEFAULT_TASK_COLOR;
     }
     return (
       ASSIGNEE_COLOR_PALETTE[
         hashString(assigneeId) % ASSIGNEE_COLOR_PALETTE.length
-      ] ?? TASK_COLOR_PALETTE.other
+      ] ?? DEFAULT_TASK_COLOR
     );
   }
 
-  return TASK_COLOR_PALETTE[taskColorKey(event)];
+  return taskColorForEvent(event);
 };
 
 export const eventCardStyle = (

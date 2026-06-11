@@ -24,32 +24,31 @@ const assigneeIdsSchema = z
 const validateAppointmentType = (
   input: {
     eventType?: string | undefined;
+    activityTypeId?: string | null | undefined;
     appointmentType?: string | null | undefined;
-    templateKind?: string | null | undefined;
   },
   context: z.RefinementCtx,
 ): void => {
-  if (input.eventType === "appointment" && input.appointmentType == null) {
+  if (
+    input.eventType === "appointment" &&
+    input.activityTypeId == null &&
+    input.appointmentType == null
+  ) {
     context.addIssue({
       code: "custom",
-      path: ["appointmentType"],
-      message: "appointmentType is required for appointment events",
+      path: ["activityTypeId"],
+      message: "activityTypeId or appointmentType is required for appointment events",
     });
   }
 
-  if (input.eventType === "shop_job" && input.appointmentType != null) {
+  if (
+    input.eventType === "shop_job" &&
+    (input.activityTypeId != null || input.appointmentType != null)
+  ) {
     context.addIssue({
       code: "custom",
-      path: ["appointmentType"],
-      message: "appointmentType must be null for shop_job events",
-    });
-  }
-
-  if (input.templateKind != null && input.appointmentType !== "template") {
-    context.addIssue({
-      code: "custom",
-      path: ["templateKind"],
-      message: "templateKind is only valid when appointmentType is template",
+      path: ["activityTypeId"],
+      message: "activityTypeId and appointmentType must be null for shop_job events",
     });
   }
 };
@@ -64,6 +63,7 @@ export const scheduledEventSchema = z.object({
   phaseId: z.string().uuid().nullable(),
   jobActivityId: z.string().uuid().nullable(),
   eventType: scheduledEventTypeSchema,
+  activityTypeId: z.string().uuid().nullable(),
   appointmentType: appointmentTypeSchema.nullable(),
   templateKind: templateKindSchema.nullable(),
   title: z.string(),
@@ -88,6 +88,7 @@ export const createScheduledEventSchema = z
     projectId: z.string().uuid().optional(),
     phaseId: z.string().uuid().optional(),
     eventType: scheduledEventTypeSchema,
+    activityTypeId: z.string().uuid().nullable().optional(),
     appointmentType: appointmentTypeSchema.nullable().optional(),
     templateKind: templateKindSchema.nullable().optional(),
     title: z.string().min(1),
@@ -102,6 +103,7 @@ export const updateScheduledEventSchema = z
   .object({
     projectId: z.string().uuid().nullable().optional(),
     phaseId: z.string().uuid().nullable().optional(),
+    activityTypeId: z.string().uuid().nullable().optional(),
     appointmentType: appointmentTypeSchema.nullable().optional(),
     templateKind: templateKindSchema.nullable().optional(),
     title: z.string().min(1).optional(),
@@ -147,6 +149,7 @@ export const listCalendarEventsSchema = z
     from: z.string().date(),
     to: z.string().date(),
     eventTypes: queryArray(scheduledEventTypeSchema),
+    activityTypeIds: queryArray(z.string().uuid()),
     appointmentTypes: queryArray(appointmentTypeSchema),
     statuses: queryArray(scheduledEventStatusSchema),
     assigneeIds: queryArray(z.string().uuid()),

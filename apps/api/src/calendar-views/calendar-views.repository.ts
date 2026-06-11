@@ -203,7 +203,7 @@ export class CalendarViewsRepository {
     const parsedConfig = calendarViewConfigSchema.safeParse(row.config);
     const config = parsedConfig.success
       ? parsedConfig.data
-      : calendarViewConfigSchema.parse({ version: 1 });
+      : calendarViewConfigSchema.parse({ version: 2 });
     return mapCalendarViewRow(row, config);
   }
 }

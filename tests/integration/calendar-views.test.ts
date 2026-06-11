@@ -14,12 +14,12 @@ let app: INestApplication;
 let baseUrl: string;
 
 const calendarViewConfig = {
-  version: 1,
+  version: 2,
   displayType: "week",
   groupBy: "none",
   filters: {
     eventTypes: [],
-    appointmentTypes: ["install"],
+    activityTypeIds: [],
     statuses: [],
     assigneeIds: [],
     hideCompleted: false,
@@ -34,6 +34,7 @@ const calendarViewConfig = {
   colorBy: "appointmentType",
   wrapText: true,
   autoRefreshSeconds: null,
+  showDaySubtotals: false,
 };
 
 const resetDatabase = async (): Promise<void> => {
@@ -120,7 +121,7 @@ describe("calendar views", () => {
       isShared: true,
       isDefault: false,
       config: {
-        version: 1,
+        version: 2,
         displayType: "week",
         colorBy: "appointmentType",
       },
@@ -150,7 +151,7 @@ describe("calendar views", () => {
       isShared: false,
       isDefault: false,
       config: {
-        version: 1,
+        version: 2,
         displayType: "week",
         colorBy: "appointmentType",
       },

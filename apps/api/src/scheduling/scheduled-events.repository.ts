@@ -35,6 +35,7 @@ interface ScheduledEventCursor {
 const UPDATE_COLUMNS = {
   projectId: "project_id",
   phaseId: "phase_id",
+  activityTypeId: "activity_type_id",
   appointmentType: "appointment_type",
   templateKind: "template_kind",
   title: "title",
@@ -133,6 +134,15 @@ export class ScheduledEventsRepository {
     }
 
     if (
+      input.activityTypeIds !== undefined &&
+      input.activityTypeIds.length > 0
+    ) {
+      where.push(
+        `se.activity_type_id = ANY(${addValue(input.activityTypeIds)}::uuid[])`,
+      );
+    }
+
+    if (
       input.appointmentTypes !== undefined &&
       input.appointmentTypes.length > 0
     ) {
@@ -172,11 +182,15 @@ export class ScheduledEventsRepository {
       `
         SELECT
           se.*,
+          at.seed_slug AS activity_seed_slug,
+          at.name AS activity_type_name,
+          at.color AS activity_type_color,
           c.name AS customer_name,
           p.title AS project_title,
           p.job_number AS job_number
         FROM scheduled_events se
         JOIN customers c ON c.id = se.customer_id
+        LEFT JOIN activity_types at ON at.id = se.activity_type_id
         LEFT JOIN projects p ON p.id = se.project_id
         WHERE ${where.join(" AND ")}
         ORDER BY se.scheduled_at ASC, se.id ASC
@@ -211,7 +225,7 @@ export class ScheduledEventsRepository {
     nextCursor: string | null;
   }> {
     const values: unknown[] = [customerId];
-    const where = ["customer_id = $1", "deleted_at IS NULL"];
+    const where = ["se.customer_id = $1", "se.deleted_at IS NULL"];
 
     const addValue = (value: unknown): string => {
       values.push(value);
@@ -219,39 +233,40 @@ export class ScheduledEventsRepository {
     };
 
     if (input.eventType !== undefined) {
-      where.push(`event_type = ${addValue(input.eventType)}`);
+      where.push(`se.event_type = ${addValue(input.eventType)}`);
     }
 
     if (input.status !== undefined) {
-      where.push(`status = ${addValue(input.status)}`);
+      where.push(`se.status = ${addValue(input.status)}`);
     }
 
     if (input.projectId !== undefined) {
-      where.push(`project_id = ${addValue(input.projectId)}`);
+      where.push(`se.project_id = ${addValue(input.projectId)}`);
     }
 
     if (input.from !== undefined) {
-      where.push(`scheduled_at >= ${addValue(input.from)}`);
+      where.push(`se.scheduled_at >= ${addValue(input.from)}`);
     }
 
     if (input.to !== undefined) {
-      where.push(`scheduled_at <= ${addValue(input.to)}`);
+      where.push(`se.scheduled_at <= ${addValue(input.to)}`);
     }
 
     if (input.cursor !== undefined) {
       const cursor = decodeCursor(input.cursor);
       where.push(
-        `(scheduled_at > ${addValue(cursor.scheduledAt)} OR (scheduled_at = ${addValue(cursor.scheduledAt)} AND id > ${addValue(cursor.id)}))`,
+        `(se.scheduled_at > ${addValue(cursor.scheduledAt)} OR (se.scheduled_at = ${addValue(cursor.scheduledAt)} AND se.id > ${addValue(cursor.id)}))`,
       );
     }
 
     const limitValue = addValue(input.limit + 1);
     const result = await this.pool.query<ScheduledEventRow>(
       `
-        SELECT *
-        FROM scheduled_events
+        SELECT se.*, at.seed_slug AS activity_seed_slug
+        FROM scheduled_events se
+        LEFT JOIN activity_types at ON at.id = se.activity_type_id
         WHERE ${where.join(" AND ")}
-        ORDER BY scheduled_at ASC, id ASC
+        ORDER BY se.scheduled_at ASC, se.id ASC
         LIMIT ${limitValue}
       `,
       values,
@@ -299,11 +314,13 @@ export class ScheduledEventsRepository {
 
       const result = await client.query<ScheduledEventRow>(
         `
+          WITH inserted AS (
           INSERT INTO scheduled_events (
             customer_id,
             project_id,
             phase_id,
             event_type,
+            activity_type_id,
             appointment_type,
             template_kind,
             title,
@@ -311,14 +328,19 @@ export class ScheduledEventsRepository {
             duration_minutes,
             address
           )
-          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
           RETURNING *
+          )
+          SELECT inserted.*, at.seed_slug AS activity_seed_slug
+          FROM inserted
+          LEFT JOIN activity_types at ON at.id = inserted.activity_type_id
         `,
         [
           customerId,
           input.projectId ?? null,
           input.phaseId ?? null,
           input.eventType,
+          input.activityTypeId ?? null,
           input.appointmentType ?? null,
           input.templateKind ?? null,
           input.title,
@@ -359,9 +381,10 @@ export class ScheduledEventsRepository {
   ): Promise<ScheduledEvent | null> {
     const result = await this.pool.query<ScheduledEventRow>(
       `
-        SELECT *
-        FROM scheduled_events
-        WHERE customer_id = $1 AND id = $2 AND deleted_at IS NULL
+        SELECT se.*, at.seed_slug AS activity_seed_slug
+        FROM scheduled_events se
+        LEFT JOIN activity_types at ON at.id = se.activity_type_id
+        WHERE se.customer_id = $1 AND se.id = $2 AND se.deleted_at IS NULL
       `,
       [customerId, eventId],
     );
@@ -485,6 +508,7 @@ export class ScheduledEventsRepository {
 
       const result = await client.query<ScheduledEventRow>(
         `
+          WITH updated AS (
           UPDATE scheduled_events
           SET ${assignments.join(", ")}
           WHERE customer_id = ${customerPlaceholder}
@@ -492,6 +516,10 @@ export class ScheduledEventsRepository {
             AND deleted_at IS NULL
             AND status IN ('scheduled', 'confirmed')
           RETURNING *
+          )
+          SELECT updated.*, at.seed_slug AS activity_seed_slug
+          FROM updated
+          LEFT JOIN activity_types at ON at.id = updated.activity_type_id
         `,
         values,
       );
@@ -605,6 +633,7 @@ export class ScheduledEventsRepository {
   ): Promise<ScheduledEvent | null> {
     const result = await this.pool.query<ScheduledEventRow>(
       `
+        WITH archived AS (
         UPDATE scheduled_events
         SET deleted_at = now(), deleted_by_user_id = $3, updated_at = now()
         WHERE customer_id = $1
@@ -612,6 +641,10 @@ export class ScheduledEventsRepository {
           AND deleted_at IS NULL
           AND status IN ('completed', 'cancelled')
         RETURNING *
+        )
+        SELECT archived.*, at.seed_slug AS activity_seed_slug
+        FROM archived
+        LEFT JOIN activity_types at ON at.id = archived.activity_type_id
       `,
       [customerId, eventId, actorUserId],
     );
@@ -638,6 +671,7 @@ export class ScheduledEventsRepository {
   ): Promise<ScheduledEvent | null> {
     const result = await this.pool.query<ScheduledEventRow>(
       `
+        WITH transitioned AS (
         UPDATE scheduled_events
         SET status = $3, updated_at = now()
         WHERE customer_id = $1
@@ -645,6 +679,10 @@ export class ScheduledEventsRepository {
           AND deleted_at IS NULL
           AND status = ANY($4::text[])
         RETURNING *
+        )
+        SELECT transitioned.*, at.seed_slug AS activity_seed_slug
+        FROM transitioned
+        LEFT JOIN activity_types at ON at.id = transitioned.activity_type_id
       `,
       [customerId, eventId, toStatus, fromStatuses],
     );
@@ -683,6 +721,7 @@ export class ScheduledEventsRepository {
     ];
     const result = await this.pool.query<ScheduledEventRow>(
       `
+        WITH transitioned AS (
         UPDATE scheduled_events
         SET status = $3, ${audit.userIdColumn} = $4, ${audit.atColumn} = now(), updated_at = now()
         WHERE customer_id = $1
@@ -690,6 +729,10 @@ export class ScheduledEventsRepository {
           AND deleted_at IS NULL
           AND status = ANY($5::text[])
         RETURNING *
+        )
+        SELECT transitioned.*, at.seed_slug AS activity_seed_slug
+        FROM transitioned
+        LEFT JOIN activity_types at ON at.id = transitioned.activity_type_id
       `,
       values,
     );

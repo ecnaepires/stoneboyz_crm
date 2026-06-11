@@ -697,3 +697,78 @@ events:
       properties:
         slabId: { type: string, format: uuid }
         actorUserId: { type: string, format: uuid }
+
+  activity_type.created:
+    description: Fired when a shop creates an Activity Type in its catalog (including seeding).
+    version: 1
+    owner: activity-types-module
+    data:
+      required: [activityTypeId, shopId, actorUserId, name]
+      properties:
+        activityTypeId: { type: string, format: uuid }
+        shopId: { type: string, format: uuid }
+        actorUserId: { type: string, format: uuid }
+        name: { type: string }
+
+  activity_type.updated:
+    description: Fired when an Activity Type's name, color, or behavior flags change.
+    version: 1
+    owner: activity-types-module
+    data:
+      required: [activityTypeId, shopId, actorUserId, changedFields]
+      properties:
+        activityTypeId: { type: string, format: uuid }
+        shopId: { type: string, format: uuid }
+        actorUserId: { type: string, format: uuid }
+        changedFields:
+          type: array
+          items: { type: string }
+
+  activity_type.archived:
+    description: Fired when an Activity Type is retired from the shop catalog.
+    version: 1
+    owner: activity-types-module
+    data:
+      required: [activityTypeId, shopId, actorUserId]
+      properties:
+        activityTypeId: { type: string, format: uuid }
+        shopId: { type: string, format: uuid }
+        actorUserId: { type: string, format: uuid }
+
+  shop.work_days_updated:
+    description: Fired when a shop changes its Work Days set.
+    version: 1
+    owner: shop-settings-module
+    data:
+      required: [shopId, actorUserId, workDays]
+      properties:
+        shopId: { type: string, format: uuid }
+        actorUserId: { type: string, format: uuid }
+        workDays:
+          type: array
+          items: { type: integer, minimum: 0, maximum: 6 }
+
+  holiday.created:
+    description: Fired when a shop adds a Holiday to its calendar settings.
+    version: 1
+    owner: shop-settings-module
+    data:
+      required: [holidayId, shopId, actorUserId, holidayDate, name]
+      properties:
+        holidayId: { type: string, format: uuid }
+        shopId: { type: string, format: uuid }
+        actorUserId: { type: string, format: uuid }
+        holidayDate: { type: string, format: date }
+        name: { type: string }
+
+  holiday.deleted:
+    description: Fired when a shop removes a Holiday from its calendar settings.
+    version: 1
+    owner: shop-settings-module
+    data:
+      required: [holidayId, shopId, actorUserId, holidayDate]
+      properties:
+        holidayId: { type: string, format: uuid }
+        shopId: { type: string, format: uuid }
+        actorUserId: { type: string, format: uuid }
+        holidayDate: { type: string, format: date }

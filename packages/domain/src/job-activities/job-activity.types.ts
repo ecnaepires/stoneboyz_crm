@@ -23,6 +23,7 @@ export interface JobActivity {
   templateActivityKey: string;
   title: string;
   activityType: ScheduledEventType;
+  activityTypeId: string | null;
   appointmentType: AppointmentType | null;
   templateKind: TemplateKind | null;
   status: JobActivityStatus;
@@ -34,6 +35,7 @@ export interface JobActivity {
   autoscheduleOffsetUnit: string | null;
   dependsOnActivityId: string | null;
   manualOverrideAt: string | null;
+  autoscheduleEligible: boolean;
   createdAt: string;
   updatedAt: string;
 }

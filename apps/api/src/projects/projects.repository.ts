@@ -495,13 +495,34 @@ export class ProjectsRepository {
             template_activity_key,
             title,
             activity_type,
+            activity_type_id,
             appointment_type,
             template_kind,
             status,
             sort_order,
             duration_minutes
           )
-          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'not_scheduled', $9, $10)
+          VALUES (
+            $1,
+            $2,
+            $3,
+            $4,
+            $5,
+            $6,
+            (
+              SELECT at.id
+              FROM activity_types at
+              JOIN shops s ON s.id = at.shop_id
+              WHERE s.slug = 'stone-boyz'
+                AND at.seed_slug = $7
+              LIMIT 1
+            ),
+            $7,
+            $8,
+            'not_scheduled',
+            $9,
+            $10
+          )
         `,
         [
           project.customerId,

@@ -14,6 +14,7 @@ import {
   Plus,
   Tags,
   UserCog,
+  SlidersHorizontal,
   Users,
 } from "lucide-react";
 import { ThemeToggle } from "@/components/theme-toggle";
@@ -101,6 +102,15 @@ export function AppShell({ isAdmin, children }: AppShellProps) {
                     >
                       <UserCog className="h-4 w-4 shrink-0" />
                       Users
+                    </Link>
+                  </li>
+                  <li>
+                    <Link
+                      href="/admin/activity-types"
+                      className={navLinkClass(isActive("/admin/activity-types"))}
+                    >
+                      <SlidersHorizontal className="h-4 w-4 shrink-0" />
+                      Activity Types
                     </Link>
                   </li>
                 </ul>

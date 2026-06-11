@@ -11,12 +11,13 @@ export class JobActivitiesRepository {
   async list(customerId: string, projectId: string): Promise<JobActivity[]> {
     const result = await this.pool.query<JobActivityRow>(
       `
-        SELECT *
-        FROM job_activities
-        WHERE customer_id = $1
-          AND project_id = $2
-          AND deleted_at IS NULL
-        ORDER BY sort_order ASC, id ASC
+        SELECT ja.*, COALESCE(at.autoschedule_eligible, false) AS autoschedule_eligible
+        FROM job_activities ja
+        LEFT JOIN activity_types at ON at.id = ja.activity_type_id
+        WHERE ja.customer_id = $1
+          AND ja.project_id = $2
+          AND ja.deleted_at IS NULL
+        ORDER BY ja.sort_order ASC, ja.id ASC
       `,
       [customerId, projectId]
     );
@@ -27,12 +28,13 @@ export class JobActivitiesRepository {
   async findById(customerId: string, projectId: string, activityId: string): Promise<JobActivity | null> {
     const result = await this.pool.query<JobActivityRow>(
       `
-        SELECT *
-        FROM job_activities
-        WHERE customer_id = $1
-          AND project_id = $2
-          AND id = $3
-          AND deleted_at IS NULL
+        SELECT ja.*, COALESCE(at.autoschedule_eligible, false) AS autoschedule_eligible
+        FROM job_activities ja
+        LEFT JOIN activity_types at ON at.id = ja.activity_type_id
+        WHERE ja.customer_id = $1
+          AND ja.project_id = $2
+          AND ja.id = $3
+          AND ja.deleted_at IS NULL
       `,
       [customerId, projectId, activityId]
     );
@@ -54,6 +56,7 @@ export class JobActivitiesRepository {
   ): Promise<JobActivity | null> {
     const result = await this.pool.query<JobActivityRow>(
       `
+        WITH updated AS (
         UPDATE job_activities
         SET
           scheduled_event_id = $4,
@@ -68,6 +71,10 @@ export class JobActivitiesRepository {
           AND status = 'not_scheduled'
           AND scheduled_event_id IS NULL
         RETURNING *
+        )
+        SELECT updated.*, COALESCE(at.autoschedule_eligible, false) AS autoschedule_eligible
+        FROM updated
+        LEFT JOIN activity_types at ON at.id = updated.activity_type_id
       `,
       [
         customerId,
@@ -92,6 +99,7 @@ export class JobActivitiesRepository {
   ): Promise<JobActivity | null> {
     const result = await this.pool.query<JobActivityRow>(
       `
+        WITH updated AS (
         UPDATE job_activities
         SET
           duration_minutes = $4,
@@ -105,6 +113,10 @@ export class JobActivitiesRepository {
           AND status IN ('scheduled', 'confirmed')
           AND scheduled_event_id IS NOT NULL
         RETURNING *
+        )
+        SELECT updated.*, COALESCE(at.autoschedule_eligible, false) AS autoschedule_eligible
+        FROM updated
+        LEFT JOIN activity_types at ON at.id = updated.activity_type_id
       `,
       [customerId, projectId, activityId, params.durationMinutes, params.markManualOverride ?? false]
     );
@@ -121,12 +133,17 @@ export class JobActivitiesRepository {
   ): Promise<JobActivity | null> {
     const result = await this.pool.query<JobActivityRow>(
       `
+        WITH updated AS (
         UPDATE job_activities
         SET status = $3, updated_at = now()
         WHERE customer_id = $1
           AND scheduled_event_id = $2
           AND deleted_at IS NULL
         RETURNING *
+        )
+        SELECT updated.*, COALESCE(at.autoschedule_eligible, false) AS autoschedule_eligible
+        FROM updated
+        LEFT JOIN activity_types at ON at.id = updated.activity_type_id
       `,
       [customerId, scheduledEventId, status]
     );

@@ -13,6 +13,7 @@ export const jobActivitySchema = z.object({
   templateActivityKey: z.string().min(1),
   title: z.string().min(1),
   activityType: scheduledEventTypeSchema,
+  activityTypeId: z.string().uuid().nullable(),
   appointmentType: appointmentTypeSchema.nullable(),
   templateKind: templateKindSchema.nullable(),
   status: jobActivityStatusSchema,
@@ -24,6 +25,7 @@ export const jobActivitySchema = z.object({
   autoscheduleOffsetUnit: z.string().nullable(),
   dependsOnActivityId: z.string().uuid().nullable(),
   manualOverrideAt: z.string().datetime({ offset: true }).nullable(),
+  autoscheduleEligible: z.boolean(),
   createdAt: z.string().datetime({ offset: true }),
   updatedAt: z.string().datetime({ offset: true })
 });

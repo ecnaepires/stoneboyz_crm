@@ -6,7 +6,11 @@ export interface ScheduledEventRow {
   project_id: string | null;
   phase_id: string | null;
   event_type: ScheduledEvent["eventType"];
+  activity_type_id: string | null;
   appointment_type: ScheduledEvent["appointmentType"];
+  activity_seed_slug?: ScheduledEvent["appointmentType"];
+  activity_type_name?: string | null;
+  activity_type_color?: string | null;
   template_kind: ScheduledEvent["templateKind"];
   title: string;
   scheduled_at: Date;
@@ -44,7 +48,8 @@ export const mapScheduledEventRow = (
   phaseId: row.phase_id,
   jobActivityId,
   eventType: row.event_type,
-  appointmentType: row.appointment_type,
+  activityTypeId: row.activity_type_id,
+  appointmentType: row.activity_seed_slug ?? row.appointment_type,
   templateKind: row.template_kind,
   title: row.title,
   scheduledAt: toIso(row.scheduled_at),
@@ -71,4 +76,6 @@ export const mapCalendarEventRow = (
   customerName: row.customer_name,
   projectTitle: row.project_title,
   jobNumber: row.job_number,
+  activityTypeName: row.activity_type_name ?? null,
+  activityTypeColor: row.activity_type_color ?? null,
 });

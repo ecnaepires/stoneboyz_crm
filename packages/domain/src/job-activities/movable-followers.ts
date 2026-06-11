@@ -5,6 +5,7 @@ export type MovableFollowerCandidate = {
   sortOrder: number;
   scheduledEventId: string | null;
   autoscheduleState: string | null;
+  autoscheduleEligible: boolean;
 };
 
 export const movableFollowers = <T extends MovableFollowerCandidate>(
@@ -15,6 +16,7 @@ export const movableFollowers = <T extends MovableFollowerCandidate>(
     .filter(
       (candidate) =>
         candidate.sortOrder > anchor.sortOrder &&
+        candidate.autoscheduleEligible &&
         candidate.autoscheduleState === 'autoscheduled' &&
         (candidate.status === 'scheduled' || candidate.status === 'confirmed') &&
         candidate.scheduledEventId !== null,

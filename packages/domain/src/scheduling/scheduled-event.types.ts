@@ -36,6 +36,7 @@ export interface ScheduledEvent {
   phaseId: string | null;
   jobActivityId: string | null;
   eventType: ScheduledEventType;
+  activityTypeId: string | null;
   appointmentType: AppointmentType | null;
   templateKind: TemplateKind | null;
   title: string;
@@ -58,6 +59,8 @@ export interface CalendarEventItem extends ScheduledEvent {
   customerName: string;
   projectTitle: string | null;
   jobNumber: string | null;
+  activityTypeName: string | null;
+  activityTypeColor: string | null;
 }
 
 export interface CreateScheduledEventInput {
@@ -66,6 +69,7 @@ export interface CreateScheduledEventInput {
   projectId?: string | undefined;
   phaseId?: string | undefined;
   eventType: ScheduledEventType;
+  activityTypeId?: string | null | undefined;
   appointmentType?: AppointmentType | null | undefined;
   templateKind?: TemplateKind | null | undefined;
   title: string;
@@ -79,6 +83,7 @@ export interface UpdateScheduledEventInput {
   actorUserId: string;
   projectId?: string | null | undefined;
   phaseId?: string | null | undefined;
+  activityTypeId?: string | null | undefined;
   appointmentType?: AppointmentType | null | undefined;
   templateKind?: TemplateKind | null | undefined;
   title?: string | undefined;
@@ -110,6 +115,7 @@ export interface ListCalendarEventsInput {
   from: string;
   to: string;
   eventTypes?: ScheduledEventType[] | undefined;
+  activityTypeIds?: string[] | undefined;
   appointmentTypes?: AppointmentType[] | undefined;
   statuses?: ScheduledEventStatus[] | undefined;
   assigneeIds?: string[] | undefined;

@@ -1,8 +1,4 @@
-import type {
-  AppointmentType,
-  ScheduledEventStatus,
-  ScheduledEventType,
-} from "./scheduled-event.types.js";
+import type { ScheduledEventStatus, ScheduledEventType } from "./scheduled-event.types.js";
 
 export const CALENDAR_VIEW_KIND_VALUES = ["calendar", "job_list"] as const;
 
@@ -38,7 +34,7 @@ export type CalendarDisplayField =
 
 export interface CalendarViewFilters {
   eventTypes: ScheduledEventType[];
-  appointmentTypes: AppointmentType[];
+  activityTypeIds: string[];
   statuses: ScheduledEventStatus[];
   assigneeIds: string[];
   customerId?: string | undefined;
@@ -47,7 +43,7 @@ export interface CalendarViewFilters {
 }
 
 export interface CalendarViewConfig {
-  version: 1;
+  version: 2;
   displayType: CalendarDisplayType;
   rangeDays?: number | undefined;
   groupBy: CalendarGroupBy;
@@ -56,6 +52,7 @@ export interface CalendarViewConfig {
   colorBy: CalendarColorBy;
   wrapText: boolean;
   autoRefreshSeconds: number | null;
+  showDaySubtotals: boolean;
 }
 
 export interface CalendarView {

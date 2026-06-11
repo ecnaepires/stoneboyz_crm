@@ -1207,6 +1207,7 @@ components:
         - templateActivityKey
         - title
         - activityType
+        - activityTypeId
         - appointmentType
         - templateKind
         - status
@@ -1218,6 +1219,7 @@ components:
         - autoscheduleOffsetUnit
         - dependsOnActivityId
         - manualOverrideAt
+        - autoscheduleEligible
         - createdAt
         - updatedAt
       properties:
@@ -1240,6 +1242,10 @@ components:
         activityType:
           type: string
           enum: [appointment, shop_job]
+        activityTypeId:
+          type: string
+          format: uuid
+          nullable: true
         appointmentType:
           type: string
           enum:
@@ -1295,6 +1301,8 @@ components:
           type: string
           format: date-time
           nullable: true
+        autoscheduleEligible:
+          type: boolean
         createdAt:
           type: string
           format: date-time
@@ -2741,6 +2749,132 @@ components:
       type: string
       enum: [scheduled, confirmed, in_progress, completed, cancelled]
 
+    ActivityType:
+      type: object
+      required:
+        - id
+        - shopId
+        - name
+        - seedSlug
+        - color
+        - pipelineStage
+        - countsSquareFootage
+        - autoscheduleEligible
+        - usesTemplateKind
+        - defaultDurationMinutes
+        - sortOrder
+        - archivedAt
+        - createdAt
+        - updatedAt
+      properties:
+        id:
+          type: string
+          format: uuid
+        shopId:
+          type: string
+          format: uuid
+        name:
+          type: string
+        seedSlug:
+          allOf:
+            - $ref: "#/components/schemas/AppointmentType"
+          nullable: true
+        color:
+          type: string
+          pattern: "^#[0-9a-fA-F]{6}$"
+        pipelineStage:
+          type: string
+          enum: [new, deposit, template, material, fabrication, install, invoice, done]
+          nullable: true
+        countsSquareFootage:
+          type: boolean
+        autoscheduleEligible:
+          type: boolean
+        usesTemplateKind:
+          type: boolean
+        defaultDurationMinutes:
+          type: integer
+          minimum: 1
+        sortOrder:
+          type: integer
+          minimum: 1
+        archivedAt:
+          type: string
+          format: date-time
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    ActivityTypesResponse:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/ActivityType"
+
+    CreateActivityTypeRequest:
+      type: object
+      required: [name, color]
+      properties:
+        name:
+          type: string
+          minLength: 1
+        color:
+          type: string
+          pattern: "^#[0-9a-fA-F]{6}$"
+        pipelineStage:
+          type: string
+          enum: [new, deposit, template, material, fabrication, install, invoice, done]
+          nullable: true
+        countsSquareFootage:
+          type: boolean
+          default: false
+        autoscheduleEligible:
+          type: boolean
+          default: false
+        usesTemplateKind:
+          type: boolean
+          default: false
+        defaultDurationMinutes:
+          type: integer
+          minimum: 1
+          default: 60
+        sortOrder:
+          type: integer
+          minimum: 1
+
+    UpdateActivityTypeRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+        color:
+          type: string
+          pattern: "^#[0-9a-fA-F]{6}$"
+        pipelineStage:
+          type: string
+          enum: [new, deposit, template, material, fabrication, install, invoice, done]
+          nullable: true
+        countsSquareFootage:
+          type: boolean
+        autoscheduleEligible:
+          type: boolean
+        usesTemplateKind:
+          type: boolean
+        defaultDurationMinutes:
+          type: integer
+          minimum: 1
+        sortOrder:
+          type: integer
+          minimum: 1
+
     Assignee:
       type: object
       required:
@@ -2824,6 +2958,7 @@ components:
         - durationMinutes
         - assigneeIds
         - status
+        - activityTypeId
         - createdAt
         - updatedAt
       properties:
@@ -2844,6 +2979,10 @@ components:
           description: The job activity linked to this event, when it was created by scheduling one.
         eventType:
           $ref: "#/components/schemas/ScheduledEventType"
+        activityTypeId:
+          type: string
+          format: uuid
+          nullable: true
         appointmentType:
           $ref: "#/components/schemas/AppointmentType"
           nullable: true
@@ -2917,6 +3056,8 @@ components:
             - customerName
             - projectTitle
             - jobNumber
+            - activityTypeName
+            - activityTypeColor
           properties:
             customerName:
               type: string
@@ -2924,6 +3065,12 @@ components:
               type: string
               nullable: true
             jobNumber:
+              type: string
+              nullable: true
+            activityTypeName:
+              type: string
+              nullable: true
+            activityTypeColor:
               type: string
               nullable: true
 
@@ -2964,11 +3111,12 @@ components:
           colorBy,
           wrapText,
           autoRefreshSeconds,
+          showDaySubtotals,
         ]
       properties:
         version:
           type: integer
-          enum: [1]
+          enum: [2]
         displayType:
           type: string
           enum: [day, week, range]
@@ -2982,16 +3130,17 @@ components:
         filters:
           type: object
           required:
-            [eventTypes, appointmentTypes, statuses, assigneeIds, hideCompleted]
+            [eventTypes, activityTypeIds, statuses, assigneeIds, hideCompleted]
           properties:
             eventTypes:
               type: array
               items:
                 $ref: "#/components/schemas/ScheduledEventType"
-            appointmentTypes:
+            activityTypeIds:
               type: array
               items:
-                $ref: "#/components/schemas/AppointmentType"
+                type: string
+                format: uuid
             statuses:
               type: array
               items:
@@ -3023,6 +3172,8 @@ components:
           nullable: true
           minimum: 15
           maximum: 600
+        showDaySubtotals:
+          type: boolean
 
     CalendarView:
       type: object
@@ -3116,6 +3267,10 @@ components:
           format: uuid
         eventType:
           $ref: "#/components/schemas/ScheduledEventType"
+        activityTypeId:
+          type: string
+          format: uuid
+          nullable: true
         appointmentType:
           $ref: "#/components/schemas/AppointmentType"
           description: Required when eventType is appointment; must be omitted or null when eventType is shop_job.
@@ -3151,6 +3306,10 @@ components:
       minProperties: 2
       properties:
         projectId:
+          type: string
+          format: uuid
+          nullable: true
+        activityTypeId:
           type: string
           format: uuid
           nullable: true
@@ -7233,6 +7392,174 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
 
+  /activity-types:
+    get:
+      operationId: listActivityTypes
+      summary: List current shop activity types
+      parameters:
+        - name: includeArchived
+          in: query
+          required: false
+          schema:
+            type: boolean
+            default: false
+      responses:
+        "200":
+          description: Activity types returned.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ActivityTypesResponse"
+    post:
+      operationId: createActivityType
+      summary: Create an activity type
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateActivityTypeRequest"
+      responses:
+        "201":
+          description: Activity type created.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ActivityType"
+        "400":
+          description: Invalid request.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: Admin role required.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: Duplicate name.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /activity-types/{activityTypeId}:
+    get:
+      operationId: getActivityType
+      summary: Get an activity type
+      parameters:
+        - name: activityTypeId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Activity type returned.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ActivityType"
+        "404":
+          description: Activity type not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    patch:
+      operationId: updateActivityType
+      summary: Update an activity type
+      parameters:
+        - name: activityTypeId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateActivityTypeRequest"
+      responses:
+        "200":
+          description: Activity type updated.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ActivityType"
+        "400":
+          description: Invalid request.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: Admin role required.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Activity type not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: Duplicate name.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /activity-types/{activityTypeId}/archive:
+    post:
+      operationId: archiveActivityType
+      summary: Archive an activity type
+      parameters:
+        - name: activityTypeId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ActorRequest"
+      responses:
+        "200":
+          description: Activity type archived.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ActivityType"
+        "403":
+          description: Admin role required.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Activity type not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: Already archived.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
   /events:
     get:
       operationId: listCalendarEvents
@@ -7270,6 +7597,16 @@ paths:
             type: array
             items:
               $ref: "#/components/schemas/AppointmentType"
+        - name: activityTypeIds
+          in: query
+          required: false
+          style: form
+          explode: true
+          schema:
+            type: array
+            items:
+              type: string
+              format: uuid
         - name: statuses
           in: query
           required: false

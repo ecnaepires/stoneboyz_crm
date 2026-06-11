@@ -1300,6 +1300,59 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/activity-types": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List current shop activity types */
+        get: operations["listActivityTypes"];
+        put?: never;
+        /** Create an activity type */
+        post: operations["createActivityType"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/activity-types/{activityTypeId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get an activity type */
+        get: operations["getActivityType"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Update an activity type */
+        patch: operations["updateActivityType"];
+        trace?: never;
+    };
+    "/activity-types/{activityTypeId}/archive": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Archive an activity type */
+        post: operations["archiveActivityType"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/events": {
         parameters: {
             query?: never;
@@ -1963,6 +2016,8 @@ export interface components {
             title: string;
             /** @enum {string} */
             activityType: "appointment" | "shop_job";
+            /** Format: uuid */
+            activityTypeId: string | null;
             /** @enum {string|null} */
             appointmentType: "template" | "deposit" | "material" | "cut" | "fabrication" | "install" | "invoice" | "repair" | "other" | null;
             /** @enum {string|null} */
@@ -1980,6 +2035,7 @@ export interface components {
             dependsOnActivityId: string | null;
             /** Format: date-time */
             manualOverrideAt: string | null;
+            autoscheduleEligible: boolean;
             /** Format: date-time */
             createdAt: string;
             /** Format: date-time */
@@ -2595,6 +2651,57 @@ export interface components {
         AppointmentType: "template" | "deposit" | "material" | "cut" | "fabrication" | "install" | "invoice" | "repair" | "other";
         /** @enum {string} */
         ScheduledEventStatus: "scheduled" | "confirmed" | "in_progress" | "completed" | "cancelled";
+        ActivityType: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            shopId: string;
+            name: string;
+            seedSlug: components["schemas"]["AppointmentType"] | null;
+            color: string;
+            /** @enum {string|null} */
+            pipelineStage: "new" | "deposit" | "template" | "material" | "fabrication" | "install" | "invoice" | "done" | null;
+            countsSquareFootage: boolean;
+            autoscheduleEligible: boolean;
+            usesTemplateKind: boolean;
+            defaultDurationMinutes: number;
+            sortOrder: number;
+            /** Format: date-time */
+            archivedAt: string | null;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+        };
+        ActivityTypesResponse: {
+            data: components["schemas"]["ActivityType"][];
+        };
+        CreateActivityTypeRequest: {
+            name: string;
+            color: string;
+            /** @enum {string|null} */
+            pipelineStage?: "new" | "deposit" | "template" | "material" | "fabrication" | "install" | "invoice" | "done" | null;
+            /** @default false */
+            countsSquareFootage: boolean;
+            /** @default false */
+            autoscheduleEligible: boolean;
+            /** @default false */
+            usesTemplateKind: boolean;
+            /** @default 60 */
+            defaultDurationMinutes: number;
+            sortOrder?: number;
+        };
+        UpdateActivityTypeRequest: {
+            name?: string;
+            color?: string;
+            /** @enum {string|null} */
+            pipelineStage?: "new" | "deposit" | "template" | "material" | "fabrication" | "install" | "invoice" | "done" | null;
+            countsSquareFootage?: boolean;
+            autoscheduleEligible?: boolean;
+            usesTemplateKind?: boolean;
+            defaultDurationMinutes?: number;
+            sortOrder?: number;
+        };
         Assignee: {
             /** Format: uuid */
             id: string;
@@ -2633,6 +2740,8 @@ export interface components {
              */
             jobActivityId?: string | null;
             eventType: components["schemas"]["ScheduledEventType"];
+            /** Format: uuid */
+            activityTypeId: string | null;
             /** @description Required when eventType is appointment; must be null when eventType is shop_job. */
             appointmentType?: components["schemas"]["AppointmentType"];
             /**
@@ -2675,6 +2784,8 @@ export interface components {
             customerName: string;
             projectTitle: string | null;
             jobNumber: string | null;
+            activityTypeName: string | null;
+            activityTypeColor: string | null;
         };
         CalendarEventsResponse: {
             data: components["schemas"]["CalendarEventItem"][];
@@ -2683,7 +2794,7 @@ export interface components {
         CalendarDisplayField: "projectTitle" | "customerName" | "address" | "activityTitle" | "time" | "duration" | "status" | "assignees" | "notes" | "sqft";
         CalendarViewConfig: {
             /** @enum {integer} */
-            version: 1;
+            version: 2;
             /** @enum {string} */
             displayType: "day" | "week" | "range";
             rangeDays?: number;
@@ -2691,7 +2802,7 @@ export interface components {
             groupBy: "none" | "assignee";
             filters: {
                 eventTypes: components["schemas"]["ScheduledEventType"][];
-                appointmentTypes: components["schemas"]["AppointmentType"][];
+                activityTypeIds: string[];
                 statuses: components["schemas"]["ScheduledEventStatus"][];
                 assigneeIds: string[];
                 /** Format: uuid */
@@ -2705,6 +2816,7 @@ export interface components {
             colorBy: "appointmentType" | "status" | "assignee";
             wrapText: boolean;
             autoRefreshSeconds: number | null;
+            showDaySubtotals: boolean;
         };
         CalendarView: {
             /** Format: uuid */
@@ -2751,6 +2863,8 @@ export interface components {
             /** Format: uuid */
             projectId?: string;
             eventType: components["schemas"]["ScheduledEventType"];
+            /** Format: uuid */
+            activityTypeId?: string | null;
             /** @description Required when eventType is appointment; must be omitted or null when eventType is shop_job. */
             appointmentType?: components["schemas"]["AppointmentType"];
             /**
@@ -2772,6 +2886,8 @@ export interface components {
         UpdateScheduledEventRequest: {
             /** Format: uuid */
             projectId?: string | null;
+            /** Format: uuid */
+            activityTypeId?: string | null;
             appointmentType?: components["schemas"]["AppointmentType"];
             /** @enum {string|null} */
             templateKind?: "measurement_only" | "physical_template" | "laser_template" | null;
@@ -7507,6 +7623,225 @@ export interface operations {
             };
         };
     };
+    listActivityTypes: {
+        parameters: {
+            query?: {
+                includeArchived?: boolean;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Activity types returned. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ActivityTypesResponse"];
+                };
+            };
+        };
+    };
+    createActivityType: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateActivityTypeRequest"];
+            };
+        };
+        responses: {
+            /** @description Activity type created. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ActivityType"];
+                };
+            };
+            /** @description Invalid request. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Admin role required. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Duplicate name. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getActivityType: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                activityTypeId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Activity type returned. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ActivityType"];
+                };
+            };
+            /** @description Activity type not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    updateActivityType: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                activityTypeId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateActivityTypeRequest"];
+            };
+        };
+        responses: {
+            /** @description Activity type updated. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ActivityType"];
+                };
+            };
+            /** @description Invalid request. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Admin role required. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Activity type not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Duplicate name. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    archiveActivityType: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                activityTypeId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ActorRequest"];
+            };
+        };
+        responses: {
+            /** @description Activity type archived. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ActivityType"];
+                };
+            };
+            /** @description Admin role required. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Activity type not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Already archived. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
     listCalendarEvents: {
         parameters: {
             query: {
@@ -7516,6 +7851,7 @@ export interface operations {
                 to: string;
                 eventTypes?: components["schemas"]["ScheduledEventType"][];
                 appointmentTypes?: components["schemas"]["AppointmentType"][];
+                activityTypeIds?: string[];
                 statuses?: components["schemas"]["ScheduledEventStatus"][];
                 assigneeIds?: string[];
                 customerId?: string;

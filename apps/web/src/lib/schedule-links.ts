@@ -58,7 +58,7 @@ export const buildScheduleHref = ({
   displayType,
   rangeDays,
   eventTypes,
-  appointmentTypes,
+  activityTypeIds,
   statuses,
   assigneeIds,
   hideCompleted,
@@ -75,7 +75,7 @@ export const buildScheduleHref = ({
   displayType?: ScheduleDisplayType | undefined;
   rangeDays?: number | undefined;
   eventTypes?: ScheduleEventType[] | undefined;
-  appointmentTypes?: ScheduleAppointmentType[] | undefined;
+  activityTypeIds?: string[] | undefined;
   statuses?: ScheduleStatus[] | undefined;
   assigneeIds?: string[] | undefined;
   hideCompleted?: boolean | undefined;
@@ -93,7 +93,7 @@ export const buildScheduleHref = ({
   if (displayType) params.set('displayType', displayType);
   if (rangeDays) params.set('rangeDays', String(rangeDays));
   if (eventTypes?.length) params.set('eventTypes', eventTypes.join(','));
-  if (appointmentTypes?.length) params.set('appointmentTypes', appointmentTypes.join(','));
+  if (activityTypeIds?.length) params.set('activityTypeIds', activityTypeIds.join(','));
   if (statuses?.length) params.set('statuses', statuses.join(','));
   if (assigneeIds?.length) params.set('assigneeIds', assigneeIds.join(','));
   if (hideCompleted !== undefined) params.set('hideCompleted', String(hideCompleted));

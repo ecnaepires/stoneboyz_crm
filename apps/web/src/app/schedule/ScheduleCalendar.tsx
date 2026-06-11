@@ -22,6 +22,7 @@ import { PrintButton } from "./PrintButton";
 import { ViewSelector, type CalendarViewOption } from "./ViewSelector";
 
 type CalendarViewConfig = components["schemas"]["CalendarViewConfig"];
+type ActivityType = components["schemas"]["ActivityType"];
 
 export type CalendarEvent = {
   id: string;
@@ -31,6 +32,9 @@ export type CalendarEvent = {
   projectTitle: string | null;
   jobActivityId: string | null;
   eventType: "appointment" | "shop_job";
+  activityTypeId: string | null;
+  activityTypeName: string | null;
+  activityTypeColor: string | null;
   appointmentType: string | null;
   title: string;
   scheduledAt: string;
@@ -60,6 +64,7 @@ interface ScheduleCalendarProps {
   views: CalendarViewOption[];
   selectedViewId: string;
   calendarConfig: CalendarViewConfig;
+  activityTypes: ActivityType[];
 }
 
 const dateKeyForEvent = (event: CalendarEvent) =>
@@ -136,6 +141,7 @@ export function ScheduleCalendar({
   views,
   selectedViewId,
   calendarConfig,
+  activityTypes,
 }: ScheduleCalendarProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -269,6 +275,7 @@ export function ScheduleCalendar({
               initialProjectId ? initialAppointmentType : undefined
             }
             assignees={assignees}
+            activityTypes={activityTypes}
           />
           </div>
           <div className="flex items-center gap-3">

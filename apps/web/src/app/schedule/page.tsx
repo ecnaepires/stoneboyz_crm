@@ -10,6 +10,7 @@ import { ScheduleCalendar, type CalendarEvent } from "./ScheduleCalendar";
 type CalendarEventItem = components["schemas"]["CalendarEventItem"];
 type CalendarView = components["schemas"]["CalendarView"];
 type CalendarViewConfig = components["schemas"]["CalendarViewConfig"];
+type ActivityType = components["schemas"]["ActivityType"];
 type Assignee = components["schemas"]["Assignee"];
 type ScheduledEventType = components["schemas"]["ScheduledEventType"];
 type ScheduledEventStatus = components["schemas"]["ScheduledEventStatus"];
@@ -18,12 +19,12 @@ type CalendarDisplayField = components["schemas"]["CalendarDisplayField"];
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
 
 const DEFAULT_CALENDAR_CONFIG: CalendarViewConfig = {
-  version: 1,
+  version: 2,
   displayType: "week",
   groupBy: "none",
   filters: {
     eventTypes: [],
-    appointmentTypes: [],
+    activityTypeIds: [],
     statuses: [],
     assigneeIds: [],
     hideCompleted: false,
@@ -40,6 +41,7 @@ const DEFAULT_CALENDAR_CONFIG: CalendarViewConfig = {
   colorBy: "appointmentType",
   wrapText: true,
   autoRefreshSeconds: null,
+  showDaySubtotals: false,
 };
 
 const dateFromKey = (key: string) => new Date(`${key}T12:00:00`);
@@ -162,12 +164,26 @@ const eventTypesFromParam = (value: string | undefined): ScheduledEventType[] =>
     oneOf(item, ["appointment", "shop_job"] as const),
   );
 
-const appointmentTypesFromParam = (
+const activityTypeIdsFromParam = (value: string | undefined): string[] =>
+  csvValues(value).filter((item) =>
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(item),
+  );
+
+const legacyActivityTypeIdsFromParam = (
   value: string | undefined,
-): CalendarViewConfig["filters"]["appointmentTypes"] =>
-  csvValues(value).filter((item): item is CalendarViewConfig["filters"]["appointmentTypes"][number] =>
+  activityTypes: ActivityType[],
+): string[] => {
+  const requested = csvValues(value).filter((item) =>
     oneOf(item, SCHEDULE_APPOINTMENT_TYPES),
   );
+  if (requested.length === 0) {
+    return [];
+  }
+
+  return activityTypes
+    .filter((activityType) => activityType.seedSlug !== null && requested.includes(activityType.seedSlug))
+    .map((activityType) => activityType.id);
+};
 
 const statusesFromParam = (
   value: string | undefined,
@@ -231,6 +247,7 @@ const applyUrlConfigOverrides = (
     displayType?: string | undefined;
     rangeDays?: string | undefined;
     eventTypes?: string | undefined;
+    activityTypeIds?: string | undefined;
     appointmentTypes?: string | undefined;
     statuses?: string | undefined;
     assigneeIds?: string | undefined;
@@ -239,6 +256,7 @@ const applyUrlConfigOverrides = (
     colorBy?: string | undefined;
     wrapText?: string | undefined;
     autoRefreshSeconds?: string | undefined;
+    activityTypes: ActivityType[];
   },
 ): CalendarViewConfig => {
   const requestedDisplayType = params.displayType;
@@ -249,7 +267,9 @@ const applyUrlConfigOverrides = (
       : config.displayType;
   const rangeDays = numberInRange(params.rangeDays, 2, 31);
   const eventTypes = eventTypesFromParam(params.eventTypes);
-  const appointmentTypes = appointmentTypesFromParam(params.appointmentTypes);
+  const directActivityTypeIds = activityTypeIdsFromParam(params.activityTypeIds);
+  const legacyActivityTypeIds = legacyActivityTypeIdsFromParam(params.appointmentTypes, params.activityTypes);
+  const activityTypeIds = directActivityTypeIds.length > 0 ? directActivityTypeIds : legacyActivityTypeIds;
   const statuses = statusesFromParam(params.statuses);
   const assigneeIds = csvValues(params.assigneeIds);
   const hideCompleted = boolFromParam(params.hideCompleted);
@@ -270,10 +290,10 @@ const applyUrlConfigOverrides = (
     filters: {
       ...config.filters,
       eventTypes: eventTypes.length > 0 ? eventTypes : config.filters.eventTypes,
-      appointmentTypes:
-        appointmentTypes.length > 0
-          ? appointmentTypes
-          : config.filters.appointmentTypes,
+      activityTypeIds:
+        activityTypeIds.length > 0
+          ? activityTypeIds
+          : config.filters.activityTypeIds,
       statuses: statuses.length > 0 ? statuses : config.filters.statuses,
       assigneeIds:
         assigneeIds.length > 0 ? assigneeIds : config.filters.assigneeIds,
@@ -307,6 +327,9 @@ const normalizeEvent = (event: CalendarEventItem): CalendarEvent => ({
   jobActivityId: event.jobActivityId ?? null,
   eventType: event.eventType,
   appointmentType: event.appointmentType ?? null,
+  activityTypeId: event.activityTypeId ?? null,
+  activityTypeName: event.activityTypeName ?? null,
+  activityTypeColor: event.activityTypeColor ?? null,
   title: event.title,
   scheduledAt: event.scheduledAt,
   durationMinutes: event.durationMinutes,
@@ -334,9 +357,9 @@ const viewMatchesEvent = (
   }
 
   if (
-    filters.appointmentTypes.length > 0 &&
-    (event.appointmentType == null ||
-      !filters.appointmentTypes.includes(event.appointmentType))
+    filters.activityTypeIds.length > 0 &&
+    (event.activityTypeId == null ||
+      !filters.activityTypeIds.includes(event.activityTypeId))
   ) {
     return false;
   }
@@ -375,6 +398,7 @@ export default async function SchedulePage({
     displayType?: string;
     rangeDays?: string;
     eventTypes?: string;
+    activityTypeIds?: string;
     appointmentTypes?: string;
     statuses?: string;
     assigneeIds?: string;
@@ -394,6 +418,7 @@ export default async function SchedulePage({
     displayType,
     rangeDays,
     eventTypes,
+    activityTypeIds,
     appointmentTypes,
     statuses,
     assigneeIds,
@@ -413,11 +438,13 @@ export default async function SchedulePage({
     { data: projectsRes },
     { data: assigneesRes },
     { data: calendarViewsRes, error: calendarViewsError },
+    { data: activityTypesRes, error: activityTypesError },
   ] = await Promise.all([
     client.GET("/customers", { params: { query: { limit: 100 } } }),
     client.GET("/projects", { params: { query: { limit: 100 } } }),
     client.GET("/assignees", {}),
     client.GET("/calendar-views", { params: { query: { viewKind: "calendar" } } }),
+    client.GET("/activity-types", {}),
   ]);
 
   if (customersError) {
@@ -440,9 +467,18 @@ export default async function SchedulePage({
     );
   }
 
+  if (activityTypesError) {
+    return (
+      <div className="text-red-600">
+        Failed to load activity types: {JSON.stringify(activityTypesError)}
+      </div>
+    );
+  }
+
   const projects = projectsRes?.data ?? [];
   const assignees = (assigneesRes ?? []) as Assignee[];
   const calendarViews = calendarViewsRes?.data ?? [];
+  const activityTypes = activityTypesRes?.data ?? [];
   const selectedView =
     calendarViews.find((view) => view.id === requestedViewId) ??
     calendarViews.find((view) => view.isDefault) ??
@@ -453,6 +489,7 @@ export default async function SchedulePage({
         displayType,
         rangeDays,
         eventTypes,
+        activityTypeIds,
         appointmentTypes,
         statuses,
         assigneeIds,
@@ -461,6 +498,7 @@ export default async function SchedulePage({
         colorBy,
         wrapText,
         autoRefreshSeconds,
+        activityTypes,
       })
     : null;
   const selectedViewId = selectedView?.id ?? "";
@@ -486,25 +524,21 @@ export default async function SchedulePage({
       query: {
         from: dateKey(rangeStart),
         to: dateKey(rangeEnd),
-        eventTypes:
-          effectiveConfig?.filters.eventTypes.length
-            ? effectiveConfig.filters.eventTypes
-            : undefined,
-        appointmentTypes:
-          effectiveConfig?.filters.appointmentTypes.length
-            ? effectiveConfig.filters.appointmentTypes
-            : undefined,
-        statuses:
-          effectiveConfig?.filters.statuses.length
-            ? effectiveConfig.filters.statuses
-            : undefined,
-        assigneeIds:
-          effectiveConfig?.filters.assigneeIds.length
-            ? effectiveConfig.filters.assigneeIds
-            : undefined,
-        hideCompleted: effectiveConfig?.filters.hideCompleted || undefined,
-        customerId: selectedCustomerId || undefined,
-        projectId: selectedProjectId || undefined,
+        ...(effectiveConfig?.filters.eventTypes.length
+          ? { eventTypes: effectiveConfig.filters.eventTypes }
+          : {}),
+        ...(effectiveConfig?.filters.activityTypeIds.length
+          ? { activityTypeIds: effectiveConfig.filters.activityTypeIds }
+          : {}),
+        ...(effectiveConfig?.filters.statuses.length
+          ? { statuses: effectiveConfig.filters.statuses }
+          : {}),
+        ...(effectiveConfig?.filters.assigneeIds.length
+          ? { assigneeIds: effectiveConfig.filters.assigneeIds }
+          : {}),
+        ...(effectiveConfig?.filters.hideCompleted ? { hideCompleted: true } : {}),
+        ...(selectedCustomerId ? { customerId: selectedCustomerId } : {}),
+        ...(selectedProjectId ? { projectId: selectedProjectId } : {}),
       },
     },
   });
@@ -568,6 +602,7 @@ export default async function SchedulePage({
       selectedCustomerId={selectedCustomerId}
       initialProjectId={selectedProjectId}
       initialAppointmentType={selectedAppointmentType}
+      activityTypes={activityTypes}
     />
   );
 }

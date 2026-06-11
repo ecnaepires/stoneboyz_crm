@@ -135,7 +135,7 @@ describe('autoschedule engine', () => {
     await app.close();
   });
 
-  it('chains all followers at one business day apart, 08:00 UTC, when the anchor is scheduled', async () => {
+  it('chains eligible followers at one business day apart, 08:00 UTC, when the anchor is scheduled', async () => {
     const projectId = await createProject('Autoschedule Chain Job');
     const activities = await listActivities(projectId);
     expect(activities).toHaveLength(8);
@@ -145,8 +145,12 @@ describe('autoschedule engine', () => {
     expect(response.status).toBe(200);
 
     const scheduled = await listActivities(projectId);
-    expect(scheduled.every((activity) => activity.status === 'scheduled')).toBe(true);
-    expect(scheduled.every((activity) => activity.scheduledEventId !== null)).toBe(true);
+    const eligibleActivities = scheduled.filter((activity) => activity.autoscheduleEligible || activity.id === anchor.id);
+    const ineligibleFollowers = scheduled.filter((activity) => !activity.autoscheduleEligible && activity.id !== anchor.id);
+    expect(eligibleActivities.every((activity) => activity.status === 'scheduled')).toBe(true);
+    expect(eligibleActivities.every((activity) => activity.scheduledEventId !== null)).toBe(true);
+    expect(ineligibleFollowers.every((activity) => activity.status === 'not_scheduled')).toBe(true);
+    expect(ineligibleFollowers.every((activity) => activity.scheduledEventId === null)).toBe(true);
 
     const anchorAfter = scheduled.find((activity) => activity.id === anchor.id) as ActivityResponse;
     expect(anchorAfter.autoscheduleState).toBeNull();
@@ -154,7 +158,7 @@ describe('autoschedule engine', () => {
     const followers = scheduled
       .filter((activity) => activity.id !== anchor.id)
       .sort((left, right) => left.sortOrder - right.sortOrder);
-    expect(followers.every((activity) => activity.autoscheduleState === 'autoscheduled')).toBe(true);
+    expect(followers.filter((activity) => activity.autoscheduleEligible).every((activity) => activity.autoscheduleState === 'autoscheduled')).toBe(true);
 
     // Mon 15 anchor -> Tue 16 ... Fri 19, then Mon 22 ... Wed 24 at 08:00 UTC.
     const expectedDates = [
@@ -163,11 +167,10 @@ describe('autoschedule engine', () => {
       '2026-06-18T08:00:00.000Z',
       '2026-06-19T08:00:00.000Z',
       '2026-06-22T08:00:00.000Z',
-      '2026-06-23T08:00:00.000Z',
-      '2026-06-24T08:00:00.000Z'
+      '2026-06-23T08:00:00.000Z'
     ];
 
-    for (const [index, follower] of followers.entries()) {
+    for (const [index, follower] of followers.filter((activity) => activity.autoscheduleEligible).entries()) {
       const event = await getEvent(follower.scheduledEventId as string);
       expect(event.scheduledAt).toBe(expectedDates[index]);
       expect(event.assigneeIds).toEqual([]);

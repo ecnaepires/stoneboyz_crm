@@ -1,4 +1,5 @@
 import { Module } from "@nestjs/common";
+import { ActivityTypesModule } from "../activity-types/activity-types.module.js";
 import { DATABASE_POOL, databaseProvider } from "../database.provider.js";
 import { EventsModule } from "../events/events.module.js";
 import { JobChecklistsModule } from "../job-checklists/job-checklists.module.js";
@@ -8,7 +9,7 @@ import { ScheduledEventsService } from "./scheduled-events.service.js";
 import { CalendarEventsController } from "./calendar-events.controller.js";
 
 @Module({
-  imports: [EventsModule, JobChecklistsModule],
+  imports: [ActivityTypesModule, EventsModule, JobChecklistsModule],
   controllers: [CalendarEventsController, ScheduledEventsController],
   providers: [
     databaseProvider,

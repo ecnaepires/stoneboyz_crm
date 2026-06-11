@@ -11,10 +11,12 @@ import type {
   CreateScheduledEventInput,
   ListCalendarEventsInput,
   ListScheduledEventsInput,
+  PipelineStage,
   ScheduledEvent,
   TransitionScheduledEventInput,
   UpdateScheduledEventInput,
 } from "@stoneboyz/domain";
+import { ActivityTypesService } from "../activity-types/activity-types.service.js";
 import type { DatabaseError } from "pg";
 import { EventBus } from "../events/event-bus.js";
 import { JobChecklistsRepository } from "../job-checklists/job-checklists.repository.js";
@@ -48,6 +50,7 @@ export class ScheduledEventsService {
     private readonly scheduledEventsRepository: ScheduledEventsRepository,
     private readonly eventBus: EventBus,
     private readonly jobChecklistsRepository: JobChecklistsRepository,
+    private readonly activityTypesService: ActivityTypesService,
   ) {}
 
   async listGlobal(
@@ -89,16 +92,16 @@ export class ScheduledEventsService {
     input: CreateScheduledEventInput,
   ): Promise<ScheduledEvent> {
     await this.ensureCustomerExists(customerId);
-    this.ensureValidEventTypeFields(
-      input.eventType,
-      input.appointmentType ?? null,
-      input.templateKind ?? null,
-    );
+    const resolved = await this.activityTypesService.resolveForWrite(input);
 
     try {
       const scheduledEvent = await this.scheduledEventsRepository.create(
         customerId,
-        input,
+        {
+          ...input,
+          activityTypeId: resolved.activityTypeId,
+          appointmentType: resolved.appointmentType,
+        },
       );
       this.eventBus.emit(
         "scheduled_event.created",
@@ -147,13 +150,13 @@ export class ScheduledEventsService {
       throw this.invalidStatus("Event status does not allow updates");
     }
 
-    this.ensureValidAppointmentTypeUpdate(current, input);
+    const resolved = await this.resolveActivityTypeUpdate(current, input);
 
     try {
       const scheduledEvent = await this.scheduledEventsRepository.update(
         customerId,
         eventId,
-        input,
+        { ...input, ...resolved },
       );
 
       if (scheduledEvent === null) {
@@ -422,47 +425,6 @@ export class ScheduledEventsService {
     }
   }
 
-  private async enforceChecklistGating(
-    customerId: string,
-    event: ScheduledEvent,
-  ): Promise<void> {
-    if (
-      event.phaseId == null ||
-      event.projectId == null ||
-      event.appointmentType == null
-    ) {
-      return;
-    }
-
-    const GATED_TYPES = new Set<string>(["template", "material", "install"]);
-    if (!GATED_TYPES.has(event.appointmentType)) {
-      return;
-    }
-
-    const checklist = await this.jobChecklistsRepository.findByPhaseId(
-      customerId,
-      event.projectId,
-      event.phaseId,
-    );
-    if (checklist == null) {
-      return;
-    }
-
-    const blocked =
-      (event.appointmentType === "template" && !checklist.readyToTemplate) ||
-      (event.appointmentType === "material" && !checklist.depositReceived) ||
-      (event.appointmentType === "install" &&
-        (!checklist.approvedForInstall ||
-          (checklist.tearoutRequired && !checklist.tearoutCompleted)));
-
-    if (blocked) {
-      throw new UnprocessableEntityException({
-        code: "CHECKLIST_GATE_FAILED",
-        message: "Checklist requirements not met",
-      });
-    }
-  }
-
   private async ensureCustomerExists(customerId: string): Promise<void> {
     const exists =
       await this.scheduledEventsRepository.customerExists(customerId);
@@ -494,62 +456,97 @@ export class ScheduledEventsService {
     return scheduledEvent;
   }
 
-  private ensureValidAppointmentTypeUpdate(
-    current: ScheduledEvent,
-    input: UpdateScheduledEventInput,
-  ): void {
+  private async enforceChecklistGating(
+    customerId: string,
+    event: ScheduledEvent,
+  ): Promise<void> {
     if (
-      !Object.hasOwn(input, "appointmentType") &&
-      !Object.hasOwn(input, "templateKind")
+      event.phaseId == null ||
+      event.projectId == null ||
+      event.activityTypeId == null
     ) {
       return;
     }
 
-    this.ensureValidEventTypeFields(
-      current.eventType,
-      input.appointmentType ?? current.appointmentType,
-      input.templateKind ?? current.templateKind,
+    const activityType = await this.activityTypesService.getById(
+      event.activityTypeId,
     );
+    if (activityType.pipelineStage === null) {
+      return;
+    }
+
+    const checklist = await this.jobChecklistsRepository.findByPhaseId(
+      customerId,
+      event.projectId,
+      event.phaseId,
+    );
+
+    if (this.checklistBlocked(activityType.pipelineStage, checklist)) {
+      throw new UnprocessableEntityException({
+        code: "CHECKLIST_GATE_FAILED",
+        message: "Checklist requirements not met",
+      });
+    }
   }
 
-  private ensureValidEventTypeFields(
-    eventType: ScheduledEvent["eventType"],
-    appointmentType: ScheduledEvent["appointmentType"],
-    templateKind: ScheduledEvent["templateKind"],
-  ): void {
-    if (eventType === "appointment" && appointmentType === null) {
-      throw new BadRequestException({
-        code: "VALIDATION_ERROR",
-        message: "Request validation failed",
-        details: {
-          appointmentType: [
-            "appointmentType is required for appointment events",
-          ],
-        },
-      });
+  private checklistBlocked(
+    pipelineStage: PipelineStage,
+    checklist: Awaited<ReturnType<JobChecklistsRepository["findByPhaseId"]>>,
+  ): boolean {
+    if (checklist === null) {
+      return false;
     }
 
-    if (eventType === "shop_job" && appointmentType !== null) {
-      throw new BadRequestException({
-        code: "VALIDATION_ERROR",
-        message: "Request validation failed",
-        details: {
-          appointmentType: ["appointmentType must be null for shop_job events"],
-        },
-      });
+    if (pipelineStage === "template") {
+      return !checklist.readyToTemplate;
     }
 
-    if (templateKind !== null && appointmentType !== "template") {
-      throw new BadRequestException({
-        code: "VALIDATION_ERROR",
-        message: "Request validation failed",
-        details: {
-          templateKind: [
-            "templateKind is only valid when appointmentType is template",
-          ],
-        },
-      });
+    if (pipelineStage === "material") {
+      return !checklist.depositReceived;
     }
+
+    if (pipelineStage === "install") {
+      return (
+        !checklist.approvedForInstall ||
+        (checklist.tearoutRequired && !checklist.tearoutCompleted)
+      );
+    }
+
+    return false;
+  }
+
+  private async resolveActivityTypeUpdate(
+    current: ScheduledEvent,
+    input: UpdateScheduledEventInput,
+  ): Promise<{
+    activityTypeId?: string | null | undefined;
+    appointmentType?: ScheduledEvent["appointmentType"] | undefined;
+  }> {
+    if (
+      !Object.hasOwn(input, "activityTypeId") &&
+      !Object.hasOwn(input, "appointmentType") &&
+      !Object.hasOwn(input, "templateKind")
+    ) {
+      return {};
+    }
+
+    const hasActivityTypeId = Object.hasOwn(input, "activityTypeId");
+    const hasAppointmentType = Object.hasOwn(input, "appointmentType");
+    const resolved = await this.activityTypesService.resolveForWrite({
+      eventType: current.eventType,
+      activityTypeId: hasActivityTypeId
+        ? input.activityTypeId
+        : hasAppointmentType
+          ? undefined
+          : current.activityTypeId,
+      appointmentType: hasAppointmentType ? input.appointmentType : undefined,
+      templateKind: input.templateKind ?? current.templateKind,
+    });
+
+    return {
+      activityTypeId: resolved.activityTypeId,
+      appointmentType: resolved.appointmentType,
+    };
   }
 
   private invalidStatus(message: string): ConflictException {

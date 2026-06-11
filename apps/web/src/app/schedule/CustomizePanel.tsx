@@ -12,7 +12,6 @@ import { MultiSelect } from "@/components/ui/multi-select";
 import { Select } from "@/components/ui/select";
 import {
   buildScheduleHref,
-  SCHEDULE_APPOINTMENT_TYPES,
   type ScheduleAppointmentType,
 } from "@/lib/schedule-links";
 import { updateCalendarViewAction } from "./_view-actions";
@@ -22,6 +21,7 @@ type CalendarViewConfig = components["schemas"]["CalendarViewConfig"];
 type CalendarDisplayField = CalendarViewConfig["displayFields"][number];
 type ScheduledEventType = components["schemas"]["ScheduledEventType"];
 type ScheduledEventStatus = components["schemas"]["ScheduledEventStatus"];
+type ActivityType = components["schemas"]["ActivityType"];
 
 const EVENT_TYPES: ScheduledEventType[] = ["appointment", "shop_job"];
 const STATUSES: ScheduledEventStatus[] = [
@@ -81,6 +81,7 @@ export function CustomizePanel({
   projectId,
   appointmentType,
   assignees,
+  activityTypes,
 }: {
   selectedView: CalendarViewOption | null;
   config: CalendarViewConfig;
@@ -89,6 +90,7 @@ export function CustomizePanel({
   projectId: string;
   appointmentType?: ScheduleAppointmentType | undefined;
   assignees: AssigneeOption[];
+  activityTypes: ActivityType[];
 }) {
   const router = useRouter();
   const [isOpen, setIsOpen] = useState(false);
@@ -123,7 +125,7 @@ export function CustomizePanel({
         displayType: draft.displayType,
         rangeDays: draft.rangeDays,
         eventTypes: draft.filters.eventTypes,
-        appointmentTypes: draft.filters.appointmentTypes,
+        activityTypeIds: draft.filters.activityTypeIds,
         statuses: draft.filters.statuses,
         assigneeIds: draft.filters.assigneeIds,
         hideCompleted: draft.filters.hideCompleted,
@@ -299,15 +301,14 @@ export function CustomizePanel({
               <MultiSelect
                 id="calendar-appointment-types"
                 label="Activity Types"
-                value={draft.filters.appointmentTypes}
-                options={SCHEDULE_APPOINTMENT_TYPES.map((value) => ({
-                  value,
-                  label: labelize(value),
+                value={draft.filters.activityTypeIds}
+                options={activityTypes.map((activityType) => ({
+                  value: activityType.id,
+                  label: activityType.name,
                 }))}
-                onChange={(appointmentTypes) =>
+                onChange={(activityTypeIds) =>
                   setFilters({
-                    appointmentTypes:
-                      appointmentTypes as CalendarViewConfig["filters"]["appointmentTypes"],
+                    activityTypeIds,
                   })
                 }
               />

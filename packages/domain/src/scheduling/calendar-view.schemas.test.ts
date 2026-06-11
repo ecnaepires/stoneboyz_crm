@@ -4,17 +4,17 @@ import { calendarViewConfigSchema } from './calendar-view.schemas.js';
 describe('calendarViewConfigSchema', () => {
   it('fills calendar view config defaults', () => {
     const parsed = calendarViewConfigSchema.parse({
-      version: 1,
+      version: 2,
       filters: {},
     });
 
     expect(parsed).toEqual({
-      version: 1,
+      version: 2,
       displayType: 'week',
       groupBy: 'none',
       filters: {
         eventTypes: [],
-        appointmentTypes: [],
+        activityTypeIds: [],
         statuses: [],
         assigneeIds: [],
         hideCompleted: false,
@@ -31,6 +31,7 @@ describe('calendarViewConfigSchema', () => {
       colorBy: 'appointmentType',
       wrapText: true,
       autoRefreshSeconds: null,
+      showDaySubtotals: false,
     });
   });
 });

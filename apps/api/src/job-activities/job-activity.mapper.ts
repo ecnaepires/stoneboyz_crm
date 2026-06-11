@@ -8,6 +8,7 @@ export interface JobActivityRow {
   template_activity_key: string;
   title: string;
   activity_type: JobActivity['activityType'];
+  activity_type_id: string | null;
   appointment_type: JobActivity['appointmentType'];
   template_kind: JobActivity['templateKind'];
   status: JobActivity['status'];
@@ -19,6 +20,7 @@ export interface JobActivityRow {
   autoschedule_offset_unit: string | null;
   depends_on_activity_id: string | null;
   manual_override_at: Date | null;
+  autoschedule_eligible?: boolean | null;
   created_at: Date;
   updated_at: Date;
 }
@@ -33,6 +35,7 @@ export const mapJobActivityRow = (row: JobActivityRow): JobActivity => ({
   templateActivityKey: row.template_activity_key,
   title: row.title,
   activityType: row.activity_type,
+  activityTypeId: row.activity_type_id,
   appointmentType: row.appointment_type,
   templateKind: row.template_kind,
   status: row.status,
@@ -44,6 +47,7 @@ export const mapJobActivityRow = (row: JobActivityRow): JobActivity => ({
   autoscheduleOffsetUnit: row.autoschedule_offset_unit,
   dependsOnActivityId: row.depends_on_activity_id,
   manualOverrideAt: row.manual_override_at === null ? null : toIso(row.manual_override_at),
+  autoscheduleEligible: row.autoschedule_eligible ?? false,
   createdAt: toIso(row.created_at),
   updatedAt: toIso(row.updated_at)
 });

@@ -134,10 +134,23 @@ const insertEvent = async (params: {
   scheduledAt: string;
   status: string;
 }): Promise<void> => {
+  const activityTypeResult = await pool.query<{ id: string }>(
+    `
+      SELECT at.id
+      FROM activity_types at
+      JOIN shops s ON s.id = at.shop_id
+      WHERE s.slug = 'stone-boyz'
+        AND at.seed_slug = $1
+      LIMIT 1
+    `,
+    [params.appointmentType]
+  );
+  const activityTypeId = activityTypeResult.rows[0]?.id;
+
   await pool.query(
-    `INSERT INTO scheduled_events (customer_id, project_id, event_type, appointment_type, title, scheduled_at, status)
-     VALUES ($1, $2, 'appointment', $3, 'Appt', $4, $5)`,
-    [SEEDED_CUSTOMER_ID, params.projectId, params.appointmentType, params.scheduledAt, params.status]
+    `INSERT INTO scheduled_events (customer_id, project_id, event_type, activity_type_id, appointment_type, title, scheduled_at, status)
+     VALUES ($1, $2, 'appointment', $3, $4, 'Appt', $5, $6)`,
+    [SEEDED_CUSTOMER_ID, params.projectId, activityTypeId, params.appointmentType, params.scheduledAt, params.status]
   );
 };
 

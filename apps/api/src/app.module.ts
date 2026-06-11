@@ -12,6 +12,7 @@ import { CustomerNotesController } from "./customers/customer-notes.controller.j
 import { CustomerNotesRepository } from "./customers/customer-notes.repository.js";
 import { CustomerNotesService } from "./customers/customer-notes.service.js";
 import { ActivityNotesModule } from "./activity-notes/activity-notes.module.js";
+import { ActivityTypesModule } from "./activity-types/activity-types.module.js";
 import { AssigneesModule } from "./assignees/assignees.module.js";
 import { CustomersController } from "./customers/customers.controller.js";
 import { CustomersRepository } from "./customers/customers.repository.js";
@@ -68,6 +69,7 @@ import { CalendarViewsModule } from "./calendar-views/calendar-views.module.js";
 @Module({
   imports: [
     ActivityNotesModule,
+    ActivityTypesModule,
     AssigneesModule,
     CalendarViewsModule,
     AttachmentsModule,
