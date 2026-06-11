@@ -124,12 +124,12 @@ export function polygonOutlinePoints(
 }
 
 // Interior angle (degrees) at vertex `b`, between incoming edge a->b and outgoing
-// edge b->c. Returns the unsigned 0-180 turn; callers needing reflex angles
-// (concave corners of an L/U) combine this with winding from the domain.
+// edge b->c. Reflex corners return >180 degrees.
 function interiorAngleDeg(
   a: PolygonVertex,
   b: PolygonVertex,
   c: PolygonVertex,
+  isCounterClockwise: boolean,
 ): number {
   const ux = a.x - b.x;
   const uy = a.y - b.y;
@@ -141,8 +141,23 @@ function interiorAngleDeg(
   if (magU === 0 || magV === 0) {
     return 0;
   }
-  const cos = Math.min(1, Math.max(-1, dot / (magU * magV)));
-  return (Math.acos(cos) * 180) / Math.PI;
+  const cross = ux * vy - uy * vx;
+  const ang = Math.atan2(cross, dot);
+  let deg = (ang * 180) / Math.PI;
+  if (deg < 0) {
+    deg += 360;
+  }
+  return isCounterClockwise ? (360 - deg) % 360 : deg;
+}
+
+function signedArea(vertices: PolygonVertex[]): number {
+  let sum = 0;
+  for (let i = 0; i < vertices.length; i += 1) {
+    const current = vertices[i] as PolygonVertex;
+    const next = vertices[(i + 1) % vertices.length] as PolygonVertex;
+    sum += current.x * next.y - current.y * next.x;
+  }
+  return sum / 2;
 }
 
 // Vertex handles in pixels, each with its interior angle for display/snapping.
@@ -158,13 +173,14 @@ export function polygonRenderVertices(
       interiorAngleDeg: 0,
     }));
   }
+  const isCounterClockwise = signedArea(vertices) > 0;
   return vertices.map((v, index) => {
     const prev = vertices[(index - 1 + vertices.length) % vertices.length] as PolygonVertex;
     const next = vertices[(index + 1) % vertices.length] as PolygonVertex;
     return {
       id: v.id,
       px: toPx(v, scale),
-      interiorAngleDeg: interiorAngleDeg(prev, v, next),
+      interiorAngleDeg: interiorAngleDeg(prev, v, next, isCounterClockwise),
     };
   });
 }

@@ -1138,7 +1138,18 @@ components:
           enum: [appointment, shop_job]
         appointmentType:
           type: string
-          enum: [template, deposit, material, cut, fabrication, install, invoice, repair, other]
+          enum:
+            [
+              template,
+              deposit,
+              material,
+              cut,
+              fabrication,
+              install,
+              invoice,
+              repair,
+              other,
+            ]
           nullable: true
         templateKind:
           type: string
@@ -1231,7 +1242,18 @@ components:
           enum: [appointment, shop_job]
         appointmentType:
           type: string
-          enum: [template, deposit, material, cut, fabrication, install, invoice, repair, other]
+          enum:
+            [
+              template,
+              deposit,
+              material,
+              cut,
+              fabrication,
+              install,
+              invoice,
+              repair,
+              other,
+            ]
           nullable: true
         templateKind:
           type: string
@@ -1239,7 +1261,15 @@ components:
           nullable: true
         status:
           type: string
-          enum: [not_scheduled, scheduled, confirmed, in_progress, completed, cancelled]
+          enum:
+            [
+              not_scheduled,
+              scheduled,
+              confirmed,
+              in_progress,
+              completed,
+              cancelled,
+            ]
         sortOrder:
           type: integer
         durationMinutes:
@@ -2728,7 +2758,17 @@ components:
           type: string
         assigneeType:
           type: string
-          enum: [person, team, crew, truck, equipment, machine, department, contractor]
+          enum:
+            [
+              person,
+              team,
+              crew,
+              truck,
+              equipment,
+              machine,
+              department,
+              contractor,
+            ]
         active:
           type: boolean
         linkedUserId:
@@ -2757,7 +2797,17 @@ components:
           minLength: 1
         assigneeType:
           type: string
-          enum: [person, team, crew, truck, equipment, machine, department, contractor]
+          enum:
+            [
+              person,
+              team,
+              crew,
+              truck,
+              equipment,
+              machine,
+              department,
+              contractor,
+            ]
           default: person
         notes:
           type: string
@@ -2859,10 +2909,203 @@ components:
           type: string
           format: date-time
 
-    CreateScheduledEventRequest:
+    CalendarEventItem:
+      allOf:
+        - $ref: "#/components/schemas/ScheduledEvent"
+        - type: object
+          required:
+            - customerName
+            - projectTitle
+            - jobNumber
+          properties:
+            customerName:
+              type: string
+            projectTitle:
+              type: string
+              nullable: true
+            jobNumber:
+              type: string
+              nullable: true
+
+    CalendarEventsResponse:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/CalendarEventItem"
+
+    CalendarDisplayField:
+      type: string
+      enum:
+        [
+          projectTitle,
+          customerName,
+          address,
+          activityTitle,
+          time,
+          duration,
+          status,
+          assignees,
+          notes,
+          sqft,
+        ]
+
+    CalendarViewConfig:
       type: object
       required:
-        [title, eventType, scheduledAt, durationMinutes]
+        [
+          version,
+          displayType,
+          groupBy,
+          filters,
+          displayFields,
+          colorBy,
+          wrapText,
+          autoRefreshSeconds,
+        ]
+      properties:
+        version:
+          type: integer
+          enum: [1]
+        displayType:
+          type: string
+          enum: [day, week, range]
+        rangeDays:
+          type: integer
+          minimum: 2
+          maximum: 31
+        groupBy:
+          type: string
+          enum: [none, assignee]
+        filters:
+          type: object
+          required:
+            [eventTypes, appointmentTypes, statuses, assigneeIds, hideCompleted]
+          properties:
+            eventTypes:
+              type: array
+              items:
+                $ref: "#/components/schemas/ScheduledEventType"
+            appointmentTypes:
+              type: array
+              items:
+                $ref: "#/components/schemas/AppointmentType"
+            statuses:
+              type: array
+              items:
+                $ref: "#/components/schemas/ScheduledEventStatus"
+            assigneeIds:
+              type: array
+              items:
+                type: string
+                format: uuid
+            customerId:
+              type: string
+              format: uuid
+            projectId:
+              type: string
+              format: uuid
+            hideCompleted:
+              type: boolean
+        displayFields:
+          type: array
+          items:
+            $ref: "#/components/schemas/CalendarDisplayField"
+        colorBy:
+          type: string
+          enum: [appointmentType, status, assignee]
+        wrapText:
+          type: boolean
+        autoRefreshSeconds:
+          type: integer
+          nullable: true
+          minimum: 15
+          maximum: 600
+
+    CalendarView:
+      type: object
+      required:
+        [
+          id,
+          name,
+          viewKind,
+          ownerUserId,
+          isShared,
+          config,
+          isDefault,
+          createdAt,
+          updatedAt,
+          archivedAt,
+        ]
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        viewKind:
+          type: string
+          enum: [calendar, job_list]
+        ownerUserId:
+          type: string
+          nullable: true
+        isShared:
+          type: boolean
+        config:
+          $ref: "#/components/schemas/CalendarViewConfig"
+        isDefault:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+        archivedAt:
+          type: string
+          format: date-time
+          nullable: true
+
+    CalendarViewsResponse:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/CalendarView"
+
+    CreateCalendarViewRequest:
+      type: object
+      required: [name, config]
+      properties:
+        name:
+          type: string
+        viewKind:
+          type: string
+          enum: [calendar, job_list]
+          default: calendar
+        isShared:
+          type: boolean
+          default: false
+        config:
+          $ref: "#/components/schemas/CalendarViewConfig"
+
+    UpdateCalendarViewRequest:
+      type: object
+      properties:
+        name:
+          type: string
+        isShared:
+          type: boolean
+        config:
+          $ref: "#/components/schemas/CalendarViewConfig"
+
+    CreateScheduledEventRequest:
+      type: object
+      required: [title, eventType, scheduledAt, durationMinutes]
       properties:
         customerId:
           type: string
@@ -6831,6 +7074,247 @@ paths:
                 $ref: "#/components/schemas/ErrorResponse"
         "409":
           description: Quote is not in draft status.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /calendar-views:
+    get:
+      operationId: listCalendarViews
+      summary: List calendar views visible to the current user
+      parameters:
+        - name: viewKind
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [calendar, job_list]
+            default: calendar
+      responses:
+        "200":
+          description: Calendar views returned.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CalendarViewsResponse"
+        "400":
+          description: Invalid request.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+    post:
+      operationId: createCalendarView
+      summary: Create a calendar view
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateCalendarViewRequest"
+      responses:
+        "201":
+          description: Calendar view created.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CalendarView"
+        "400":
+          description: Invalid request.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /calendar-views/{viewId}:
+    parameters:
+      - name: viewId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+
+    get:
+      operationId: getCalendarView
+      summary: Get a calendar view
+      responses:
+        "200":
+          description: Calendar view returned.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CalendarView"
+        "404":
+          description: Calendar view not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+    patch:
+      operationId: updateCalendarView
+      summary: Update a calendar view
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateCalendarViewRequest"
+      responses:
+        "200":
+          description: Calendar view updated.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CalendarView"
+        "400":
+          description: Invalid request.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: User cannot edit this calendar view.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Calendar view not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+    delete:
+      operationId: deleteCalendarView
+      summary: Archive a calendar view
+      responses:
+        "204":
+          description: Calendar view archived.
+        "403":
+          description: User cannot delete this calendar view.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Calendar view not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /calendar-views/{viewId}/make-default:
+    post:
+      operationId: makeDefaultCalendarView
+      summary: Set a calendar view as the current user's default
+      parameters:
+        - name: viewId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Calendar view set as default.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CalendarView"
+        "404":
+          description: Calendar view not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /events:
+    get:
+      operationId: listCalendarEvents
+      summary: List calendar events across accounts
+      parameters:
+        - name: from
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date
+          description: Include events on or after this date.
+        - name: to
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date
+          description: Exclude events on or after this date.
+        - name: eventTypes
+          in: query
+          required: false
+          style: form
+          explode: true
+          schema:
+            type: array
+            items:
+              $ref: "#/components/schemas/ScheduledEventType"
+        - name: appointmentTypes
+          in: query
+          required: false
+          style: form
+          explode: true
+          schema:
+            type: array
+            items:
+              $ref: "#/components/schemas/AppointmentType"
+        - name: statuses
+          in: query
+          required: false
+          style: form
+          explode: true
+          schema:
+            type: array
+            items:
+              $ref: "#/components/schemas/ScheduledEventStatus"
+        - name: assigneeIds
+          in: query
+          required: false
+          style: form
+          explode: true
+          schema:
+            type: array
+            items:
+              type: string
+              format: uuid
+        - name: customerId
+          in: query
+          required: false
+          schema:
+            type: string
+            format: uuid
+        - name: projectId
+          in: query
+          required: false
+          schema:
+            type: string
+            format: uuid
+        - name: hideCompleted
+          in: query
+          required: false
+          schema:
+            type: boolean
+      responses:
+        "200":
+          description: Calendar events returned.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CalendarEventsResponse"
+        "400":
+          description: Invalid request.
           content:
             application/json:
               schema:

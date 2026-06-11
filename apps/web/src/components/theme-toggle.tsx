@@ -26,6 +26,7 @@ export function ThemeToggle() {
       type='button'
       onClick={toggle}
       aria-label={isDark ? 'Switch to light theme' : 'Switch to dark theme'}
+      aria-pressed={isDark}
       className='grid h-9 w-9 place-items-center rounded-lg border border-border bg-card text-muted-foreground transition-colors hover:text-foreground'
     >
       {isDark ? <Sun className='h-4 w-4' /> : <Moon className='h-4 w-4' />}

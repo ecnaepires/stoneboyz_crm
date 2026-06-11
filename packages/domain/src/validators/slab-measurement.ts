@@ -1,14 +1,14 @@
 export type SlabMeasurement = {
   lengthIn: number;
   widthIn: number;
-  thicknessCm: number;
+  thicknessIn: number;
 };
 
 export type ValidationResult =
   | { ok: true }
   | { ok: false; error: string };
 
-const VALID_THICKNESSES_CM = new Set([2, 3]);
+const VALID_THICKNESSES_IN = new Set([2 / 2.54, 3 / 2.54]);
 
 export function validateSlabMeasurement(
   measurement: Partial<SlabMeasurement>,
@@ -19,22 +19,22 @@ export function validateSlabMeasurement(
   if (measurement.widthIn === undefined) {
     return { ok: false, error: "missing required field: widthIn" };
   }
-  if (measurement.thicknessCm === undefined) {
-    return { ok: false, error: "missing required field: thicknessCm" };
+  if (measurement.thicknessIn === undefined) {
+    return { ok: false, error: "missing required field: thicknessIn" };
   }
 
   if (
-    typeof measurement.lengthIn !== "number" ||
-    typeof measurement.widthIn !== "number" ||
-    typeof measurement.thicknessCm !== "number"
+    !Number.isFinite(measurement.lengthIn) ||
+    !Number.isFinite(measurement.widthIn) ||
+    !Number.isFinite(measurement.thicknessIn)
   ) {
-    return { ok: false, error: "dimensions must be numbers" };
+    return { ok: false, error: "dimensions must be finite numbers" };
   }
 
   if (
     measurement.lengthIn <= 0 ||
     measurement.widthIn <= 0 ||
-    measurement.thicknessCm <= 0
+    measurement.thicknessIn <= 0
   ) {
     return { ok: false, error: "dimensions must be positive" };
   }
@@ -43,7 +43,7 @@ export function validateSlabMeasurement(
     return { ok: false, error: "slab exceeds maximum dimensions" };
   }
 
-  if (!VALID_THICKNESSES_CM.has(measurement.thicknessCm)) {
+  if (!VALID_THICKNESSES_IN.has(measurement.thicknessIn)) {
     return {
       ok: false,
       error: "thickness must be 2cm or 3cm",

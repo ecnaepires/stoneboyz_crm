@@ -11,6 +11,7 @@ import {
   CHARGE_METHODS,
   GROUPS,
   MEASUREMENT_BASES,
+  resolvePricingRuleForGroup,
   type GroupConfig,
   type PriceListItemGroup,
 } from '../pricing-groups';
@@ -34,8 +35,8 @@ export type PriceListItemView = {
 
 const dollars = (cents: number) => `$${(cents / 100).toFixed(2)}`;
 
-export const inferItemGroup = (item: PriceListItemView): PriceListItemGroup =>
-  item.itemGroup ?? GROUPS.find((group) => group.category === item.category)?.value ?? 'material';
+export const inferItemGroup = (item: PriceListItemView): PriceListItemGroup | undefined =>
+  item.itemGroup ?? GROUPS.find((group) => group.category === item.category)?.value;
 
 export const filterItemsByGroup = (items: PriceListItemView[], group: GroupConfig): PriceListItemView[] =>
   items.filter((item) => inferItemGroup(item) === group.value);
@@ -49,13 +50,15 @@ function ruleLabelFor(item: PriceListItemView, group: GroupConfig) {
 }
 
 function PresetCreateForm({ priceListId, group }: { priceListId: string; group: GroupConfig }) {
+  const pricingRule = resolvePricingRuleForGroup(group);
+
   return (
     <form action={createPriceListItemAction.bind(null, priceListId)} className="mb-4 grid gap-2 md:grid-cols-[1.5fr_1fr_auto]">
       <input type="hidden" name="itemGroup" value={group.value} />
       <input type="hidden" name="category" value={group.category} />
       <input type="hidden" name="itemType" value={group.value} />
-      <input type="hidden" name="chargeMethod" value={group.chargeMethod} />
-      <input type="hidden" name="measurementBasis" value={group.measurementBasis} />
+      <input type="hidden" name="chargeMethod" value={pricingRule.chargeMethod} />
+      <input type="hidden" name="measurementBasis" value={pricingRule.measurementBasis} />
       <Input name="name" required placeholder={`${group.label} name`} />
       <Input name="price" required type="number" step="0.01" min="0" placeholder={group.ratePlaceholder} />
       <Button type="submit">Add</Button>
@@ -105,7 +108,7 @@ function ItemEditForm({
         <Select name="measurementBasis" defaultValue={item.measurementBasis ?? 'each'} className="w-52">
           {MEASUREMENT_BASES.map((basis) => <option key={basis.value} value={basis.value}>{basis.label}</option>)}
         </Select>
-        <Input name="price" type="number" step="0.01" min="0" defaultValue={(item.priceCents / 100).toFixed(2)} className="w-28" aria-label={`Rate for ${item.name}`} />
+        <Input name="price" required type="number" step="0.01" min="0" defaultValue={(item.priceCents / 100).toFixed(2)} className="w-28" aria-label={`Rate for ${item.name}`} />
         <Input name="sortOrder" type="number" defaultValue={item.sortOrder} className="w-20" aria-label={`Sort order for ${item.name}`} />
         <label className="flex items-center gap-2 text-sm">
           <input name="hideOnQuote" type="checkbox" defaultChecked={item.hideOnQuote} />
@@ -116,15 +119,17 @@ function ItemEditForm({
     );
   }
 
+  const pricingRule = resolvePricingRuleForGroup(group);
+
   return (
     <form action={updatePriceListItemAction.bind(null, priceListId, item.id)} className="flex flex-wrap items-center gap-2">
       <input type="hidden" name="itemGroup" value={group.value} />
       <input type="hidden" name="category" value={group.category} />
       <input type="hidden" name="itemType" value={group.value} />
-      <input type="hidden" name="chargeMethod" value={group.chargeMethod} />
-      <input type="hidden" name="measurementBasis" value={group.measurementBasis} />
+      <input type="hidden" name="chargeMethod" value={pricingRule.chargeMethod} />
+      <input type="hidden" name="measurementBasis" value={pricingRule.measurementBasis} />
       <Input name="name" defaultValue={item.name} className="w-44" aria-label={`Name for ${item.name}`} />
-      <Input name="price" type="number" step="0.01" min="0" defaultValue={(item.priceCents / 100).toFixed(2)} className="w-28" aria-label={`Rate for ${item.name}`} />
+      <Input name="price" required type="number" step="0.01" min="0" defaultValue={(item.priceCents / 100).toFixed(2)} className="w-28" aria-label={`Rate for ${item.name}`} />
       <Input name="sortOrder" type="number" defaultValue={item.sortOrder} className="w-20" aria-label={`Sort order for ${item.name}`} />
       <label className="flex items-center gap-2 text-sm">
         <input name="hideOnQuote" type="checkbox" defaultChecked={item.hideOnQuote} />

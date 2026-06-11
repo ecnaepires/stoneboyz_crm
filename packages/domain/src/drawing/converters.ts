@@ -122,13 +122,17 @@ export function splitEdgeLayout(
 
 export type MergeEdgeLayoutsResult =
   | { ok: true; edge: EdgeLayout }
-  | { ok: false; error: 'treatment_choice_required' };
+  | { ok: false; error: 'non_contiguous_edges' | 'treatment_choice_required' };
 
 export function mergeEdgeLayouts(
   first: EdgeLayout,
   second: EdgeLayout,
   treatmentChoice?: EdgeLayout['treatment'],
 ): MergeEdgeLayoutsResult {
+  if (first.toVertexId !== second.fromVertexId) {
+    return { ok: false, error: 'non_contiguous_edges' };
+  }
+
   if (first.treatment !== second.treatment && treatmentChoice === undefined) {
     return { ok: false, error: 'treatment_choice_required' };
   }

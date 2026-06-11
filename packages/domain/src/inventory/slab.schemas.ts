@@ -7,6 +7,7 @@ export const slabFinishSchema = z.enum(SLAB_FINISH_VALUES);
 export const slabQualityGradeSchema = z.enum(SLAB_QUALITY_GRADE_VALUES);
 
 const imageUrlsSchema = z.array(z.string().url()).max(20);
+const cmToIn = (value: number) => value / 2.54;
 
 export const createSlabSchema = z.object({
   stoneType: z.string().min(1),
@@ -22,7 +23,11 @@ export const createSlabSchema = z.object({
   imageUrls: imageUrlsSchema.default([]),
   notes: z.string().min(1).optional()
 }).superRefine((input, ctx) => {
-  const result = validateSlabMeasurement(input);
+  const result = validateSlabMeasurement({
+    lengthIn: input.lengthIn,
+    widthIn: input.widthIn,
+    thicknessIn: cmToIn(input.thicknessCm)
+  });
   if (!result.ok) {
     const path = result.error.includes('thickness') ? ['thicknessCm'] : ['lengthIn'];
     if (result.error === 'slab exceeds maximum dimensions') {
@@ -55,7 +60,7 @@ export const updateSlabSchema = z.object({
   const result = validateSlabMeasurement({
     lengthIn: input.lengthIn ?? 1,
     widthIn: input.widthIn ?? 1,
-    thicknessCm: input.thicknessCm ?? 2
+    thicknessIn: cmToIn(input.thicknessCm ?? 2)
   });
   if (!result.ok) {
     const path = result.error.includes('thickness') ? ['thicknessCm'] : ['lengthIn'];

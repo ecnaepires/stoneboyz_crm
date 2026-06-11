@@ -3,7 +3,7 @@ const nextConfig = {
   transpilePackages: ['@stoneboyz/api-client', '@stoneboyz/domain'],
   experimental: {
     serverActions: {
-      bodySizeLimit: '10mb',
+      bodySizeLimit: '6mb',
     },
   },
 };

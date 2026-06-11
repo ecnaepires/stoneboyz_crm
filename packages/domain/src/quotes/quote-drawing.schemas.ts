@@ -43,13 +43,20 @@ const canvasPieceShapeSchema = z.discriminatedUnion("type", [
     vertices: z
       .array(z.object({ id: z.string().min(1).optional(), x: z.number(), y: z.number() }))
       .min(3)
-      .transform((vertices) =>
-        vertices.map((vertex, index) => ({
-          id: vertex.id ?? `legacy-v${index}`,
-          x: vertex.x,
-          y: vertex.y,
-        })),
-      ),
+      .transform((vertices) => {
+        const usedIds = new Set<string>();
+        return vertices.map((vertex, index) => {
+          const baseId = vertex.id ?? `legacy-v${index}`;
+          let id = baseId;
+          let suffix = 1;
+          while (usedIds.has(id)) {
+            id = `${baseId}-${suffix}`;
+            suffix += 1;
+          }
+          usedIds.add(id);
+          return { id, x: vertex.x, y: vertex.y };
+        });
+      }),
   }),
 ]);
 

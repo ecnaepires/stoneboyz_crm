@@ -10,7 +10,11 @@ export default async function EditPriceListPage({ params }: { params: Promise<{ 
     params: { path: { priceListId: id } },
   });
 
-  if (error || !priceList) return <div className="text-red-600">Failed to load price list: {JSON.stringify(error)}</div>;
+  if (error || !priceList) {
+    console.error('Failed to load price list', error);
+
+    return <div className="text-red-600">Failed to load price list.</div>;
+  }
 
   return (
     <div className="max-w-2xl">

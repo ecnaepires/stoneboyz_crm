@@ -1,18 +1,18 @@
-import type { ScheduledEvent } from '@stoneboyz/domain';
+import type { CalendarEventItem, ScheduledEvent } from "@stoneboyz/domain";
 
 export interface ScheduledEventRow {
   id: string;
   customer_id: string;
   project_id: string | null;
   phase_id: string | null;
-  event_type: ScheduledEvent['eventType'];
-  appointment_type: ScheduledEvent['appointmentType'];
-  template_kind: ScheduledEvent['templateKind'];
+  event_type: ScheduledEvent["eventType"];
+  appointment_type: ScheduledEvent["appointmentType"];
+  template_kind: ScheduledEvent["templateKind"];
   title: string;
   scheduled_at: Date;
   duration_minutes: number;
   address: string | null;
-  status: ScheduledEvent['status'];
+  status: ScheduledEvent["status"];
   started_by_user_id: string | null;
   started_at: Date | null;
   completed_by_user_id: string | null;
@@ -23,13 +23,20 @@ export interface ScheduledEventRow {
   updated_at: Date;
 }
 
+export interface CalendarEventRow extends ScheduledEventRow {
+  customer_name: string;
+  project_title: string | null;
+  job_number: string | null;
+}
+
 const toIso = (value: Date): string => value.toISOString();
-const toNullableIso = (value: Date | null): string | null => (value === null ? null : toIso(value));
+const toNullableIso = (value: Date | null): string | null =>
+  value === null ? null : toIso(value);
 
 export const mapScheduledEventRow = (
   row: ScheduledEventRow,
   assigneeIds: string[],
-  jobActivityId: string | null
+  jobActivityId: string | null,
 ): ScheduledEvent => ({
   id: row.id,
   customerId: row.customer_id,
@@ -52,5 +59,16 @@ export const mapScheduledEventRow = (
   archivedAt: row.deleted_at === null ? null : toIso(row.deleted_at),
   archivedByUserId: row.deleted_by_user_id,
   createdAt: toIso(row.created_at),
-  updatedAt: toIso(row.updated_at)
+  updatedAt: toIso(row.updated_at),
+});
+
+export const mapCalendarEventRow = (
+  row: CalendarEventRow,
+  assigneeIds: string[],
+  jobActivityId: string | null,
+): CalendarEventItem => ({
+  ...mapScheduledEventRow(row, assigneeIds, jobActivityId),
+  customerName: row.customer_name,
+  projectTitle: row.project_title,
+  jobNumber: row.job_number,
 });

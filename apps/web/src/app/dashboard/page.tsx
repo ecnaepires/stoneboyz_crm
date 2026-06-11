@@ -11,9 +11,11 @@ export default async function DashboardPage() {
   const { data, error } = await client.GET("/dashboard", {});
 
   if (error) {
+    console.error("Failed to load dashboard", error);
+
     return (
       <div className="rounded-xl border border-red-500/30 bg-red-500/10 p-4 text-sm text-red-600 dark:text-red-400">
-        Failed to load dashboard: {JSON.stringify(error)}
+        An unexpected error occurred while loading the dashboard.
       </div>
     );
   }

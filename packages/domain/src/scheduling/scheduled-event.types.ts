@@ -1,12 +1,33 @@
-export const SCHEDULED_EVENT_TYPE_VALUES = ['appointment', 'shop_job'] as const;
-export const APPOINTMENT_TYPE_VALUES = ['template', 'deposit', 'material', 'cut', 'fabrication', 'install', 'invoice', 'repair', 'other'] as const;
-export const TEMPLATE_KIND_VALUES = ['measurement_only', 'physical_template', 'laser_template'] as const;
-export const SCHEDULED_EVENT_STATUS_VALUES = ['scheduled', 'confirmed', 'in_progress', 'completed', 'cancelled'] as const;
+export const SCHEDULED_EVENT_TYPE_VALUES = ["appointment", "shop_job"] as const;
+export const APPOINTMENT_TYPE_VALUES = [
+  "template",
+  "deposit",
+  "material",
+  "cut",
+  "fabrication",
+  "install",
+  "invoice",
+  "repair",
+  "other",
+] as const;
+export const TEMPLATE_KIND_VALUES = [
+  "measurement_only",
+  "physical_template",
+  "laser_template",
+] as const;
+export const SCHEDULED_EVENT_STATUS_VALUES = [
+  "scheduled",
+  "confirmed",
+  "in_progress",
+  "completed",
+  "cancelled",
+] as const;
 
-export type ScheduledEventType = typeof SCHEDULED_EVENT_TYPE_VALUES[number];
-export type AppointmentType = typeof APPOINTMENT_TYPE_VALUES[number];
-export type TemplateKind = typeof TEMPLATE_KIND_VALUES[number];
-export type ScheduledEventStatus = typeof SCHEDULED_EVENT_STATUS_VALUES[number];
+export type ScheduledEventType = (typeof SCHEDULED_EVENT_TYPE_VALUES)[number];
+export type AppointmentType = (typeof APPOINTMENT_TYPE_VALUES)[number];
+export type TemplateKind = (typeof TEMPLATE_KIND_VALUES)[number];
+export type ScheduledEventStatus =
+  (typeof SCHEDULED_EVENT_STATUS_VALUES)[number];
 
 export interface ScheduledEvent {
   id: string;
@@ -31,6 +52,12 @@ export interface ScheduledEvent {
   archivedByUserId: string | null;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface CalendarEventItem extends ScheduledEvent {
+  customerName: string;
+  projectTitle: string | null;
+  jobNumber: string | null;
 }
 
 export interface CreateScheduledEventInput {
@@ -77,4 +104,16 @@ export interface ListScheduledEventsInput {
   projectId?: string | undefined;
   from?: string | undefined;
   to?: string | undefined;
+}
+
+export interface ListCalendarEventsInput {
+  from: string;
+  to: string;
+  eventTypes?: ScheduledEventType[] | undefined;
+  appointmentTypes?: AppointmentType[] | undefined;
+  statuses?: ScheduledEventStatus[] | undefined;
+  assigneeIds?: string[] | undefined;
+  customerId?: string | undefined;
+  projectId?: string | undefined;
+  hideCompleted?: boolean | undefined;
 }

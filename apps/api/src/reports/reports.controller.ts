@@ -4,8 +4,18 @@ import { ReportsService } from './reports.service.js';
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
 // Accept only well-formed ISO dates; anything else is ignored (falls back to the
 // default trailing-12-months window) rather than reaching SQL as a bad cast.
-const coerceDate = (value?: string): string | undefined =>
-  value && ISO_DATE.test(value) ? value : undefined;
+const coerceDate = (value?: string): string | undefined => {
+  if (!value || !ISO_DATE.test(value)) {
+    return undefined;
+  }
+
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) {
+    return undefined;
+  }
+
+  return parsed.toISOString().slice(0, 10) === value ? value : undefined;
+};
 
 @Controller('reports')
 export class ReportsController {

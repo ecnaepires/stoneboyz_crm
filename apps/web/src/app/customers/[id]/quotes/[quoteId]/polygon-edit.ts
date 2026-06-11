@@ -102,6 +102,9 @@ export function splitEdge(
   if (insertAt === -1) {
     return state;
   }
+  if (vertices.some((vertex) => vertex.id === newVertexId)) {
+    return state;
+  }
 
   const a = vertices[insertAt - 1]!;
   const b = vertices[insertAt % n]!;

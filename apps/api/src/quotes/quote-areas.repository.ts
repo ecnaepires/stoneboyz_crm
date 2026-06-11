@@ -99,6 +99,30 @@ const layoutWithCounterPieceDimensions = (
   })
 });
 
+const parseCanvasLayout = (value: CanvasLayout | string): CanvasLayout | null => {
+  const parsed = (() => {
+    if (typeof value !== 'string') {
+      return value;
+    }
+
+    try {
+      return JSON.parse(value) as unknown;
+    } catch {
+      return null;
+    }
+  })();
+
+  if (
+    typeof parsed !== 'object' ||
+    parsed === null ||
+    !Array.isArray((parsed as { pieces?: unknown }).pieces)
+  ) {
+    return null;
+  }
+
+  return parsed as CanvasLayout;
+};
+
 @Injectable()
 export class QuoteAreasRepository {
   constructor(@Inject(DATABASE_POOL) private readonly pool: Pool) {}
@@ -276,7 +300,11 @@ export class QuoteAreasRepository {
     }
 
     for (const row of layouts.rows) {
-      const layout = (typeof row.layout === 'string' ? JSON.parse(row.layout) : row.layout) as CanvasLayout;
+      const layout = parseCanvasLayout(row.layout);
+      if (layout === null) {
+        continue;
+      }
+
       totals.set(
         row.quote_area_id,
         measurementTotalsFromLayout(layoutWithCounterPieceDimensions(layout, counterPiecesByArea.get(row.quote_area_id) ?? new Map()))

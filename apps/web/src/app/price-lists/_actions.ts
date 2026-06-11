@@ -2,6 +2,7 @@
 
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
+import type { PriceListChargeMethod, PriceListItemGroup, PriceListMeasurementBasis } from '@stoneboyz/domain';
 import { getApiClientWithAuth } from '@/lib/api';
 
 const toOptionalString = (value: FormDataEntryValue | null) => {
@@ -29,20 +30,12 @@ const toBoolean = (value: FormDataEntryValue | null) => value === 'on';
 const formBoolean = (formData: FormData, fieldName: string, fallback: boolean) =>
   formData.has(fieldName) ? toBoolean(formData.get(fieldName)) : fallback;
 
-type ItemGroup = 'material' | 'fabrication' | 'edge' | 'sink' | 'faucet_hole' | 'splash' | 'admin';
-type ChargeMethod = 'square_foot' | 'linear_foot' | 'each';
-type MeasurementBasis =
-  | 'countertop_sqft'
-  | 'backsplash_sqft'
-  | 'combined_sqft'
-  | 'finished_edge_linft'
-  | 'splash_sqft'
-  | 'sink_count'
-  | 'faucet_hole_count'
-  | 'each';
+type ItemGroup = PriceListItemGroup;
+type ChargeMethod = PriceListChargeMethod;
+type MeasurementBasis = PriceListMeasurementBasis;
 
-const ITEM_GROUPS = ['material', 'fabrication', 'edge', 'sink', 'faucet_hole', 'splash', 'admin'] as const;
-const CHARGE_METHODS = ['square_foot', 'linear_foot', 'each'] as const;
+const ITEM_GROUPS = ['material', 'fabrication', 'edge', 'sink', 'faucet_hole', 'splash', 'admin'] as const satisfies readonly ItemGroup[];
+const CHARGE_METHODS = ['square_foot', 'linear_foot', 'each'] as const satisfies readonly ChargeMethod[];
 const MEASUREMENT_BASES = [
   'countertop_sqft',
   'backsplash_sqft',
@@ -52,7 +45,7 @@ const MEASUREMENT_BASES = [
   'sink_count',
   'faucet_hole_count',
   'each',
-] as const;
+] as const satisfies readonly MeasurementBasis[];
 
 const oneOf = <T extends readonly string[]>(values: T, value: FormDataEntryValue | null, fallback: T[number]): T[number] => {
   const stringValue = typeof value === 'string' ? value : '';

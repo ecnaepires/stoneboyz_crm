@@ -13,7 +13,11 @@ const toOptionalString = (value: FormDataEntryValue | null) => {
 };
 
 const toCents = (value: FormDataEntryValue | null) => {
-  const numericValue = Number(value || 0);
+  const stringValue = typeof value === 'string' ? value.trim() : '';
+  const numericValue = Number(stringValue);
+  if (stringValue === '' || !Number.isFinite(numericValue) || numericValue < 0) {
+    throw new Error('Amount must be a non-negative number');
+  }
   return Math.round(numericValue * 100);
 };
 

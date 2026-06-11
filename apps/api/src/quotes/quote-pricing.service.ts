@@ -2,13 +2,15 @@ import { BadRequestException, ConflictException, Inject, Injectable, NotFoundExc
 import {
   type GeneratedPriceLine,
   type OverrideGeneratedPriceLineInput,
+  PRICE_CATEGORY_VALUES,
   type PriceCategory,
   type PriceListItem,
   type Quote,
   type QuoteArea,
-  type QuoteMeasurementAreaTotals,
   type QuotePricingSelection,
-  type UpsertQuotePricingSelectionInput
+  type UpsertQuotePricingSelectionInput,
+  quantityForMeasurementBasis,
+  unitForChargeMethod
 } from '@stoneboyz/domain';
 import type { Pool } from 'pg';
 import { DATABASE_POOL } from '../database.provider.js';
@@ -19,37 +21,8 @@ import { QuotePricingRepository } from './quote-pricing.repository.js';
 import { QuotePricingSelectionsRepository } from './quote-pricing-selections.repository.js';
 import { QuotesRepository } from './quotes.repository.js';
 
-const quantityForMeasurementBasis = (totals: QuoteMeasurementAreaTotals, basis: PriceListItem['measurementBasis']): number => {
-  switch (basis) {
-    case 'countertop_sqft':
-      return totals.countertopSqFt;
-    case 'backsplash_sqft':
-      return totals.backsplashSqFt;
-    case 'combined_sqft':
-      return totals.combinedSqFt;
-    case 'finished_edge_linft':
-      return totals.finishedEdgeLinFt;
-    case 'splash_sqft':
-      return totals.splashSqFt;
-    case 'sink_count':
-      return totals.sinkCutoutCount;
-    case 'faucet_hole_count':
-      return totals.faucetHoleCount;
-    case 'each':
-      return 1;
-  }
-};
-
-const unitForChargeMethod = (chargeMethod: PriceListItem['chargeMethod']): string => {
-  switch (chargeMethod) {
-    case 'square_foot':
-      return 'sqft';
-    case 'linear_foot':
-      return 'linft';
-    case 'each':
-      return 'ea';
-  }
-};
+const isPriceCategory = (value: string): value is PriceCategory =>
+  (PRICE_CATEGORY_VALUES as readonly string[]).includes(value);
 
 @Injectable()
 export class QuotePricingService {
@@ -98,10 +71,20 @@ export class QuotePricingService {
       await client.query('BEGIN');
 
       const currentSelection = await this.quotePricingSelectionsRepository.get(quoteId, client);
+      const nextSelection = {
+        ...currentSelection,
+        areas: currentSelection.areas.map((area) => ({ ...area }))
+      };
       const negotiatedSlabIds = new Set<string>();
+      const pendingMaterialChanges: Array<{
+        areaId: string;
+        previousMaterialSlabId: string | null;
+        nextMaterialSource: 'external' | 'inventory';
+        nextMaterialSlabId: string | null;
+      }> = [];
 
       for (const area of input.areas ?? []) {
-        const existingAreaSelection = currentSelection.areas.find((candidate) => candidate.areaId === area.areaId);
+        const existingAreaSelection = nextSelection.areas.find((candidate) => candidate.areaId === area.areaId);
         const nextMaterialSource = Object.hasOwn(area, 'materialSource')
           ? (area.materialSource ?? 'external')
           : (existingAreaSelection?.materialSource ?? 'external');
@@ -123,9 +106,44 @@ export class QuotePricingService {
           });
         }
 
+        const nextAreaSelection = {
+          areaId: area.areaId,
+          materialItemId: nextMaterialItemId,
+          materialSource: nextMaterialSource,
+          materialSlabId: nextMaterialSlabId,
+          externalMaterialNote: Object.hasOwn(area, 'externalMaterialNote')
+            ? (area.externalMaterialNote ?? null)
+            : (existingAreaSelection?.externalMaterialNote ?? null),
+          edgeItemId: Object.hasOwn(area, 'edgeItemId') ? (area.edgeItemId ?? null) : (existingAreaSelection?.edgeItemId ?? null),
+          fabricationItemId: Object.hasOwn(area, 'fabricationItemId')
+            ? (area.fabricationItemId ?? null)
+            : (existingAreaSelection?.fabricationItemId ?? null),
+          splashItemId: Object.hasOwn(area, 'splashItemId') ? (area.splashItemId ?? null) : (existingAreaSelection?.splashItemId ?? null),
+          sinkItemId: Object.hasOwn(area, 'sinkItemId') ? (area.sinkItemId ?? null) : (existingAreaSelection?.sinkItemId ?? null),
+          faucetHoleItemId: Object.hasOwn(area, 'faucetHoleItemId')
+            ? (area.faucetHoleItemId ?? null)
+            : (existingAreaSelection?.faucetHoleItemId ?? null)
+        };
+        const existingIndex = nextSelection.areas.findIndex((candidate) => candidate.areaId === area.areaId);
+        if (existingIndex === -1) {
+          nextSelection.areas.push(nextAreaSelection);
+        } else {
+          nextSelection.areas[existingIndex] = nextAreaSelection;
+        }
+
+        pendingMaterialChanges.push({
+          areaId: area.areaId,
+          previousMaterialSlabId,
+          nextMaterialSource,
+          nextMaterialSlabId
+        });
+      }
+
+      for (const change of pendingMaterialChanges) {
+        const { areaId, previousMaterialSlabId, nextMaterialSource, nextMaterialSlabId } = change;
         if (previousMaterialSlabId !== null && previousMaterialSlabId !== nextMaterialSlabId) {
-          const otherAreaStillUsesPreviousSlab = currentSelection.areas.some(
-            (candidate) => candidate.areaId !== area.areaId && candidate.materialSlabId === previousMaterialSlabId
+          const otherAreaStillUsesPreviousSlab = nextSelection.areas.some(
+            (candidate) => candidate.areaId !== areaId && candidate.materialSlabId === previousMaterialSlabId
           );
 
           if (!otherAreaStillUsesPreviousSlab) {
@@ -241,12 +259,13 @@ export class QuotePricingService {
       if (itemId === null || itemId === undefined) return [];
       const item = itemsById.get(itemId);
       if (item === undefined) return [];
+      if (!isPriceCategory(item.category)) return [];
 
       const quantity = quantityForMeasurementBasis(totals, item.measurementBasis);
       if (quantity <= 0) return [];
 
       return [{
-        category: item.category as PriceCategory,
+        category: item.category,
         label: item.name,
         quantity,
         unit: unitForChargeMethod(item.chargeMethod),

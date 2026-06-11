@@ -1,20 +1,27 @@
-import { Inject, Injectable } from '@nestjs/common';
+import { Inject, Injectable } from "@nestjs/common";
 import type {
+  CalendarEventItem,
   CreateScheduledEventInput,
+  ListCalendarEventsInput,
   ListScheduledEventsInput,
   ScheduledEvent,
   ScheduledEventStatus,
-  UpdateScheduledEventInput
-} from '@stoneboyz/domain';
-import type { Pool } from 'pg';
-import { DATABASE_POOL } from '../database.provider.js';
-import { mapScheduledEventRow, type ScheduledEventRow } from './scheduled-event.mapper.js';
+  UpdateScheduledEventInput,
+} from "@stoneboyz/domain";
+import type { Pool } from "pg";
+import { DATABASE_POOL } from "../database.provider.js";
+import {
+  mapCalendarEventRow,
+  mapScheduledEventRow,
+  type CalendarEventRow,
+  type ScheduledEventRow,
+} from "./scheduled-event.mapper.js";
 
 interface ScheduledEventListInput {
   cursor?: string | undefined;
   limit: number;
-  eventType?: ListScheduledEventsInput['eventType'] | undefined;
-  status?: ListScheduledEventsInput['status'] | undefined;
+  eventType?: ListScheduledEventsInput["eventType"] | undefined;
+  status?: ListScheduledEventsInput["status"] | undefined;
   projectId?: string | undefined;
   from?: string | undefined;
   to?: string | undefined;
@@ -26,49 +33,57 @@ interface ScheduledEventCursor {
 }
 
 const UPDATE_COLUMNS = {
-  projectId: 'project_id',
-  phaseId: 'phase_id',
-  appointmentType: 'appointment_type',
-  templateKind: 'template_kind',
-  title: 'title',
-  scheduledAt: 'scheduled_at',
-  durationMinutes: 'duration_minutes',
-  address: 'address'
-} satisfies Record<Exclude<keyof UpdateScheduledEventInput, 'actorUserId' | 'assigneeIds'>, string>;
+  projectId: "project_id",
+  phaseId: "phase_id",
+  appointmentType: "appointment_type",
+  templateKind: "template_kind",
+  title: "title",
+  scheduledAt: "scheduled_at",
+  durationMinutes: "duration_minutes",
+  address: "address",
+} satisfies Record<
+  Exclude<keyof UpdateScheduledEventInput, "actorUserId" | "assigneeIds">,
+  string
+>;
 
 export class InvalidScheduledEventCursorError extends Error {
   constructor() {
-    super('Invalid scheduled event cursor');
+    super("Invalid scheduled event cursor");
   }
 }
 
 export class UnknownAssigneeError extends Error {
   constructor() {
-    super('One or more assignees do not exist');
+    super("One or more assignees do not exist");
   }
 }
 
 export class InvalidScheduledEventStatusError extends Error {
   constructor() {
-    super('Invalid scheduled event status');
+    super("Invalid scheduled event status");
   }
 }
 
 const encodeCursor = (cursor: ScheduledEventCursor): string => {
-  return Buffer.from(JSON.stringify(cursor), 'utf8').toString('base64url');
+  return Buffer.from(JSON.stringify(cursor), "utf8").toString("base64url");
 };
 
 const decodeCursor = (cursor: string): ScheduledEventCursor => {
   try {
-    const parsed = JSON.parse(Buffer.from(cursor, 'base64url').toString('utf8')) as Partial<ScheduledEventCursor>;
+    const parsed = JSON.parse(
+      Buffer.from(cursor, "base64url").toString("utf8"),
+    ) as Partial<ScheduledEventCursor>;
 
-    if (typeof parsed.id !== 'string' || typeof parsed.scheduledAt !== 'string') {
+    if (
+      typeof parsed.id !== "string" ||
+      typeof parsed.scheduledAt !== "string"
+    ) {
       throw new InvalidScheduledEventCursorError();
     }
 
     return {
       id: parsed.id,
-      scheduledAt: parsed.scheduledAt
+      scheduledAt: parsed.scheduledAt,
     };
   } catch (error) {
     if (error instanceof InvalidScheduledEventCursorError) {
@@ -92,18 +107,111 @@ export class ScheduledEventsRepository {
           WHERE id = $1 AND deleted_at IS NULL
         ) AS "exists"
       `,
-      [customerId]
+      [customerId],
     );
 
     return result.rows[0]?.exists ?? false;
   }
 
+  async listGlobal(
+    input: ListCalendarEventsInput,
+  ): Promise<{ data: CalendarEventItem[] }> {
+    const values: unknown[] = [input.from, input.to];
+    const where = [
+      "se.deleted_at IS NULL",
+      "c.deleted_at IS NULL",
+      "se.scheduled_at >= $1::date",
+      "se.scheduled_at < $2::date",
+    ];
+    const addValue = (value: unknown): string => {
+      values.push(value);
+      return `$${values.length}`;
+    };
+
+    if (input.eventTypes !== undefined && input.eventTypes.length > 0) {
+      where.push(`se.event_type = ANY(${addValue(input.eventTypes)}::text[])`);
+    }
+
+    if (
+      input.appointmentTypes !== undefined &&
+      input.appointmentTypes.length > 0
+    ) {
+      where.push(
+        `se.appointment_type = ANY(${addValue(input.appointmentTypes)}::text[])`,
+      );
+    }
+
+    if (input.statuses !== undefined && input.statuses.length > 0) {
+      where.push(`se.status = ANY(${addValue(input.statuses)}::text[])`);
+    }
+
+    if (input.customerId !== undefined) {
+      where.push(`se.customer_id = ${addValue(input.customerId)}::uuid`);
+    }
+
+    if (input.projectId !== undefined) {
+      where.push(`se.project_id = ${addValue(input.projectId)}::uuid`);
+    }
+
+    if (input.hideCompleted === true) {
+      where.push("se.status <> 'completed'");
+    }
+
+    if (input.assigneeIds !== undefined && input.assigneeIds.length > 0) {
+      where.push(
+        `EXISTS (
+          SELECT 1
+          FROM scheduled_event_assignees sea_filter
+          WHERE sea_filter.scheduled_event_id = se.id
+            AND sea_filter.assignee_id = ANY(${addValue(input.assigneeIds)}::uuid[])
+        )`,
+      );
+    }
+
+    const result = await this.pool.query<CalendarEventRow>(
+      `
+        SELECT
+          se.*,
+          c.name AS customer_name,
+          p.title AS project_title,
+          p.job_number AS job_number
+        FROM scheduled_events se
+        JOIN customers c ON c.id = se.customer_id
+        LEFT JOIN projects p ON p.id = se.project_id
+        WHERE ${where.join(" AND ")}
+        ORDER BY se.scheduled_at ASC, se.id ASC
+        LIMIT 2000
+      `,
+      values,
+    );
+
+    const eventIds = result.rows.map((row) => row.id);
+    const [assigneeIdsByEvent, jobActivityIdByEvent] = await Promise.all([
+      this.loadAssigneeIds(eventIds),
+      this.loadJobActivityIds(eventIds),
+    ]);
+
+    return {
+      data: result.rows.map((row) =>
+        mapCalendarEventRow(
+          row,
+          assigneeIdsByEvent.get(row.id) ?? [],
+          jobActivityIdByEvent.get(row.id) ?? null,
+        ),
+      ),
+    };
+  }
+
   async list(
     customerId: string,
-    input: ScheduledEventListInput
-  ): Promise<{ data: ScheduledEvent[]; hasMore: boolean; nextCursor: string | null }> {
+    input: ScheduledEventListInput,
+  ): Promise<{
+    data: ScheduledEvent[];
+    hasMore: boolean;
+    nextCursor: string | null;
+  }> {
     const values: unknown[] = [customerId];
-    const where = ['customer_id = $1', 'deleted_at IS NULL'];
+    const where = ["customer_id = $1", "deleted_at IS NULL"];
 
     const addValue = (value: unknown): string => {
       values.push(value);
@@ -133,7 +241,7 @@ export class ScheduledEventsRepository {
     if (input.cursor !== undefined) {
       const cursor = decodeCursor(input.cursor);
       where.push(
-        `(scheduled_at > ${addValue(cursor.scheduledAt)} OR (scheduled_at = ${addValue(cursor.scheduledAt)} AND id > ${addValue(cursor.id)}))`
+        `(scheduled_at > ${addValue(cursor.scheduledAt)} OR (scheduled_at = ${addValue(cursor.scheduledAt)} AND id > ${addValue(cursor.id)}))`,
       );
     }
 
@@ -142,38 +250,48 @@ export class ScheduledEventsRepository {
       `
         SELECT *
         FROM scheduled_events
-        WHERE ${where.join(' AND ')}
+        WHERE ${where.join(" AND ")}
         ORDER BY scheduled_at ASC, id ASC
         LIMIT ${limitValue}
       `,
-      values
+      values,
     );
 
     const rows = result.rows.slice(0, input.limit);
     const eventIds = rows.map((row) => row.id);
     const [assigneeIdsByEvent, jobActivityIdByEvent] = await Promise.all([
       this.loadAssigneeIds(eventIds),
-      this.loadJobActivityIds(eventIds)
+      this.loadJobActivityIds(eventIds),
     ]);
 
     return {
       data: rows.map((row) =>
-        mapScheduledEventRow(row, assigneeIdsByEvent.get(row.id) ?? [], jobActivityIdByEvent.get(row.id) ?? null)
+        mapScheduledEventRow(
+          row,
+          assigneeIdsByEvent.get(row.id) ?? [],
+          jobActivityIdByEvent.get(row.id) ?? null,
+        ),
       ),
       hasMore: result.rows.length > input.limit,
       nextCursor:
         result.rows.length > input.limit && rows.at(-1) !== undefined
-          ? encodeCursor({ id: rows.at(-1)!.id, scheduledAt: rows.at(-1)!.scheduled_at.toISOString() })
-          : null
+          ? encodeCursor({
+              id: rows.at(-1)!.id,
+              scheduledAt: rows.at(-1)!.scheduled_at.toISOString(),
+            })
+          : null,
     };
   }
 
-  async create(customerId: string, input: CreateScheduledEventInput): Promise<ScheduledEvent> {
+  async create(
+    customerId: string,
+    input: CreateScheduledEventInput,
+  ): Promise<ScheduledEvent> {
     const assigneeIds = input.assigneeIds ?? [];
     const client = await this.pool.connect();
 
     try {
-      await client.query('BEGIN');
+      await client.query("BEGIN");
 
       if (assigneeIds.length > 0) {
         await this.ensureAssigneesExist(client, assigneeIds);
@@ -206,8 +324,8 @@ export class ScheduledEventsRepository {
           input.title,
           input.scheduledAt,
           input.durationMinutes ?? 60,
-          input.address ?? null
-        ]
+          input.address ?? null,
+        ],
       );
 
       const row = result.rows[0] as ScheduledEventRow;
@@ -218,31 +336,34 @@ export class ScheduledEventsRepository {
             INSERT INTO scheduled_event_assignees (scheduled_event_id, assignee_id)
             SELECT $1, unnest($2::uuid[])
           `,
-          [row.id, assigneeIds]
+          [row.id, assigneeIds],
         );
       }
 
-      await client.query('COMMIT');
+      await client.query("COMMIT");
 
       // A just-created event cannot be linked to a job activity yet; the
       // activity links to it afterwards via markScheduled.
       return mapScheduledEventRow(row, assigneeIds, null);
     } catch (error) {
-      await client.query('ROLLBACK');
+      await client.query("ROLLBACK");
       throw error;
     } finally {
       client.release();
     }
   }
 
-  async findById(customerId: string, eventId: string): Promise<ScheduledEvent | null> {
+  async findById(
+    customerId: string,
+    eventId: string,
+  ): Promise<ScheduledEvent | null> {
     const result = await this.pool.query<ScheduledEventRow>(
       `
         SELECT *
         FROM scheduled_events
         WHERE customer_id = $1 AND id = $2 AND deleted_at IS NULL
       `,
-      [customerId, eventId]
+      [customerId, eventId],
     );
 
     const row = result.rows[0];
@@ -250,53 +371,73 @@ export class ScheduledEventsRepository {
     return row === undefined ? null : this.withAssigneeIds(row);
   }
 
-  private async withAssigneeIds(row: ScheduledEventRow): Promise<ScheduledEvent> {
+  private async withAssigneeIds(
+    row: ScheduledEventRow,
+  ): Promise<ScheduledEvent> {
     const [assigneeIdsByEvent, jobActivityIdByEvent] = await Promise.all([
       this.loadAssigneeIds([row.id]),
-      this.loadJobActivityIds([row.id])
+      this.loadJobActivityIds([row.id]),
     ]);
-    return mapScheduledEventRow(row, assigneeIdsByEvent.get(row.id) ?? [], jobActivityIdByEvent.get(row.id) ?? null);
+    return mapScheduledEventRow(
+      row,
+      assigneeIdsByEvent.get(row.id) ?? [],
+      jobActivityIdByEvent.get(row.id) ?? null,
+    );
   }
 
-  private async loadJobActivityIds(eventIds: string[]): Promise<Map<string, string>> {
+  private async loadJobActivityIds(
+    eventIds: string[],
+  ): Promise<Map<string, string>> {
     if (eventIds.length === 0) {
       return new Map();
     }
 
-    const result = await this.pool.query<{ scheduled_event_id: string; job_activity_id: string }>(
+    const result = await this.pool.query<{
+      scheduled_event_id: string;
+      job_activity_id: string;
+    }>(
       `
         SELECT scheduled_event_id, min(id::text) AS job_activity_id
         FROM job_activities
         WHERE scheduled_event_id = ANY($1::uuid[]) AND deleted_at IS NULL
         GROUP BY scheduled_event_id
       `,
-      [eventIds]
+      [eventIds],
     );
 
-    return new Map(result.rows.map((row) => [row.scheduled_event_id, row.job_activity_id]));
+    return new Map(
+      result.rows.map((row) => [row.scheduled_event_id, row.job_activity_id]),
+    );
   }
 
-  private async loadAssigneeIds(eventIds: string[]): Promise<Map<string, string[]>> {
+  private async loadAssigneeIds(
+    eventIds: string[],
+  ): Promise<Map<string, string[]>> {
     if (eventIds.length === 0) {
       return new Map();
     }
 
-    const result = await this.pool.query<{ scheduled_event_id: string; assignee_ids: string[] }>(
+    const result = await this.pool.query<{
+      scheduled_event_id: string;
+      assignee_ids: string[];
+    }>(
       `
         SELECT scheduled_event_id, array_agg(assignee_id ORDER BY created_at, assignee_id) AS assignee_ids
         FROM scheduled_event_assignees
         WHERE scheduled_event_id = ANY($1::uuid[])
         GROUP BY scheduled_event_id
       `,
-      [eventIds]
+      [eventIds],
     );
 
-    return new Map(result.rows.map((row) => [row.scheduled_event_id, row.assignee_ids]));
+    return new Map(
+      result.rows.map((row) => [row.scheduled_event_id, row.assignee_ids]),
+    );
   }
 
   private async ensureAssigneesExist(
-    client: { query: Pool['query'] },
-    assigneeIds: string[]
+    client: { query: Pool["query"] },
+    assigneeIds: string[],
   ): Promise<void> {
     const result = await client.query<{ count: string }>(
       `
@@ -304,7 +445,7 @@ export class ScheduledEventsRepository {
         FROM assignees
         WHERE id = ANY($1::uuid[]) AND archived_at IS NULL
       `,
-      [assigneeIds]
+      [assigneeIds],
     );
 
     if (Number(result.rows[0]?.count ?? 0) !== assigneeIds.length) {
@@ -312,7 +453,11 @@ export class ScheduledEventsRepository {
     }
   }
 
-  async update(customerId: string, eventId: string, input: UpdateScheduledEventInput): Promise<ScheduledEvent | null> {
+  async update(
+    customerId: string,
+    eventId: string,
+    input: UpdateScheduledEventInput,
+  ): Promise<ScheduledEvent | null> {
     const values: unknown[] = [];
     const assignments: string[] = [];
     const addValue = (value: unknown): string => {
@@ -328,7 +473,7 @@ export class ScheduledEventsRepository {
       }
     }
 
-    assignments.push('updated_at = now()');
+    assignments.push("updated_at = now()");
 
     const customerPlaceholder = addValue(customerId);
     const eventPlaceholder = addValue(eventId);
@@ -336,25 +481,25 @@ export class ScheduledEventsRepository {
     const client = await this.pool.connect();
 
     try {
-      await client.query('BEGIN');
+      await client.query("BEGIN");
 
       const result = await client.query<ScheduledEventRow>(
         `
           UPDATE scheduled_events
-          SET ${assignments.join(', ')}
+          SET ${assignments.join(", ")}
           WHERE customer_id = ${customerPlaceholder}
             AND id = ${eventPlaceholder}
             AND deleted_at IS NULL
             AND status IN ('scheduled', 'confirmed')
           RETURNING *
         `,
-        values
+        values,
       );
 
       const row = result.rows[0];
 
       if (row === undefined) {
-        await client.query('ROLLBACK');
+        await client.query("ROLLBACK");
 
         const current = await this.findById(customerId, eventId);
         if (current !== null) {
@@ -369,7 +514,10 @@ export class ScheduledEventsRepository {
           await this.ensureAssigneesExist(client, input.assigneeIds);
         }
 
-        await client.query('DELETE FROM scheduled_event_assignees WHERE scheduled_event_id = $1', [row.id]);
+        await client.query(
+          "DELETE FROM scheduled_event_assignees WHERE scheduled_event_id = $1",
+          [row.id],
+        );
 
         if (input.assigneeIds.length > 0) {
           await client.query(
@@ -377,17 +525,17 @@ export class ScheduledEventsRepository {
               INSERT INTO scheduled_event_assignees (scheduled_event_id, assignee_id)
               SELECT $1, unnest($2::uuid[])
             `,
-            [row.id, input.assigneeIds]
+            [row.id, input.assigneeIds],
           );
         }
       }
 
-      await client.query('COMMIT');
+      await client.query("COMMIT");
 
       return this.withAssigneeIds(row);
     } catch (error) {
       if (!(error instanceof InvalidScheduledEventStatusError)) {
-        await client.query('ROLLBACK').catch(() => undefined);
+        await client.query("ROLLBACK").catch(() => undefined);
       }
       throw error;
     } finally {
@@ -395,31 +543,66 @@ export class ScheduledEventsRepository {
     }
   }
 
-  async confirm(customerId: string, eventId: string): Promise<ScheduledEvent | null> {
-    return this.transition(customerId, eventId, ['scheduled'], 'confirmed');
+  async confirm(
+    customerId: string,
+    eventId: string,
+  ): Promise<ScheduledEvent | null> {
+    return this.transition(customerId, eventId, ["scheduled"], "confirmed");
   }
 
-  async start(customerId: string, eventId: string, actorUserId: string): Promise<ScheduledEvent | null> {
-    return this.transitionWithAudit(customerId, eventId, ['confirmed'], 'in_progress', {
-      userIdColumn: 'started_by_user_id',
-      atColumn: 'started_at',
-      actorUserId
-    });
+  async start(
+    customerId: string,
+    eventId: string,
+    actorUserId: string,
+  ): Promise<ScheduledEvent | null> {
+    return this.transitionWithAudit(
+      customerId,
+      eventId,
+      ["confirmed"],
+      "in_progress",
+      {
+        userIdColumn: "started_by_user_id",
+        atColumn: "started_at",
+        actorUserId,
+      },
+    );
   }
 
-  async complete(customerId: string, eventId: string, actorUserId: string): Promise<ScheduledEvent | null> {
-    return this.transitionWithAudit(customerId, eventId, ['in_progress'], 'completed', {
-      userIdColumn: 'completed_by_user_id',
-      atColumn: 'completed_at',
-      actorUserId
-    });
+  async complete(
+    customerId: string,
+    eventId: string,
+    actorUserId: string,
+  ): Promise<ScheduledEvent | null> {
+    return this.transitionWithAudit(
+      customerId,
+      eventId,
+      ["in_progress"],
+      "completed",
+      {
+        userIdColumn: "completed_by_user_id",
+        atColumn: "completed_at",
+        actorUserId,
+      },
+    );
   }
 
-  async cancel(customerId: string, eventId: string): Promise<ScheduledEvent | null> {
-    return this.transition(customerId, eventId, ['scheduled', 'confirmed', 'in_progress'], 'cancelled');
+  async cancel(
+    customerId: string,
+    eventId: string,
+  ): Promise<ScheduledEvent | null> {
+    return this.transition(
+      customerId,
+      eventId,
+      ["scheduled", "confirmed", "in_progress"],
+      "cancelled",
+    );
   }
 
-  async archive(customerId: string, eventId: string, actorUserId: string): Promise<ScheduledEvent | null> {
+  async archive(
+    customerId: string,
+    eventId: string,
+    actorUserId: string,
+  ): Promise<ScheduledEvent | null> {
     const result = await this.pool.query<ScheduledEventRow>(
       `
         UPDATE scheduled_events
@@ -430,7 +613,7 @@ export class ScheduledEventsRepository {
           AND status IN ('completed', 'cancelled')
         RETURNING *
       `,
-      [customerId, eventId, actorUserId]
+      [customerId, eventId, actorUserId],
     );
 
     const row = result.rows[0];
@@ -451,7 +634,7 @@ export class ScheduledEventsRepository {
     customerId: string,
     eventId: string,
     fromStatuses: ScheduledEventStatus[],
-    toStatus: ScheduledEventStatus
+    toStatus: ScheduledEventStatus,
   ): Promise<ScheduledEvent | null> {
     const result = await this.pool.query<ScheduledEventRow>(
       `
@@ -463,7 +646,7 @@ export class ScheduledEventsRepository {
           AND status = ANY($4::text[])
         RETURNING *
       `,
-      [customerId, eventId, toStatus, fromStatuses]
+      [customerId, eventId, toStatus, fromStatuses],
     );
 
     const row = result.rows[0];
@@ -484,10 +667,20 @@ export class ScheduledEventsRepository {
     customerId: string,
     eventId: string,
     fromStatuses: ScheduledEventStatus[],
-    toStatus: Extract<ScheduledEventStatus, 'in_progress' | 'completed'>,
-    audit: { userIdColumn: 'started_by_user_id' | 'completed_by_user_id'; atColumn: 'started_at' | 'completed_at'; actorUserId: string }
+    toStatus: Extract<ScheduledEventStatus, "in_progress" | "completed">,
+    audit: {
+      userIdColumn: "started_by_user_id" | "completed_by_user_id";
+      atColumn: "started_at" | "completed_at";
+      actorUserId: string;
+    },
   ): Promise<ScheduledEvent | null> {
-    const values: unknown[] = [customerId, eventId, toStatus, audit.actorUserId, fromStatuses];
+    const values: unknown[] = [
+      customerId,
+      eventId,
+      toStatus,
+      audit.actorUserId,
+      fromStatuses,
+    ];
     const result = await this.pool.query<ScheduledEventRow>(
       `
         UPDATE scheduled_events
@@ -498,7 +691,7 @@ export class ScheduledEventsRepository {
           AND status = ANY($5::text[])
         RETURNING *
       `,
-      values
+      values,
     );
 
     const row = result.rows[0];

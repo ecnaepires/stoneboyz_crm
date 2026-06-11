@@ -2678,6 +2678,8 @@ export function DrawingCanvasInner({
   fullscreen = false,
 }: Props) {
   const router = useRouter();
+  const [optimisticPieces, setOptimisticPieces] =
+    useState<DrawingPiece[]>(pieces);
   const [layout, setLayout] = useState<CanvasLayout>(() =>
     mergeLayout(initialLayout, pieces, sinks),
   );
@@ -2830,6 +2832,7 @@ export function DrawingCanvasInner({
   }, [layout]);
 
   useEffect(() => {
+    setOptimisticPieces(pieces);
     layoutHistoryModeRef.current = "skip";
     setLayout((currentLayout) => {
       const nextLayout = mergeLayout(initialLayout, pieces, sinks);
@@ -3909,21 +3912,25 @@ export function DrawingCanvasInner({
   );
 
   const withPieceKinds = useCallback(
-    (toSave: CanvasLayout): CanvasLayout =>
-      drawingLayoutWithRectangleMeasurementShapes(
+    (toSave: CanvasLayout, piecesSource?: DrawingPiece[]): CanvasLayout => {
+      const source = piecesSource ?? optimisticPieces;
+      return drawingLayoutWithRectangleMeasurementShapes(
         {
           ...toSave,
-          pieces: toSave.pieces.map((piece) => ({
-            ...piece,
-            kind:
-              piece.kind ??
-              pieces.find((dp) => dp.id === piece.pieceId)?.kind ??
-              "countertop",
-          })),
+          pieces: toSave.pieces.map((piece) => {
+            const kind =
+              piece.kind ?? source.find((dp) => dp.id === piece.pieceId)?.kind;
+            if (kind === undefined) {
+              throw new Error(`Missing piece kind for ${piece.pieceId}`);
+            }
+
+            return { ...piece, kind };
+          }),
         },
-        pieces.map(getRenderedPiece),
-      ),
-    [pieces, getRenderedPiece],
+        source.map(getRenderedPiece),
+      );
+    },
+    [optimisticPieces, getRenderedPiece],
   );
 
   const persistDrawing = useCallback(
@@ -3978,6 +3985,14 @@ export function DrawingCanvasInner({
         if (!isCreatedCounterPiece(first)) {
           return;
         }
+        const createdPiece: DrawingPiece = {
+          id: first.id,
+          name: null,
+          lengthIn: preview.lengthIn,
+          widthIn: preview.widthIn,
+          kind: "countertop",
+        };
+        const nextPieces = [...optimisticPieces, createdPiece];
 
         const createdLayouts: PieceLayout[] = [
           {
@@ -4029,15 +4044,17 @@ export function DrawingCanvasInner({
           ...snapshot,
           pieces: [...snapshot.pieces, ...createdLayouts],
         };
+        setOptimisticPieces(nextPieces);
         setLayout(nextLayout);
         const saveResult = await saveDrawingAction(
           customerId,
           quoteId,
           areaId,
-          withPieceKinds(nextLayout),
+          withPieceKinds(nextLayout, nextPieces),
           null,
         );
         if (!saveResult.ok) {
+          setOptimisticPieces(optimisticPieces);
           setLayout(snapshot);
           setCanvasError(saveResult.error);
           return;
@@ -4046,7 +4063,7 @@ export function DrawingCanvasInner({
         router.refresh();
       });
     },
-    [areaId, buildPieceFormData, customerId, pieces.length, quoteId, router, withPieceKinds],
+    [areaId, buildPieceFormData, customerId, optimisticPieces, pieces.length, quoteId, router, withPieceKinds],
   );
 
   const addBacksplashPiece = useCallback(
@@ -4121,6 +4138,14 @@ export function DrawingCanvasInner({
 
         const first = createResult.data;
         if (!isCreatedCounterPiece(first)) return;
+        const createdPiece: DrawingPiece = {
+          id: first.id,
+          name: `B/S${nextBacksplashNumber}`,
+          lengthIn,
+          widthIn: heightIn,
+          kind: "backsplash",
+        };
+        const nextPieces = [...optimisticPieces, createdPiece];
 
         const snapshot = layoutRef.current;
         const nextLayout = {
@@ -4131,6 +4156,7 @@ export function DrawingCanvasInner({
           ],
         };
 
+        setOptimisticPieces(nextPieces);
         setLayout(nextLayout);
         setConfirmedBacksplashSpan(null);
         setSelectedPieceId(first.id);
@@ -4142,10 +4168,11 @@ export function DrawingCanvasInner({
           customerId,
           quoteId,
           areaId,
-          withPieceKinds(nextLayout),
+          withPieceKinds(nextLayout, nextPieces),
           null,
         );
         if (!saveResult.ok) {
+          setOptimisticPieces(optimisticPieces);
           setLayout(snapshot);
           setCanvasError(saveResult.error);
           return;
@@ -4159,6 +4186,7 @@ export function DrawingCanvasInner({
       backsplashHeightIn,
       backsplashOffsetIn,
       customerId,
+      optimisticPieces,
       pieces,
       quoteId,
       router,
@@ -5601,6 +5629,11 @@ export function DrawingCanvasInner({
         (piece) => piece.pieceId === pieceId,
       );
       if (!sourcePiece || !sourceLayout) return;
+      const sourceKind = sourcePiece.kind ?? sourceLayout.kind;
+      if (sourceKind === undefined) {
+        setCanvasError(`Missing piece kind for ${pieceId}`);
+        return;
+      }
 
       startTransition(async () => {
         try {
@@ -5629,6 +5662,7 @@ export function DrawingCanvasInner({
                   y: sourceLayout.y + 24,
                   rotation: sourceLayout.rotation,
                   shape: sourceLayout.shape ?? null,
+                  kind: sourceKind,
                 },
               ],
             }));

@@ -7,7 +7,7 @@ describe("validateSlabMeasurement", () => {
       validateSlabMeasurement({
         lengthIn: 120,
         widthIn: 26,
-        thicknessCm: 3,
+        thicknessIn: 3 / 2.54,
       }),
     ).toEqual({ ok: true });
   });
@@ -17,7 +17,7 @@ describe("validateSlabMeasurement", () => {
       validateSlabMeasurement({
         lengthIn: 0,
         widthIn: 26,
-        thicknessCm: 3,
+        thicknessIn: 3 / 2.54,
       }),
     ).toEqual({ ok: false, error: "dimensions must be positive" });
   });
@@ -27,7 +27,7 @@ describe("validateSlabMeasurement", () => {
       validateSlabMeasurement({
         lengthIn: 145,
         widthIn: 26,
-        thicknessCm: 3,
+        thicknessIn: 3 / 2.54,
       }),
     ).toEqual({ ok: false, error: "slab exceeds maximum dimensions" });
   });
@@ -37,7 +37,7 @@ describe("validateSlabMeasurement", () => {
       validateSlabMeasurement({
         lengthIn: 120,
         widthIn: 26,
-        thicknessCm: 1,
+        thicknessIn: 1,
       }),
     ).toEqual({
       ok: false,
@@ -50,8 +50,8 @@ describe("validateSlabMeasurement", () => {
       validateSlabMeasurement({
         lengthIn: 120,
         widthIn: 26,
-      } as Partial<{ lengthIn: number; widthIn: number; thicknessCm: number }>),
-    ).toEqual({ ok: false, error: "missing required field: thicknessCm" });
+      } as Partial<{ lengthIn: number; widthIn: number; thicknessIn: number }>),
+    ).toEqual({ ok: false, error: "missing required field: thicknessIn" });
   });
 
   it("rejects non-numeric input", () => {
@@ -59,8 +59,8 @@ describe("validateSlabMeasurement", () => {
       validateSlabMeasurement({
         lengthIn: "120" as unknown as number,
         widthIn: 26,
-        thicknessCm: 3,
+        thicknessIn: 3 / 2.54,
       }),
-    ).toEqual({ ok: false, error: "dimensions must be numbers" });
+    ).toEqual({ ok: false, error: "dimensions must be finite numbers" });
   });
 });

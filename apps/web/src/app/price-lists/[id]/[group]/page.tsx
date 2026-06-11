@@ -23,7 +23,9 @@ export default async function PriceListGroupPage({
   });
 
   if (error || !priceList) {
-    return <div className="text-red-600">Failed to load price list: {JSON.stringify(error)}</div>;
+    console.error('Failed to load price list', error);
+
+    return <div className="text-red-600">Failed to load price list.</div>;
   }
 
   const items = filterItemsByGroup((priceList.items ?? []) as PriceListItemView[], group);

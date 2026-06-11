@@ -32,7 +32,7 @@ const measurementNumber = (value: number) => value.toLocaleString(undefined, { m
 
 function TotalsGrid({ totals }: { totals: QuoteMeasurementAreaTotals }) {
   return (
-    <dl className="grid grid-cols-2 gap-2 text-sm md:grid-cols-3 lg:grid-cols-6">
+    <dl className="grid grid-cols-2 gap-2 text-sm md:grid-cols-3 lg:grid-cols-4">
       <div className="rounded-md border p-2">
         <dt className="text-xs text-muted-foreground">Countertop</dt>
         <dd className="font-medium">{measurementNumber(totals.countertopSqFt)} sq ft</dd>

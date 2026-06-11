@@ -1244,6 +1244,79 @@ export interface paths {
         patch: operations["updateQuoteLineItem"];
         trace?: never;
     };
+    "/calendar-views": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List calendar views visible to the current user */
+        get: operations["listCalendarViews"];
+        put?: never;
+        /** Create a calendar view */
+        post: operations["createCalendarView"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/calendar-views/{viewId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                viewId: string;
+            };
+            cookie?: never;
+        };
+        /** Get a calendar view */
+        get: operations["getCalendarView"];
+        put?: never;
+        post?: never;
+        /** Archive a calendar view */
+        delete: operations["deleteCalendarView"];
+        options?: never;
+        head?: never;
+        /** Update a calendar view */
+        patch: operations["updateCalendarView"];
+        trace?: never;
+    };
+    "/calendar-views/{viewId}/make-default": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Set a calendar view as the current user's default */
+        post: operations["makeDefaultCalendarView"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/events": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List calendar events across accounts */
+        get: operations["listCalendarEvents"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/customers/{customerId}/events": {
         parameters: {
             query?: never;
@@ -2597,6 +2670,77 @@ export interface components {
             createdAt: string;
             /** Format: date-time */
             updatedAt: string;
+        };
+        CalendarEventItem: components["schemas"]["ScheduledEvent"] & {
+            customerName: string;
+            projectTitle: string | null;
+            jobNumber: string | null;
+        };
+        CalendarEventsResponse: {
+            data: components["schemas"]["CalendarEventItem"][];
+        };
+        /** @enum {string} */
+        CalendarDisplayField: "projectTitle" | "customerName" | "address" | "activityTitle" | "time" | "duration" | "status" | "assignees" | "notes" | "sqft";
+        CalendarViewConfig: {
+            /** @enum {integer} */
+            version: 1;
+            /** @enum {string} */
+            displayType: "day" | "week" | "range";
+            rangeDays?: number;
+            /** @enum {string} */
+            groupBy: "none" | "assignee";
+            filters: {
+                eventTypes: components["schemas"]["ScheduledEventType"][];
+                appointmentTypes: components["schemas"]["AppointmentType"][];
+                statuses: components["schemas"]["ScheduledEventStatus"][];
+                assigneeIds: string[];
+                /** Format: uuid */
+                customerId?: string;
+                /** Format: uuid */
+                projectId?: string;
+                hideCompleted: boolean;
+            };
+            displayFields: components["schemas"]["CalendarDisplayField"][];
+            /** @enum {string} */
+            colorBy: "appointmentType" | "status" | "assignee";
+            wrapText: boolean;
+            autoRefreshSeconds: number | null;
+        };
+        CalendarView: {
+            /** Format: uuid */
+            id: string;
+            name: string;
+            /** @enum {string} */
+            viewKind: "calendar" | "job_list";
+            ownerUserId: string | null;
+            isShared: boolean;
+            config: components["schemas"]["CalendarViewConfig"];
+            isDefault: boolean;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+            /** Format: date-time */
+            archivedAt: string | null;
+        };
+        CalendarViewsResponse: {
+            data: components["schemas"]["CalendarView"][];
+        };
+        CreateCalendarViewRequest: {
+            name: string;
+            /**
+             * @default calendar
+             * @enum {string}
+             */
+            viewKind: "calendar" | "job_list";
+            /** @default false */
+            isShared: boolean;
+            config: components["schemas"]["CalendarViewConfig"];
+        };
+        UpdateCalendarViewRequest: {
+            name?: string;
+            isShared?: boolean;
+            config?: components["schemas"]["CalendarViewConfig"];
         };
         CreateScheduledEventRequest: {
             /**
@@ -7137,6 +7281,264 @@ export interface operations {
             };
             /** @description Quote is not in draft status. */
             409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    listCalendarViews: {
+        parameters: {
+            query?: {
+                viewKind?: "calendar" | "job_list";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Calendar views returned. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CalendarViewsResponse"];
+                };
+            };
+            /** @description Invalid request. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    createCalendarView: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateCalendarViewRequest"];
+            };
+        };
+        responses: {
+            /** @description Calendar view created. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CalendarView"];
+                };
+            };
+            /** @description Invalid request. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getCalendarView: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                viewId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Calendar view returned. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CalendarView"];
+                };
+            };
+            /** @description Calendar view not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    deleteCalendarView: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                viewId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Calendar view archived. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description User cannot delete this calendar view. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Calendar view not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    updateCalendarView: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                viewId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateCalendarViewRequest"];
+            };
+        };
+        responses: {
+            /** @description Calendar view updated. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CalendarView"];
+                };
+            };
+            /** @description Invalid request. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description User cannot edit this calendar view. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Calendar view not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    makeDefaultCalendarView: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                viewId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Calendar view set as default. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CalendarView"];
+                };
+            };
+            /** @description Calendar view not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    listCalendarEvents: {
+        parameters: {
+            query: {
+                /** @description Include events on or after this date. */
+                from: string;
+                /** @description Exclude events on or after this date. */
+                to: string;
+                eventTypes?: components["schemas"]["ScheduledEventType"][];
+                appointmentTypes?: components["schemas"]["AppointmentType"][];
+                statuses?: components["schemas"]["ScheduledEventStatus"][];
+                assigneeIds?: string[];
+                customerId?: string;
+                projectId?: string;
+                hideCompleted?: boolean;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Calendar events returned. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CalendarEventsResponse"];
+                };
+            };
+            /** @description Invalid request. */
+            400: {
                 headers: {
                     [name: string]: unknown;
                 };

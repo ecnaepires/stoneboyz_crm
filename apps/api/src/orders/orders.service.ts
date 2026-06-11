@@ -204,7 +204,7 @@ export class OrdersService {
 
     try {
       await client.query('BEGIN');
-      payment = await this.ordersRepository.voidPayment(client, orderId, paymentId, input.actorUserId, input.voidReason);
+      payment = await this.ordersRepository.voidPayment(client, customerId, orderId, paymentId, input.actorUserId, input.voidReason);
 
       if (payment === null) {
         throw new NotFoundException({ code: 'NOT_FOUND', message: 'Payment not found' });

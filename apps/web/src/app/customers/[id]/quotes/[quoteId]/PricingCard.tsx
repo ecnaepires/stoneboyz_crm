@@ -1,5 +1,6 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getApiClientWithAuth } from "@/lib/api";
+import type { PriceListItemGroup } from "@stoneboyz/domain";
 import type { QuoteAreaWithMeasurementTotals } from "./MeasurementsCard";
 import { PricingAccordion } from "./PricingAccordion";
 import type {
@@ -9,15 +10,6 @@ import type {
   AreaSelection,
   GeneratedLine,
 } from "./PricingAccordion";
-
-type PriceListItemGroup =
-  | "material"
-  | "fabrication"
-  | "edge"
-  | "sink"
-  | "faucet_hole"
-  | "splash"
-  | "admin";
 
 type GeneratedPriceLine = GeneratedLine & { quoteAreaId: string };
 type MaterialSlab = {
@@ -118,14 +110,28 @@ async function getPricingSelection(customerId: string, quoteId: string) {
 
 async function getCatalogItems() {
   const client = (await getApiClientWithAuth()) as unknown as PricingReadClient;
-  const { data, error } = await client.GET<{ data: CatalogPriceList[] }>(
-    "/price-lists",
-    {
-      params: { query: { limit: 50, includeArchived: false } },
-    },
-  );
-  if (error) throw new Error("Failed to load price lists");
-  const priceLists = data?.data ?? [];
+  const priceLists: CatalogPriceList[] = [];
+  let cursor: string | null = null;
+  do {
+    const result: {
+      data?: {
+        data: CatalogPriceList[];
+        hasMore?: boolean;
+        nextCursor?: string | null;
+      };
+      error?: unknown;
+    } = await client.GET("/price-lists", {
+      params: {
+        query: cursor === null
+          ? { limit: 100, includeArchived: false }
+          : { limit: 100, includeArchived: false, cursor },
+      },
+    });
+    if (result.error) throw new Error("Failed to load price lists");
+    priceLists.push(...(result.data?.data ?? []));
+    cursor = result.data?.nextCursor ?? null;
+  } while (cursor !== null);
+
   const details = await Promise.all(
     priceLists.map(async (priceList) => {
       const result = await client.GET<CatalogPriceList>(
@@ -155,9 +161,11 @@ async function getMaterialSlabs(selectedSlabIds: string[]) {
     }),
     Promise.all(
       selectedSlabIds.map((slabId) =>
-        client.GET<MaterialSlab>("/inventory/slabs/{slabId}", {
-          params: { path: { slabId } },
-        }),
+        client
+          .GET<MaterialSlab>("/inventory/slabs/{slabId}", {
+            params: { path: { slabId } },
+          })
+          .then((result) => ({ slabId, result })),
       ),
     ),
   ]);
@@ -170,15 +178,22 @@ async function getMaterialSlabs(selectedSlabIds: string[]) {
   for (const slab of [...(availableResult.data?.data ?? []), ...(remnantResult.data?.data ?? [])]) {
     slabsById.set(slab.id, slab);
   }
-  for (const result of selectedResults) {
-    if (!result.error && result.data) {
+  const missingSlabIds: string[] = [];
+  for (const { slabId, result } of selectedResults) {
+    if (result.error || !result.data) {
+      missingSlabIds.push(slabId);
+      console.error("Failed to load selected material slab", { slabId, error: result.error });
+    } else {
       slabsById.set(result.data.id, result.data);
     }
   }
 
-  return Array.from(slabsById.values()).sort(
-    (a, b) => a.stoneType.localeCompare(b.stoneType) || a.id.localeCompare(b.id),
-  );
+  return {
+    slabs: Array.from(slabsById.values()).sort(
+      (a, b) => a.stoneType.localeCompare(b.stoneType) || a.id.localeCompare(b.id),
+    ),
+    missingSlabIds,
+  };
 }
 
 export async function PricingCard({
@@ -200,7 +215,7 @@ export async function PricingCard({
       ),
     ),
   ]);
-  const materialSlabs = await getMaterialSlabs(
+  const materialSlabsResult = await getMaterialSlabs(
     Array.from(
       new Set(
         selection.areas
@@ -209,6 +224,7 @@ export async function PricingCard({
       ),
     ),
   );
+  const materialSlabs = materialSlabsResult.slabs;
 
   const linesByArea = new Map(lineEntries);
   const selectionByArea = new Map(
@@ -267,6 +283,7 @@ export async function PricingCard({
           areas={accordionAreas}
           itemsByGroup={itemsByGroup}
           materialSlabs={materialSlabs}
+          missingSlabIds={materialSlabsResult.missingSlabIds}
         />
       </CardContent>
     </Card>

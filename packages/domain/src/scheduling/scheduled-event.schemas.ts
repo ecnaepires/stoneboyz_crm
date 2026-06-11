@@ -1,10 +1,10 @@
-import { z } from 'zod';
+import { z } from "zod";
 import {
   APPOINTMENT_TYPE_VALUES,
   SCHEDULED_EVENT_STATUS_VALUES,
   SCHEDULED_EVENT_TYPE_VALUES,
-  TEMPLATE_KIND_VALUES
-} from './scheduled-event.types.js';
+  TEMPLATE_KIND_VALUES,
+} from "./scheduled-event.types.js";
 
 export const scheduledEventTypeSchema = z.enum(SCHEDULED_EVENT_TYPE_VALUES);
 export const appointmentTypeSchema = z.enum(APPOINTMENT_TYPE_VALUES);
@@ -15,10 +15,11 @@ const actorSchema = z.object({});
 
 const dateTimeSchema = z.string().datetime({ offset: true });
 const nullableDateTimeSchema = dateTimeSchema.nullable();
-const assigneeIdsSchema = z.array(z.string().uuid()).refine(
-  (ids) => new Set(ids).size === ids.length,
-  { message: 'Assignee IDs must be unique' }
-);
+const assigneeIdsSchema = z
+  .array(z.string().uuid())
+  .refine((ids) => new Set(ids).size === ids.length, {
+    message: "Assignee IDs must be unique",
+  });
 
 const validateAppointmentType = (
   input: {
@@ -26,29 +27,29 @@ const validateAppointmentType = (
     appointmentType?: string | null | undefined;
     templateKind?: string | null | undefined;
   },
-  context: z.RefinementCtx
+  context: z.RefinementCtx,
 ): void => {
-  if (input.eventType === 'appointment' && input.appointmentType == null) {
+  if (input.eventType === "appointment" && input.appointmentType == null) {
     context.addIssue({
-      code: 'custom',
-      path: ['appointmentType'],
-      message: 'appointmentType is required for appointment events'
+      code: "custom",
+      path: ["appointmentType"],
+      message: "appointmentType is required for appointment events",
     });
   }
 
-  if (input.eventType === 'shop_job' && input.appointmentType != null) {
+  if (input.eventType === "shop_job" && input.appointmentType != null) {
     context.addIssue({
-      code: 'custom',
-      path: ['appointmentType'],
-      message: 'appointmentType must be null for shop_job events'
+      code: "custom",
+      path: ["appointmentType"],
+      message: "appointmentType must be null for shop_job events",
     });
   }
 
-  if (input.templateKind != null && input.appointmentType !== 'template') {
+  if (input.templateKind != null && input.appointmentType !== "template") {
     context.addIssue({
-      code: 'custom',
-      path: ['templateKind'],
-      message: 'templateKind is only valid when appointmentType is template'
+      code: "custom",
+      path: ["templateKind"],
+      message: "templateKind is only valid when appointmentType is template",
     });
   }
 };
@@ -78,37 +79,41 @@ export const scheduledEventSchema = z.object({
   archivedAt: nullableDateTimeSchema,
   archivedByUserId: z.string().uuid().nullable(),
   createdAt: dateTimeSchema,
-  updatedAt: dateTimeSchema
+  updatedAt: dateTimeSchema,
 });
 
-export const createScheduledEventSchema = z.object({
-  customerId: z.string().uuid().optional(),
-  projectId: z.string().uuid().optional(),
-  phaseId: z.string().uuid().optional(),
-  eventType: scheduledEventTypeSchema,
-  appointmentType: appointmentTypeSchema.nullable().optional(),
-  templateKind: templateKindSchema.nullable().optional(),
-  title: z.string().min(1),
-  scheduledAt: dateTimeSchema,
-  durationMinutes: z.number().int().min(1).default(60),
-  assigneeIds: assigneeIdsSchema.default([]),
-  address: z.string().min(1).optional()
-}).superRefine(validateAppointmentType);
+export const createScheduledEventSchema = z
+  .object({
+    customerId: z.string().uuid().optional(),
+    projectId: z.string().uuid().optional(),
+    phaseId: z.string().uuid().optional(),
+    eventType: scheduledEventTypeSchema,
+    appointmentType: appointmentTypeSchema.nullable().optional(),
+    templateKind: templateKindSchema.nullable().optional(),
+    title: z.string().min(1),
+    scheduledAt: dateTimeSchema,
+    durationMinutes: z.number().int().min(1).default(60),
+    assigneeIds: assigneeIdsSchema.default([]),
+    address: z.string().min(1).optional(),
+  })
+  .superRefine(validateAppointmentType);
 
-export const updateScheduledEventSchema = z.object({
-  projectId: z.string().uuid().nullable().optional(),
-  phaseId: z.string().uuid().nullable().optional(),
-  appointmentType: appointmentTypeSchema.nullable().optional(),
-  templateKind: templateKindSchema.nullable().optional(),
-  title: z.string().min(1).optional(),
-  scheduledAt: dateTimeSchema.optional(),
-  durationMinutes: z.number().int().min(1).optional(),
-  assigneeIds: assigneeIdsSchema.optional(),
-  address: z.string().min(1).nullable().optional()
-}).refine((input) => Object.keys(input).length > 0, {
-  message: 'At least one field is required',
-  path: []
-});
+export const updateScheduledEventSchema = z
+  .object({
+    projectId: z.string().uuid().nullable().optional(),
+    phaseId: z.string().uuid().nullable().optional(),
+    appointmentType: appointmentTypeSchema.nullable().optional(),
+    templateKind: templateKindSchema.nullable().optional(),
+    title: z.string().min(1).optional(),
+    scheduledAt: dateTimeSchema.optional(),
+    durationMinutes: z.number().int().min(1).optional(),
+    assigneeIds: assigneeIdsSchema.optional(),
+    address: z.string().min(1).nullable().optional(),
+  })
+  .refine((input) => Object.keys(input).length > 0, {
+    message: "At least one field is required",
+    path: [],
+  });
 
 export const listScheduledEventsSchema = z.object({
   cursor: z.string().min(1).optional(),
@@ -117,5 +122,53 @@ export const listScheduledEventsSchema = z.object({
   status: scheduledEventStatusSchema.optional(),
   projectId: z.string().uuid().optional(),
   from: z.string().date().optional(),
-  to: z.string().date().optional()
+  to: z.string().date().optional(),
 });
+
+const MAX_CALENDAR_RANGE_DAYS = 62;
+const MS_PER_DAY = 24 * 60 * 60 * 1000;
+const queryArray = <T extends z.ZodType>(schema: T) =>
+  z.preprocess((value) => {
+    if (value === undefined) {
+      return undefined;
+    }
+
+    if (Array.isArray(value)) {
+      return value.flatMap((item) =>
+        typeof item === "string" ? item.split(",") : item,
+      );
+    }
+
+    return typeof value === "string" ? value.split(",") : value;
+  }, z.array(schema).optional());
+
+export const listCalendarEventsSchema = z
+  .object({
+    from: z.string().date(),
+    to: z.string().date(),
+    eventTypes: queryArray(scheduledEventTypeSchema),
+    appointmentTypes: queryArray(appointmentTypeSchema),
+    statuses: queryArray(scheduledEventStatusSchema),
+    assigneeIds: queryArray(z.string().uuid()),
+    customerId: z.string().uuid().optional(),
+    projectId: z.string().uuid().optional(),
+    hideCompleted: z.coerce.boolean().optional(),
+  })
+  .refine(
+    (input) => new Date(input.to).getTime() > new Date(input.from).getTime(),
+    {
+      message: "to must be after from",
+      path: ["to"],
+    },
+  )
+  .refine(
+    (input) =>
+      (new Date(input.to).getTime() - new Date(input.from).getTime()) /
+        MS_PER_DAY <=
+      MAX_CALENDAR_RANGE_DAYS,
+    {
+      message: `Range must be ${MAX_CALENDAR_RANGE_DAYS} days or fewer`,
+      path: ["to"],
+    },
+  );
+  

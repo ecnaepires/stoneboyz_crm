@@ -2,7 +2,7 @@ import type { QuoteMeasurementAreaTotals } from './quote-measurements.types.js';
 import type { GeneratedPriceLineInput, PriceListItemInput, QuoteAreaContext } from './quote-pricing.types.js';
 import { PRICE_CATEGORY_VALUES } from './quote-pricing.types.js';
 
-function quantityForMeasurementBasis(totals: QuoteMeasurementAreaTotals, basis: NonNullable<PriceListItemInput['measurementBasis']>): number {
+export function quantityForMeasurementBasis(totals: QuoteMeasurementAreaTotals, basis: NonNullable<PriceListItemInput['measurementBasis']>): number {
   switch (basis) {
     case 'countertop_sqft':
       return totals.countertopSqFt;
@@ -23,7 +23,7 @@ function quantityForMeasurementBasis(totals: QuoteMeasurementAreaTotals, basis: 
   }
 }
 
-function unitForChargeMethod(chargeMethod: NonNullable<PriceListItemInput['chargeMethod']>): string {
+export function unitForChargeMethod(chargeMethod: NonNullable<PriceListItemInput['chargeMethod']>): string {
   switch (chargeMethod) {
     case 'square_foot':
       return 'sqft';

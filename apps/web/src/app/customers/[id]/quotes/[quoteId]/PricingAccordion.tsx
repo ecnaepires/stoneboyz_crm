@@ -35,6 +35,7 @@ interface PricingAccordionProps {
   areas: AccordionArea[];
   itemsByGroup: Record<AccordionGroup, AccordionItem[]>;
   materialSlabs: MaterialSlab[];
+  missingSlabIds: string[];
 }
 
 const money = (cents: number) => `$${(cents / 100).toFixed(2)}`;
@@ -63,7 +64,7 @@ const slabLabel = (slab: MaterialSlab) => {
   return parts.join(" · ");
 };
 
-export function PricingAccordion({ customerId, quoteId, isDraft, areas, itemsByGroup, materialSlabs }: PricingAccordionProps) {
+export function PricingAccordion({ customerId, quoteId, isDraft, areas, itemsByGroup, materialSlabs, missingSlabIds }: PricingAccordionProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [picks, setPicks] = useState<Record<string, AreaSelection>>(() => {
@@ -190,6 +191,8 @@ export function PricingAccordion({ customerId, quoteId, isDraft, areas, itemsByG
     0,
   );
   const slabUseCounts = new Map<string, number>();
+  const materialSlabIds = new Set(materialSlabs.map((slab) => slab.id));
+  const missingSlabIdSet = new Set(missingSlabIds);
   for (const pick of Object.values(picks)) {
     if (pick.materialSource === "inventory" && pick.materialSlabId) {
       slabUseCounts.set(pick.materialSlabId, (slabUseCounts.get(pick.materialSlabId) ?? 0) + 1);
@@ -214,6 +217,10 @@ export function PricingAccordion({ customerId, quoteId, isDraft, areas, itemsByG
         const displayTotal = display?.displayTotal ?? 0;
         const selectedSlabUseCount = p.materialSlabId ? slabUseCounts.get(p.materialSlabId) ?? 0 : 0;
         const missingInventorySlab = p.materialItemId !== null && p.materialSource === "inventory" && p.materialSlabId === null;
+        const selectedSlabMissing =
+          p.materialSource === "inventory" &&
+          p.materialSlabId !== null &&
+          (missingSlabIdSet.has(p.materialSlabId) || !materialSlabIds.has(p.materialSlabId));
 
         return (
           <div key={area.id} className="overflow-hidden rounded-lg border bg-card">
@@ -289,6 +296,12 @@ export function PricingAccordion({ customerId, quoteId, isDraft, areas, itemsByG
                         {selectedSlabUseCount > 1 && (
                           <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900 sm:col-span-2">
                             Multiple Areas use this Slab. Confirm layout fit before approval.
+                          </div>
+                        )}
+
+                        {selectedSlabMissing && (
+                          <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700 sm:col-span-2">
+                            Selected inventory Slab could not be loaded. Pick another Slab before saving.
                           </div>
                         )}
                       </div>
@@ -377,7 +390,7 @@ export function PricingAccordion({ customerId, quoteId, isDraft, areas, itemsByG
                     )}
 
                     <div className="mt-3 flex justify-end">
-                      <Button type="button" onClick={() => saveArea(area)} disabled={(isPending && savingId === area.id) || missingInventorySlab}>
+                      <Button type="button" onClick={() => saveArea(area)} disabled={(isPending && savingId === area.id) || missingInventorySlab || selectedSlabMissing}>
                         {isPending && savingId === area.id ? "Saving…" : isSaved ? "Re-save area" : "Save area"}
                       </Button>
                     </div>

@@ -109,6 +109,9 @@ describe('price lists', () => {
 
     expect(created.response.status).toBe(201);
     expect(created.body).toMatchObject({ name: 'Salesperson Retail', status: 'draft' });
+
+    const adminToken = await seedTestSession(app.get(DATABASE_POOL));
+    setTestAuthToken(adminToken);
   });
 
   it('rejects invalid price list create payloads', async () => {

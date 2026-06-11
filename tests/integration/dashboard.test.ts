@@ -39,18 +39,27 @@ let baseUrl: string;
 const dashboardUrl = (): string => `${baseUrl}/api/v1/dashboard`;
 const quotesUrl = (): string => `${baseUrl}/api/v1/customers/${SEEDED_CUSTOMER_ID}/quotes`;
 
+const assertOk = async (response: Response, context: string): Promise<void> => {
+  if (response.ok) return;
+
+  const body = await response.text();
+  throw new Error(`${context} failed with ${response.status}: ${body}`);
+};
+
 const createQuote = async (): Promise<string> => {
   const response = await fetch(quotesUrl(), {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
     body: JSON.stringify({ actorUserId: ACTOR_USER_ID, title: 'Kitchen countertop proposal' })
   });
+  await assertOk(response, 'Create quote');
+
   const body = (await response.json()) as Record<string, unknown>;
   return body['id'] as string;
 };
 
 const addLineItem = async (quoteId: string): Promise<void> => {
-  await fetch(`${quotesUrl()}/${quoteId}/line-items`, {
+  const response = await fetch(`${quotesUrl()}/${quoteId}/line-items`, {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
     body: JSON.stringify({
@@ -62,14 +71,16 @@ const addLineItem = async (quoteId: string): Promise<void> => {
       laborPriceCents: 100
     })
   });
+  await assertOk(response, 'Add quote line item');
 };
 
 const sendQuote = async (quoteId: string): Promise<void> => {
-  await fetch(`${quotesUrl()}/${quoteId}/send`, {
+  const response = await fetch(`${quotesUrl()}/${quoteId}/send`, {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
     body: JSON.stringify({ actorUserId: ACTOR_USER_ID })
   });
+  await assertOk(response, 'Send quote');
 };
 
 const getDashboard = async (): Promise<Record<string, unknown>> => {

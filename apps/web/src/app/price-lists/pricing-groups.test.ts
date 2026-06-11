@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { GROUPS, getGroupBySegment, groupHref } from './pricing-groups';
+import { GROUPS, getGroupBySegment, groupHref, resolvePricingRuleForGroup } from './pricing-groups';
 
 describe('pricing group routes', () => {
   it('uses one page segment per pricing group', () => {
@@ -21,5 +21,14 @@ describe('pricing group routes', () => {
   it('finds groups by URL segment', () => {
     expect(getGroupBySegment('materials')?.value).toBe('material');
     expect(getGroupBySegment('bad')).toBeNull();
+  });
+
+  it('resolves default pricing rules outside the route config', () => {
+    const edgeGroup = getGroupBySegment('edges');
+
+    expect(edgeGroup && resolvePricingRuleForGroup(edgeGroup)).toEqual({
+      chargeMethod: 'linear_foot',
+      measurementBasis: 'finished_edge_linft',
+    });
   });
 });

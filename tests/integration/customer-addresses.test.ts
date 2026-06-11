@@ -43,6 +43,11 @@ const resetDatabase = async (app: INestApplication): Promise<void> => {
   await pool.query(seedSql);
 };
 
+const resetAddresses = async (app: INestApplication): Promise<void> => {
+  const pool = app.get<Pool>(DATABASE_POOL);
+  await pool.query('DELETE FROM customer_addresses WHERE customer_id = $1', [SEEDED_CUSTOMER_ID]);
+};
+
 let app: INestApplication;
 let baseUrl: string;
 let captured: CapturedEvent[];
@@ -86,9 +91,7 @@ describe('customer addresses', () => {
 
   beforeEach(async () => {
     captured.length = 0;
-    await resetDatabase(app);
-    const _token = await seedTestSession(app.get(DATABASE_POOL));
-    setTestAuthToken(_token);
+    await resetAddresses(app);
   });
 
   afterAll(async () => {

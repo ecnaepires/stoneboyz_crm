@@ -11,6 +11,34 @@ export const priceListItemGroupSchema = z.enum(PRICE_LIST_ITEM_GROUP_VALUES);
 export const priceListChargeMethodSchema = z.enum(PRICE_LIST_CHARGE_METHOD_VALUES);
 export const priceListMeasurementBasisSchema = z.enum(PRICE_LIST_MEASUREMENT_BASIS_VALUES);
 
+const allowedMeasurementBasesByChargeMethod = {
+  square_foot: new Set(['countertop_sqft', 'backsplash_sqft', 'combined_sqft', 'splash_sqft']),
+  linear_foot: new Set(['finished_edge_linft']),
+  each: new Set(['sink_count', 'faucet_hole_count', 'each'])
+} satisfies Record<(typeof PRICE_LIST_CHARGE_METHOD_VALUES)[number], ReadonlySet<(typeof PRICE_LIST_MEASUREMENT_BASIS_VALUES)[number]>>;
+
+const validateChargeMethodMeasurementBasis = (
+  input: {
+    chargeMethod?: keyof typeof allowedMeasurementBasesByChargeMethod | undefined;
+    measurementBasis?: (typeof PRICE_LIST_MEASUREMENT_BASIS_VALUES)[number] | undefined;
+  },
+  ctx: z.RefinementCtx
+) => {
+  if (input.chargeMethod === undefined || input.measurementBasis === undefined) {
+    return;
+  }
+
+  const allowedMeasurementBases = allowedMeasurementBasesByChargeMethod[input.chargeMethod] as ReadonlySet<string>;
+
+  if (!allowedMeasurementBases.has(input.measurementBasis)) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: `${input.measurementBasis} is not valid for ${input.chargeMethod}`,
+      path: ['measurementBasis']
+    });
+  }
+};
+
 export const createPriceListSchema = z.object({
   name: z.string().min(1),
   description: z.string().min(1).optional(),
@@ -60,7 +88,7 @@ export const createPriceListItemSchema = z.object({
   allowDiscount: z.boolean().default(true),
   editableOnQuote: z.boolean().default(true),
   hideOnQuote: z.boolean().default(false)
-});
+}).superRefine(validateChargeMethodMeasurementBasis);
 
 export const updatePriceListItemSchema = z.object({
   catalogItemId: z.string().uuid().nullable().optional(),
@@ -78,7 +106,7 @@ export const updatePriceListItemSchema = z.object({
   allowDiscount: z.boolean().optional(),
   editableOnQuote: z.boolean().optional(),
   hideOnQuote: z.boolean().optional()
-}).refine((input) => Object.keys(input).length > 0, {
+}).superRefine(validateChargeMethodMeasurementBasis).refine((input) => Object.keys(input).length > 0, {
   message: 'At least one field is required',
   path: []
 });

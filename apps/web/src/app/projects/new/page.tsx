@@ -12,7 +12,9 @@ interface NewProjectPageProps {
   searchParams: Promise<{ customerId?: string }>;
 }
 
-export default async function NewProjectPage({ searchParams }: NewProjectPageProps) {
+export default async function NewProjectPage({
+  searchParams,
+}: NewProjectPageProps) {
   const { customerId: preselectedCustomerId = "" } = await searchParams;
   const client = await getApiClientWithAuth();
   const [customersResult, jobTemplatesResult] = await Promise.all([
@@ -95,7 +97,7 @@ export default async function NewProjectPage({ searchParams }: NewProjectPagePro
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="jobTemplateId">Job Template *</Label>
+                <Label htmlFor="jobTemplateId">Job Type *</Label>
                 <Select
                   id="jobTemplateId"
                   name="jobTemplateId"
@@ -116,16 +118,6 @@ export default async function NewProjectPage({ searchParams }: NewProjectPagePro
                   </p>
                 ) : null}
               </div>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="description">Description</Label>
-              <textarea
-                id="description"
-                name="description"
-                rows={5}
-                className="flex min-h-28 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-              />
             </div>
 
             <div className="flex gap-3 pt-2">

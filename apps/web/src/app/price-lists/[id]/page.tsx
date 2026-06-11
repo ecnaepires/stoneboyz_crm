@@ -16,7 +16,9 @@ export default async function PriceListDetailPage({ params }: { params: Promise<
   });
 
   if (error || !priceList) {
-    return <div className="text-red-600">Failed to load price list: {JSON.stringify(error)}</div>;
+    console.error('Failed to load price list', error);
+
+    return <div className="text-red-600">Failed to load price list.</div>;
   }
 
   const isDraft = priceList.status === 'draft';

@@ -122,7 +122,8 @@ export class OrdersController {
       throw badRequest({ paymentId: ['Invalid UUID'] });
     }
 
-    const parsedBody = voidOrderPaymentSchema.safeParse(body);
+    const normalizedBody = body === null || body === undefined || body === '' ? {} : body;
+    const parsedBody = voidOrderPaymentSchema.safeParse(normalizedBody);
 
     if (!parsedBody.success) {
       throw badRequest(formatZodError(parsedBody.error));

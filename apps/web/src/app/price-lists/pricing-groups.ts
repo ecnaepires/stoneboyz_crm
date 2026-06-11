@@ -1,26 +1,54 @@
-export type PriceListItemGroup = 'material' | 'fabrication' | 'edge' | 'sink' | 'faucet_hole' | 'splash' | 'admin';
-export type ChargeMethod = 'square_foot' | 'linear_foot' | 'each';
-export type MeasurementBasis =
-  | 'countertop_sqft'
-  | 'backsplash_sqft'
-  | 'combined_sqft'
-  | 'finished_edge_linft'
-  | 'splash_sqft'
-  | 'sink_count'
-  | 'faucet_hole_count'
-  | 'each';
+import type { PriceListChargeMethod, PriceListItemGroup, PriceListMeasurementBasis } from '@stoneboyz/domain';
+
+export type { PriceListItemGroup };
+export type ChargeMethod = PriceListChargeMethod;
+export type MeasurementBasis = PriceListMeasurementBasis;
 
 export type GroupConfig = {
   value: PriceListItemGroup;
   segment: string;
   label: string;
   category: string;
-  chargeMethod: ChargeMethod;
-  measurementBasis: MeasurementBasis;
   rateLabel: string;
   ratePlaceholder: string;
   ruleLabel: string;
   advanced?: boolean;
+};
+
+export type PricingRule = {
+  chargeMethod: ChargeMethod;
+  measurementBasis: MeasurementBasis;
+};
+
+const DEFAULT_PRICING_RULES: Record<PriceListItemGroup, PricingRule> = {
+  material: {
+    chargeMethod: 'square_foot',
+    measurementBasis: 'combined_sqft',
+  },
+  fabrication: {
+    chargeMethod: 'square_foot',
+    measurementBasis: 'combined_sqft',
+  },
+  edge: {
+    chargeMethod: 'linear_foot',
+    measurementBasis: 'finished_edge_linft',
+  },
+  sink: {
+    chargeMethod: 'each',
+    measurementBasis: 'sink_count',
+  },
+  faucet_hole: {
+    chargeMethod: 'each',
+    measurementBasis: 'faucet_hole_count',
+  },
+  splash: {
+    chargeMethod: 'square_foot',
+    measurementBasis: 'splash_sqft',
+  },
+  admin: {
+    chargeMethod: 'each',
+    measurementBasis: 'each',
+  },
 };
 
 export const GROUPS: GroupConfig[] = [
@@ -29,8 +57,6 @@ export const GROUPS: GroupConfig[] = [
     segment: 'materials',
     label: 'Materials',
     category: 'material',
-    chargeMethod: 'square_foot',
-    measurementBasis: 'combined_sqft',
     rateLabel: '$/sq ft',
     ratePlaceholder: 'Rate per sq ft',
     ruleLabel: 'Countertops + backsplash sq ft'
@@ -40,8 +66,6 @@ export const GROUPS: GroupConfig[] = [
     segment: 'fabrication',
     label: 'Fabrication',
     category: 'fabrication',
-    chargeMethod: 'square_foot',
-    measurementBasis: 'combined_sqft',
     rateLabel: '$/sq ft',
     ratePlaceholder: 'Rate per sq ft',
     ruleLabel: 'Countertops + backsplash sq ft'
@@ -51,8 +75,6 @@ export const GROUPS: GroupConfig[] = [
     segment: 'edges',
     label: 'Edges',
     category: 'finished_edge',
-    chargeMethod: 'linear_foot',
-    measurementBasis: 'finished_edge_linft',
     rateLabel: '$/lin ft',
     ratePlaceholder: 'Rate per lin ft',
     ruleLabel: 'Finished edge linear feet'
@@ -62,8 +84,6 @@ export const GROUPS: GroupConfig[] = [
     segment: 'sinks',
     label: 'Sinks',
     category: 'sink_item',
-    chargeMethod: 'each',
-    measurementBasis: 'sink_count',
     rateLabel: '$/each',
     ratePlaceholder: 'Rate each',
     ruleLabel: 'Sink count'
@@ -73,8 +93,6 @@ export const GROUPS: GroupConfig[] = [
     segment: 'faucet-holes',
     label: 'Faucet Holes',
     category: 'faucet_hole',
-    chargeMethod: 'each',
-    measurementBasis: 'faucet_hole_count',
     rateLabel: '$/each',
     ratePlaceholder: 'Rate each',
     ruleLabel: 'Faucet-hole count'
@@ -84,8 +102,6 @@ export const GROUPS: GroupConfig[] = [
     segment: 'splash',
     label: 'Splash',
     category: 'splash',
-    chargeMethod: 'square_foot',
-    measurementBasis: 'splash_sqft',
     rateLabel: '$/sq ft',
     ratePlaceholder: 'Rate per sq ft',
     ruleLabel: 'Special splash sq ft'
@@ -95,8 +111,6 @@ export const GROUPS: GroupConfig[] = [
     segment: 'admin-items',
     label: 'Admin Items',
     category: 'admin_item',
-    chargeMethod: 'each',
-    measurementBasis: 'each',
     rateLabel: 'Rate',
     ratePlaceholder: 'Rate',
     ruleLabel: 'Advanced charge setup',
@@ -128,3 +142,6 @@ export const groupHref = (priceListId: string, groupValue: PriceListItemGroup): 
 
 export const getGroupBySegment = (segment: string): GroupConfig | null =>
   GROUPS.find((group) => group.segment === segment) ?? null;
+
+export const resolvePricingRuleForGroup = (group: GroupConfig): PricingRule =>
+  DEFAULT_PRICING_RULES[group.value];

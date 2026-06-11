@@ -438,18 +438,25 @@ export async function generateAllPricingAction(
 ) {
   const client =
     (await getApiClientWithAuth()) as unknown as PricingMutationClient;
+  const uniqueAreaIds = Array.from(new Set(areaIds));
 
-  for (const areaId of areaIds) {
-    const { error } = await client.POST(
-      "/customers/{customerId}/quotes/{quoteId}/areas/{areaId}/pricing/generate",
-      {
-        params: { path: { customerId, quoteId, areaId } },
-      },
-    );
+  const results = await Promise.all(
+    uniqueAreaIds.map(async (areaId) => {
+      const { error } = await client.POST(
+        "/customers/{customerId}/quotes/{quoteId}/areas/{areaId}/pricing/generate",
+        {
+          params: { path: { customerId, quoteId, areaId } },
+        },
+      );
+      return { areaId, error };
+    }),
+  );
+  const failedAreaIds = results
+    .filter((result) => result.error)
+    .map((result) => result.areaId);
 
-    if (error) {
-      throw new Error("Failed to generate final price");
-    }
+  if (failedAreaIds.length > 0) {
+    throw new Error(`Failed to generate final price for area(s): ${failedAreaIds.join(", ")}`);
   }
 
   revalidatePath(`/customers/${customerId}/quotes/${quoteId}`);
