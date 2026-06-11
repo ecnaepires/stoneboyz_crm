@@ -21,6 +21,74 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/reports/sales-by-month": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Total order value per calendar month */
+        get: operations["getSalesByMonth"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/reports/jobs-by-salesperson": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Count of jobs (projects) per salesperson (owner) */
+        get: operations["getJobsBySalesperson"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/reports/installed-sqft-by-month": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Installed square footage per calendar month */
+        get: operations["getInstalledSqFtByMonth"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/reports/installed-sqft-by-week": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Installed square footage per week */
+        get: operations["getInstalledSqFtByWeek"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/inventory/slabs": {
         parameters: {
             query?: never;
@@ -162,6 +230,24 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/assignees": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List active assignees */
+        get: operations["listAssignees"];
+        put?: never;
+        /** Create an assignee */
+        post: operations["createAssignee"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/users/me": {
         parameters: {
             query?: never;
@@ -247,6 +333,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/customers/{customerId}/orders/{orderId}/deposit/request": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Request or update the manual deposit amount for an order */
+        post: operations["requestOrderDeposit"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/customers/{customerId}/orders/{orderId}/payments/{paymentId}": {
         parameters: {
             query?: never;
@@ -257,8 +360,8 @@ export interface paths {
         get?: never;
         put?: never;
         post?: never;
-        /** Remove a payment from an order */
-        delete: operations["removeOrderPayment"];
+        /** Void a payment on an order */
+        delete: operations["voidOrderPayment"];
         options?: never;
         head?: never;
         patch?: never;
@@ -378,6 +481,75 @@ export interface paths {
         };
         /** Health check */
         get: operations["healthCheck"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/customers/{customerId}/projects/{projectId}/activities": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List job activities */
+        get: operations["listJobActivities"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/customers/{customerId}/projects/{projectId}/activities/{activityId}/schedule": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Schedule job activity */
+        post: operations["scheduleJobActivity"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Reschedule job activity */
+        patch: operations["rescheduleJobActivity"];
+        trace?: never;
+    };
+    "/job-templates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List job templates */
+        get: operations["listJobTemplates"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/job-templates/{jobTemplateId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get job template */
+        get: operations["getJobTemplate"];
         put?: never;
         post?: never;
         delete?: never;
@@ -967,6 +1139,24 @@ export interface paths {
         patch: operations["updateQuoteAreaSink"];
         trace?: never;
     };
+    "/customers/{customerId}/quotes/{quoteId}/pricing-selections": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get selected catalog pricing items for a quote */
+        get: operations["getQuotePricingSelections"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Save selected catalog pricing items for a quote */
+        patch: operations["upsertQuotePricingSelections"];
+        trace?: never;
+    };
     "/customers/{customerId}/quotes/{quoteId}/areas/{areaId}/pricing": {
         parameters: {
             query?: never;
@@ -1052,6 +1242,79 @@ export interface paths {
         head?: never;
         /** Update a quote line item (draft only) */
         patch: operations["updateQuoteLineItem"];
+        trace?: never;
+    };
+    "/calendar-views": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List calendar views visible to the current user */
+        get: operations["listCalendarViews"];
+        put?: never;
+        /** Create a calendar view */
+        post: operations["createCalendarView"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/calendar-views/{viewId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                viewId: string;
+            };
+            cookie?: never;
+        };
+        /** Get a calendar view */
+        get: operations["getCalendarView"];
+        put?: never;
+        post?: never;
+        /** Archive a calendar view */
+        delete: operations["deleteCalendarView"];
+        options?: never;
+        head?: never;
+        /** Update a calendar view */
+        patch: operations["updateCalendarView"];
+        trace?: never;
+    };
+    "/calendar-views/{viewId}/make-default": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Set a calendar view as the current user's default */
+        post: operations["makeDefaultCalendarView"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/events": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List calendar events across accounts */
+        get: operations["listCalendarEvents"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/customers/{customerId}/events": {
@@ -1281,8 +1544,28 @@ export interface components {
             /** Format: uuid */
             customerId: string;
             customerName: string;
+            /** @description Computed quote value (subtotal + tax − discount), in cents. */
+            valueCents: number;
             /** Format: date-time */
             createdAt: string;
+        };
+        /** @description Open quote counts by status, for the pipeline breakdown. */
+        QuotePipeline: {
+            draft: number;
+            sent: number;
+            accepted: number;
+            rejected: number;
+        };
+        RevenuePoint: {
+            /**
+             * Format: date
+             * @description First day of the month in ISO date form, e.g. "2026-01-01".
+             */
+            month: string;
+            /** @description Total value of quotes created that month, in cents. */
+            quotesCents: number;
+            /** @description Total value of orders sold that month, in cents. */
+            ordersCents: number;
         };
         DashboardStats: {
             activeCustomers: number;
@@ -1295,6 +1578,9 @@ export interface components {
                 totalCents: number;
             };
             eventsThisWeek: number;
+            pipeline: components["schemas"]["QuotePipeline"];
+            /** @description Last 6 months of quote and order revenue, oldest first. */
+            revenueSeries: components["schemas"]["RevenuePoint"][];
             recentQuotes: components["schemas"]["RecentQuote"][];
         };
         UserProfile: {
@@ -1304,7 +1590,7 @@ export interface components {
             email: string;
             name: string;
             /** @enum {string} */
-            role: "admin" | "salesperson" | "templater" | "cutter" | "fabricator" | "installer" | "service_tech";
+            role: "admin" | "salesperson" | "templater" | "cutter" | "fabricator" | "installer" | "service_tech" | "inventory_manager";
             /** Format: date-time */
             createdAt: string;
         };
@@ -1383,10 +1669,18 @@ export interface components {
             id: string;
             /** Format: uuid */
             priceListId: string;
+            /** Format: uuid */
+            catalogItemId: string | null;
+            /** @enum {string} */
+            itemGroup: "material" | "fabrication" | "edge" | "sink" | "faucet_hole" | "splash" | "admin";
             category: string;
             itemType: string;
             name: string;
             description?: string | null;
+            /** @enum {string} */
+            chargeMethod: "square_foot" | "linear_foot" | "each";
+            /** @enum {string} */
+            measurementBasis: "countertop_sqft" | "backsplash_sqft" | "combined_sqft" | "finished_edge_linft" | "splash_sqft" | "sink_count" | "faucet_hole_count" | "each";
             unit: string;
             priceCents: number;
             sortOrder: number;
@@ -1429,10 +1723,30 @@ export interface components {
             expirationDays?: number | null;
         };
         CreatePriceListItemRequest: {
+            /** Format: uuid */
+            catalogItemId?: string;
+            /**
+             * @description Defaults from category/itemType when omitted.
+             * @default material
+             * @enum {string}
+             */
+            itemGroup: "material" | "fabrication" | "edge" | "sink" | "faucet_hole" | "splash" | "admin";
             category: string;
             itemType: string;
             name: string;
             description?: string;
+            /**
+             * @description Defaults from category/unit when omitted.
+             * @default square_foot
+             * @enum {string}
+             */
+            chargeMethod: "square_foot" | "linear_foot" | "each";
+            /**
+             * @description Defaults from category when omitted.
+             * @default combined_sqft
+             * @enum {string}
+             */
+            measurementBasis: "countertop_sqft" | "backsplash_sqft" | "combined_sqft" | "finished_edge_linft" | "splash_sqft" | "sink_count" | "faucet_hole_count" | "each";
             unit: string;
             priceCents: number;
             sortOrder?: number;
@@ -1442,10 +1756,18 @@ export interface components {
             hideOnQuote?: boolean;
         };
         UpdatePriceListItemRequest: {
+            /** Format: uuid */
+            catalogItemId?: string | null;
+            /** @enum {string} */
+            itemGroup?: "material" | "fabrication" | "edge" | "sink" | "faucet_hole" | "splash" | "admin";
             category?: string;
             itemType?: string;
             name?: string;
             description?: string | null;
+            /** @enum {string} */
+            chargeMethod?: "square_foot" | "linear_foot" | "each";
+            /** @enum {string} */
+            measurementBasis?: "countertop_sqft" | "backsplash_sqft" | "combined_sqft" | "finished_edge_linft" | "splash_sqft" | "sink_count" | "faucet_hole_count" | "each";
             unit?: string;
             priceCents?: number;
             sortOrder?: number;
@@ -1568,8 +1890,11 @@ export interface components {
             id: string;
             /** Format: uuid */
             customerId: string;
+            /** Format: uuid */
+            jobTemplateId: string | null;
             title: string;
             description?: string | null;
+            jobAddress?: components["schemas"]["ProjectJobAddress"];
             status: components["schemas"]["ProjectStatus"];
             ownerUserId: string;
             /** Format: date-time */
@@ -1579,19 +1904,100 @@ export interface components {
             /** Format: date-time */
             updatedAt: string;
         };
+        ProjectJobAddress: {
+            line1?: string | null;
+            line2?: string | null;
+            city?: string | null;
+            region?: string | null;
+            postalCode?: string | null;
+            country?: string | null;
+            contactName?: string | null;
+            phone?: string | null;
+            email?: string | null;
+        } | null;
         CreateProjectRequest: {
             /** Format: uuid */
             customerId: string;
             title: string;
+            /** Format: uuid */
+            jobTemplateId: string;
             description?: string;
             status?: components["schemas"]["ProjectStatus"];
             ownerUserId: string;
+        };
+        JobTemplateActivitySpec: {
+            sortOrder: number;
+            title: string;
+            /** @enum {string} */
+            eventType: "appointment" | "shop_job";
+            /** @enum {string|null} */
+            appointmentType: "template" | "deposit" | "material" | "cut" | "fabrication" | "install" | "invoice" | "repair" | "other" | null;
+            /** @enum {string|null} */
+            templateKind: "measurement_only" | "physical_template" | "laser_template" | null;
+            durationMinutes: number;
+            notes: string | null;
+        };
+        JobTemplate: {
+            /** Format: uuid */
+            id: string;
+            slug: string;
+            name: string;
+            description: string | null;
+            isDefault: boolean;
+            activitySpecs: components["schemas"]["JobTemplateActivitySpec"][];
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+        };
+        JobActivity: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            customerId: string;
+            /** Format: uuid */
+            projectId: string;
+            /** Format: uuid */
+            jobTemplateId: string;
+            templateActivityKey: string;
+            title: string;
+            /** @enum {string} */
+            activityType: "appointment" | "shop_job";
+            /** @enum {string|null} */
+            appointmentType: "template" | "deposit" | "material" | "cut" | "fabrication" | "install" | "invoice" | "repair" | "other" | null;
+            /** @enum {string|null} */
+            templateKind: "measurement_only" | "physical_template" | "laser_template" | null;
+            /** @enum {string} */
+            status: "not_scheduled" | "scheduled" | "confirmed" | "in_progress" | "completed" | "cancelled";
+            sortOrder: number;
+            durationMinutes: number;
+            /** Format: uuid */
+            scheduledEventId: string | null;
+            autoscheduleState: string | null;
+            autoscheduleOffsetAmount: number | null;
+            autoscheduleOffsetUnit: string | null;
+            /** Format: uuid */
+            dependsOnActivityId: string | null;
+            /** Format: date-time */
+            manualOverrideAt: string | null;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+        };
+        ScheduleJobActivityRequest: {
+            /** Format: date-time */
+            scheduledAt: string;
+            durationMinutes?: number;
+            /** @description Assignee resource IDs; may be empty. */
+            assigneeIds?: string[];
         };
         UpdateProjectRequest: {
             /** Format: uuid */
             customerId?: string;
             title?: string;
             description?: string | null;
+            jobAddress?: components["schemas"]["ProjectJobAddress"];
             status?: components["schemas"]["ProjectStatus"];
             ownerUserId?: string;
         };
@@ -1817,6 +2223,68 @@ export interface components {
         OverrideGeneratedPriceLineBody: {
             overridePriceCents?: number | null;
             overrideReason?: string | null;
+        };
+        QuoteAreaPricingSelection: {
+            /** Format: uuid */
+            areaId: string;
+            /** Format: uuid */
+            materialItemId: string | null;
+            /** @enum {string} */
+            materialSource: "inventory" | "external";
+            /** Format: uuid */
+            materialSlabId: string | null;
+            externalMaterialNote: string | null;
+            /** Format: uuid */
+            edgeItemId: string | null;
+            /** Format: uuid */
+            splashItemId: string | null;
+            /** Format: uuid */
+            fabricationItemId: string | null;
+            /** Format: uuid */
+            sinkItemId: string | null;
+            /** Format: uuid */
+            faucetHoleItemId: string | null;
+        };
+        QuotePricingSelection: {
+            /** Format: uuid */
+            quoteId: string;
+            /** Format: uuid */
+            defaultFabricationItemId: string | null;
+            /** Format: uuid */
+            sinkItemId: string | null;
+            /** Format: uuid */
+            faucetHoleItemId: string | null;
+            areas: components["schemas"]["QuoteAreaPricingSelection"][];
+        };
+        UpsertQuoteAreaPricingSelectionRequest: {
+            /** Format: uuid */
+            areaId: string;
+            /** Format: uuid */
+            materialItemId?: string | null;
+            /** @enum {string} */
+            materialSource?: "inventory" | "external";
+            /** Format: uuid */
+            materialSlabId?: string | null;
+            externalMaterialNote?: string | null;
+            /** Format: uuid */
+            edgeItemId?: string | null;
+            /** Format: uuid */
+            splashItemId?: string | null;
+            /** Format: uuid */
+            fabricationItemId?: string | null;
+            /** Format: uuid */
+            sinkItemId?: string | null;
+            /** Format: uuid */
+            faucetHoleItemId?: string | null;
+        };
+        UpsertQuotePricingSelectionRequest: {
+            /** Format: uuid */
+            defaultFabricationItemId?: string | null;
+            /** Format: uuid */
+            sinkItemId?: string | null;
+            /** Format: uuid */
+            faucetHoleItemId?: string | null;
+            areas?: components["schemas"]["UpsertQuoteAreaPricingSelectionRequest"][];
         };
         CanvasPieceLayout: {
             /** Format: uuid */
@@ -2127,6 +2595,31 @@ export interface components {
         AppointmentType: "template" | "deposit" | "material" | "cut" | "fabrication" | "install" | "invoice" | "repair" | "other";
         /** @enum {string} */
         ScheduledEventStatus: "scheduled" | "confirmed" | "in_progress" | "completed" | "cancelled";
+        Assignee: {
+            /** Format: uuid */
+            id: string;
+            name: string;
+            /** @enum {string} */
+            assigneeType: "person" | "team" | "crew" | "truck" | "equipment" | "machine" | "department" | "contractor";
+            active: boolean;
+            linkedUserId?: string | null;
+            notes?: string | null;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+            /** Format: date-time */
+            archivedAt?: string | null;
+        };
+        CreateAssigneeRequest: {
+            name: string;
+            /**
+             * @default person
+             * @enum {string}
+             */
+            assigneeType: "person" | "team" | "crew" | "truck" | "equipment" | "machine" | "department" | "contractor";
+            notes?: string;
+        };
         ScheduledEvent: {
             /** Format: uuid */
             id: string;
@@ -2134,6 +2627,11 @@ export interface components {
             customerId: string;
             /** Format: uuid */
             projectId?: string | null;
+            /**
+             * Format: uuid
+             * @description The job activity linked to this event, when it was created by scheduling one.
+             */
+            jobActivityId?: string | null;
             eventType: components["schemas"]["ScheduledEventType"];
             /** @description Required when eventType is appointment; must be null when eventType is shop_job. */
             appointmentType?: components["schemas"]["AppointmentType"];
@@ -2150,8 +2648,8 @@ export interface components {
             scheduledAt: string;
             /** @default 60 */
             durationMinutes: number;
-            /** @description At least one assignee UUID required; no duplicates. */
-            assigneeUserIds: string[];
+            /** @description Assignee resource IDs; no duplicates. */
+            assigneeIds: string[];
             /** @description Site address; most relevant for appointment events. */
             address?: string | null;
             notes?: string | null;
@@ -2172,6 +2670,77 @@ export interface components {
             createdAt: string;
             /** Format: date-time */
             updatedAt: string;
+        };
+        CalendarEventItem: components["schemas"]["ScheduledEvent"] & {
+            customerName: string;
+            projectTitle: string | null;
+            jobNumber: string | null;
+        };
+        CalendarEventsResponse: {
+            data: components["schemas"]["CalendarEventItem"][];
+        };
+        /** @enum {string} */
+        CalendarDisplayField: "projectTitle" | "customerName" | "address" | "activityTitle" | "time" | "duration" | "status" | "assignees" | "notes" | "sqft";
+        CalendarViewConfig: {
+            /** @enum {integer} */
+            version: 1;
+            /** @enum {string} */
+            displayType: "day" | "week" | "range";
+            rangeDays?: number;
+            /** @enum {string} */
+            groupBy: "none" | "assignee";
+            filters: {
+                eventTypes: components["schemas"]["ScheduledEventType"][];
+                appointmentTypes: components["schemas"]["AppointmentType"][];
+                statuses: components["schemas"]["ScheduledEventStatus"][];
+                assigneeIds: string[];
+                /** Format: uuid */
+                customerId?: string;
+                /** Format: uuid */
+                projectId?: string;
+                hideCompleted: boolean;
+            };
+            displayFields: components["schemas"]["CalendarDisplayField"][];
+            /** @enum {string} */
+            colorBy: "appointmentType" | "status" | "assignee";
+            wrapText: boolean;
+            autoRefreshSeconds: number | null;
+        };
+        CalendarView: {
+            /** Format: uuid */
+            id: string;
+            name: string;
+            /** @enum {string} */
+            viewKind: "calendar" | "job_list";
+            ownerUserId: string | null;
+            isShared: boolean;
+            config: components["schemas"]["CalendarViewConfig"];
+            isDefault: boolean;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+            /** Format: date-time */
+            archivedAt: string | null;
+        };
+        CalendarViewsResponse: {
+            data: components["schemas"]["CalendarView"][];
+        };
+        CreateCalendarViewRequest: {
+            name: string;
+            /**
+             * @default calendar
+             * @enum {string}
+             */
+            viewKind: "calendar" | "job_list";
+            /** @default false */
+            isShared: boolean;
+            config: components["schemas"]["CalendarViewConfig"];
+        };
+        UpdateCalendarViewRequest: {
+            name?: string;
+            isShared?: boolean;
+            config?: components["schemas"]["CalendarViewConfig"];
         };
         CreateScheduledEventRequest: {
             /**
@@ -2194,7 +2763,8 @@ export interface components {
             scheduledAt: string;
             /** @default 60 */
             durationMinutes: number;
-            assigneeUserIds: string[];
+            /** @description Assignee resource IDs; may be empty. */
+            assigneeIds?: string[];
             address?: string;
             notes?: string;
         };
@@ -2212,7 +2782,8 @@ export interface components {
              */
             scheduledAt?: string;
             durationMinutes?: number;
-            assigneeUserIds?: string[];
+            /** @description Assignee resource IDs; may be empty. */
+            assigneeIds?: string[];
             address?: string | null;
             notes?: string | null;
         };
@@ -2237,7 +2808,8 @@ export interface components {
             qualityGrade: components["schemas"]["SlabQualityGrade"];
             lengthIn: number;
             widthIn: number;
-            thicknessCm: number;
+            /** @enum {number} */
+            thicknessCm: 2 | 3;
             lotNumber?: string | null;
             bundleNumber?: string | null;
             warehouseLocation?: string | null;
@@ -2260,7 +2832,8 @@ export interface components {
             qualityGrade: components["schemas"]["SlabQualityGrade"];
             lengthIn: number;
             widthIn: number;
-            thicknessCm: number;
+            /** @enum {number} */
+            thicknessCm: 2 | 3;
             lotNumber?: string;
             bundleNumber?: string;
             warehouseLocation?: string;
@@ -2275,7 +2848,8 @@ export interface components {
             qualityGrade?: components["schemas"]["SlabQualityGrade"];
             lengthIn?: number;
             widthIn?: number;
-            thicknessCm?: number;
+            /** @enum {number} */
+            thicknessCm?: 2 | 3;
             lotNumber?: string | null;
             bundleNumber?: string | null;
             warehouseLocation?: string | null;
@@ -2319,6 +2893,10 @@ export interface components {
         OrderPaymentMethod: "cash" | "check" | "mastercard" | "visa" | "american_express" | "discover" | "bank_transfer" | "echeck";
         /** @enum {string} */
         OrderPaymentStatus: "unpaid" | "partially_paid" | "paid";
+        /** @enum {string} */
+        OrderDepositStatus: "not_requested" | "requested" | "paid";
+        /** @enum {string} */
+        OrderPaymentRecordStatus: "recorded" | "void";
         OrderPayment: {
             /** Format: uuid */
             id: string;
@@ -2328,8 +2906,14 @@ export interface components {
             paymentDate: string;
             amountCents: number;
             paymentMethod: components["schemas"]["OrderPaymentMethod"];
+            status: components["schemas"]["OrderPaymentRecordStatus"];
             referenceNumber: string | null;
             notes: string | null;
+            /** Format: date-time */
+            voidedAt: string | null;
+            /** Format: uuid */
+            voidedByUserId: string | null;
+            voidReason: string | null;
             /** Format: date-time */
             createdAt: string;
             /** Format: date-time */
@@ -2353,6 +2937,14 @@ export interface components {
             totalPaidCents: number;
             balanceDueCents: number;
             paymentStatus: components["schemas"]["OrderPaymentStatus"];
+            depositRequiredCents: number;
+            depositPaidCents: number;
+            depositBalanceCents: number;
+            depositStatus: components["schemas"]["OrderDepositStatus"];
+            /** Format: date-time */
+            depositRequestedAt: string | null;
+            /** Format: uuid */
+            depositRequestedByUserId: string | null;
             notes: string | null;
             termsAndConditions: string | null;
             /** Format: date-time */
@@ -2427,8 +3019,13 @@ export interface components {
             referenceNumber?: string;
             notes?: string;
         };
-        RemoveOrderPaymentRequest: Record<string, never>;
+        VoidOrderPaymentRequest: {
+            voidReason?: string;
+        };
         ArchiveOrderRequest: Record<string, never>;
+        RequestOrderDepositRequest: {
+            depositRequiredCents: number;
+        };
     };
     responses: never;
     parameters: {
@@ -2481,6 +3078,121 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["DashboardStats"];
+                };
+            };
+        };
+    };
+    getSalesByMonth: {
+        parameters: {
+            query?: {
+                from?: string;
+                to?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Sales-by-month rows returned, ordered by month ascending. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            /** Format: date */
+                            month: string;
+                            totalCents: number;
+                            orderCount: number;
+                        }[];
+                    };
+                };
+            };
+        };
+    };
+    getJobsBySalesperson: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Jobs-by-salesperson rows, ordered by jobCount descending. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            /** Format: uuid */
+                            userId: string;
+                            name: string;
+                            jobCount: number;
+                        }[];
+                    };
+                };
+            };
+        };
+    };
+    getInstalledSqFtByMonth: {
+        parameters: {
+            query?: {
+                from?: string;
+                to?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Installed-sqft-by-month rows, ordered by month ascending. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            /** Format: date */
+                            month: string;
+                            installedSqFt: number;
+                        }[];
+                    };
+                };
+            };
+        };
+    };
+    getInstalledSqFtByWeek: {
+        parameters: {
+            query?: {
+                from?: string;
+                to?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Installed-sqft-by-week rows, ordered by week ascending. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            /** Format: date */
+                            week: string;
+                            installedSqFt: number;
+                        }[];
+                    };
                 };
             };
         };
@@ -2832,6 +3544,59 @@ export interface operations {
             };
         };
     };
+    listAssignees: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Assignees returned. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Assignee"][];
+                };
+            };
+        };
+    };
+    createAssignee: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateAssigneeRequest"];
+            };
+        };
+        responses: {
+            /** @description Assignee created. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Assignee"];
+                };
+            };
+            /** @description Invalid request. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
     getMe: {
         parameters: {
             query?: never;
@@ -2885,7 +3650,7 @@ export interface operations {
             content: {
                 "application/json": {
                     /** @enum {string} */
-                    role: "admin" | "salesperson" | "templater" | "cutter" | "fabricator" | "installer" | "service_tech";
+                    role: "admin" | "salesperson" | "templater" | "cutter" | "fabricator" | "installer" | "service_tech" | "inventory_manager";
                 };
             };
         };
@@ -2998,7 +3763,53 @@ export interface operations {
             };
         };
     };
-    removeOrderPayment: {
+    requestOrderDeposit: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                customerId: components["parameters"]["CustomerId"];
+                /** @description UUID of the order */
+                orderId: components["parameters"]["OrderId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RequestOrderDepositRequest"];
+            };
+        };
+        responses: {
+            /** @description Deposit request updated. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OrderWithPayments"];
+                };
+            };
+            /** @description Invalid request. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Order or customer not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    voidOrderPayment: {
         parameters: {
             query?: never;
             header?: never;
@@ -3013,11 +3824,11 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["RemoveOrderPaymentRequest"];
+                "application/json": components["schemas"]["VoidOrderPaymentRequest"];
             };
         };
         responses: {
-            /** @description Payment removed. */
+            /** @description Payment voided. */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -3364,6 +4175,226 @@ export interface operations {
                         /** Format: date-time */
                         timestamp: string;
                     };
+                };
+            };
+        };
+    };
+    listJobActivities: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                customerId: components["parameters"]["CustomerId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Job activities returned. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["JobActivity"][];
+                };
+            };
+            /** @description Invalid request. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Project not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    scheduleJobActivity: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                customerId: components["parameters"]["CustomerId"];
+                projectId: components["parameters"]["ProjectId"];
+                activityId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ScheduleJobActivityRequest"];
+            };
+        };
+        responses: {
+            /** @description Job activity scheduled. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["JobActivity"];
+                };
+            };
+            /** @description Invalid request. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Job activity not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Job activity already scheduled. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    rescheduleJobActivity: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                customerId: components["parameters"]["CustomerId"];
+                projectId: components["parameters"]["ProjectId"];
+                activityId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ScheduleJobActivityRequest"];
+            };
+        };
+        responses: {
+            /** @description Job activity rescheduled. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["JobActivity"];
+                };
+            };
+            /** @description Invalid request. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Job activity not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Job activity cannot be rescheduled. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    listJobTemplates: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Job templates returned. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["JobTemplate"][];
+                };
+            };
+            /** @description Authentication required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getJobTemplate: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                jobTemplateId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Job template returned. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["JobTemplate"];
+                };
+            };
+            /** @description Invalid request. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Job template not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
         };
@@ -5834,6 +6865,94 @@ export interface operations {
             };
         };
     };
+    getQuotePricingSelections: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                customerId: components["parameters"]["CustomerId"];
+                /** @description UUID of the quote */
+                quoteId: components["parameters"]["QuoteId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Pricing selections returned. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["QuotePricingSelection"];
+                };
+            };
+            /** @description Quote or customer not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    upsertQuotePricingSelections: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                customerId: components["parameters"]["CustomerId"];
+                /** @description UUID of the quote */
+                quoteId: components["parameters"]["QuoteId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpsertQuotePricingSelectionRequest"];
+            };
+        };
+        responses: {
+            /** @description Pricing selections saved. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["QuotePricingSelection"];
+                };
+            };
+            /** @description Invalid request. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Quote, customer, or area not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Quote is not in draft status. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
     listQuoteAreaPricingLines: {
         parameters: {
             query?: never;
@@ -6162,6 +7281,264 @@ export interface operations {
             };
             /** @description Quote is not in draft status. */
             409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    listCalendarViews: {
+        parameters: {
+            query?: {
+                viewKind?: "calendar" | "job_list";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Calendar views returned. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CalendarViewsResponse"];
+                };
+            };
+            /** @description Invalid request. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    createCalendarView: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateCalendarViewRequest"];
+            };
+        };
+        responses: {
+            /** @description Calendar view created. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CalendarView"];
+                };
+            };
+            /** @description Invalid request. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getCalendarView: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                viewId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Calendar view returned. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CalendarView"];
+                };
+            };
+            /** @description Calendar view not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    deleteCalendarView: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                viewId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Calendar view archived. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description User cannot delete this calendar view. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Calendar view not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    updateCalendarView: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                viewId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateCalendarViewRequest"];
+            };
+        };
+        responses: {
+            /** @description Calendar view updated. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CalendarView"];
+                };
+            };
+            /** @description Invalid request. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description User cannot edit this calendar view. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Calendar view not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    makeDefaultCalendarView: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                viewId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Calendar view set as default. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CalendarView"];
+                };
+            };
+            /** @description Calendar view not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    listCalendarEvents: {
+        parameters: {
+            query: {
+                /** @description Include events on or after this date. */
+                from: string;
+                /** @description Exclude events on or after this date. */
+                to: string;
+                eventTypes?: components["schemas"]["ScheduledEventType"][];
+                appointmentTypes?: components["schemas"]["AppointmentType"][];
+                statuses?: components["schemas"]["ScheduledEventStatus"][];
+                assigneeIds?: string[];
+                customerId?: string;
+                projectId?: string;
+                hideCompleted?: boolean;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Calendar events returned. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CalendarEventsResponse"];
+                };
+            };
+            /** @description Invalid request. */
+            400: {
                 headers: {
                     [name: string]: unknown;
                 };

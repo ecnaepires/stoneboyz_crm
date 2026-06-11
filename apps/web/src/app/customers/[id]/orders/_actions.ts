@@ -13,7 +13,11 @@ const toOptionalString = (value: FormDataEntryValue | null) => {
 };
 
 const toCents = (value: FormDataEntryValue | null) => {
-  const numericValue = Number(value || 0);
+  const stringValue = typeof value === 'string' ? value.trim() : '';
+  const numericValue = Number(stringValue);
+  if (stringValue === '' || !Number.isFinite(numericValue) || numericValue < 0) {
+    throw new Error('Amount must be a non-negative number');
+  }
   return Math.round(numericValue * 100);
 };
 
@@ -57,7 +61,24 @@ export async function addPaymentAction(customerId: string, orderId: string, form
   revalidatePath(`/customers/${customerId}/orders/${orderId}`);
 }
 
-export async function removePaymentAction(customerId: string, orderId: string, paymentId: string) {
+export async function requestDepositAction(customerId: string, orderId: string, formData: FormData) {
+  const client = await getApiClientWithAuth();
+
+  const { error } = await client.POST('/customers/{customerId}/orders/{orderId}/deposit/request', {
+    params: { path: { customerId, orderId } },
+    body: {
+      depositRequiredCents: toCents(formData.get('depositAmount')),
+    },
+  });
+
+  if (error) {
+    throw new Error('Failed to request deposit: ' + JSON.stringify(error));
+  }
+
+  revalidatePath(`/customers/${customerId}/orders/${orderId}`);
+}
+
+export async function voidPaymentAction(customerId: string, orderId: string, paymentId: string) {
   const client = await getApiClientWithAuth();
 
   const { error } = await client.DELETE('/customers/{customerId}/orders/{orderId}/payments/{paymentId}', {
@@ -66,7 +87,7 @@ export async function removePaymentAction(customerId: string, orderId: string, p
   });
 
   if (error) {
-    throw new Error('Failed to remove payment: ' + JSON.stringify(error));
+    throw new Error('Failed to void payment: ' + JSON.stringify(error));
   }
 
   revalidatePath(`/customers/${customerId}/orders/${orderId}`);

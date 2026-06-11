@@ -20,10 +20,14 @@ export interface PriceListRow {
 export interface PriceListItemRow {
   id: string;
   price_list_id: string;
+  catalog_item_id: string | null;
+  item_group: string;
   category: string;
   item_type: string;
   name: string;
   description: string | null;
+  charge_method: string;
+  measurement_basis: string;
   unit: string;
   price_cents: number;
   sort_order: number;
@@ -57,10 +61,14 @@ export const mapPriceListRow = (row: PriceListRow): PriceList => ({
 export const mapPriceListItemRow = (row: PriceListItemRow): PriceListItem => ({
   id: row.id,
   priceListId: row.price_list_id,
+  catalogItemId: row.catalog_item_id,
+  itemGroup: row.item_group as PriceListItem['itemGroup'],
   category: row.category,
   itemType: row.item_type,
   name: row.name,
   description: row.description,
+  chargeMethod: row.charge_method as PriceListItem['chargeMethod'],
+  measurementBasis: row.measurement_basis as PriceListItem['measurementBasis'],
   unit: row.unit,
   priceCents: row.price_cents,
   sortOrder: row.sort_order,

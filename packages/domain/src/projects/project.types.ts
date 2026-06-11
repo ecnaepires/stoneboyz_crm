@@ -1,6 +1,6 @@
-import type { ProjectSortBy, ProjectStatus } from './project.constants.js';
-import type { PipelineStage } from './project.pipeline.js';
-import type { SortDirection } from '../customers/customer.constants.js';
+import type { ProjectSortBy, ProjectStatus } from "./project.constants.js";
+import type { PipelineStage } from "./project.pipeline.js";
+import type { SortDirection } from "../customers/customer.constants.js";
 
 export interface Project {
   id: string;
@@ -9,6 +9,7 @@ export interface Project {
   title: string;
   description: string | null;
   jobAddress: ProjectJobAddress | null;
+  jobTemplateId: string | null;
   status: ProjectStatus;
   pipelineStage: PipelineStage;
   stageEnteredAt: string;
@@ -39,7 +40,7 @@ export interface CreateProjectInput {
   copyFromCustomerPrimary?: boolean | undefined;
   status?: ProjectStatus | undefined;
   ownerUserId: string;
-  jobTemplateId?: string | undefined;
+  jobTemplateId: string;
 }
 
 export interface UpdateProjectInput {

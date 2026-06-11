@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { createEventAction } from '../_actions';
 import { getApiClientWithAuth } from '@/lib/api';
+import { AssigneeSelect } from '@/components/assignee-select';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -14,14 +15,14 @@ export default async function NewEventPage({
 }) {
   const { id: customerId } = await params;
   const client = await getApiClientWithAuth();
-  const [{ data: customer }, { data: projectsRes }, { data: users, error: usersError }] = await Promise.all([
+  const [{ data: customer }, { data: projectsRes }, { data: assigneesRes }] = await Promise.all([
     client.GET('/customers/{customerId}', { params: { path: { customerId } } }),
     client.GET('/projects', { params: { query: { customerId, limit: 100 } } }),
-    client.GET('/users', {}),
+    client.GET('/assignees', {}),
   ]);
 
   const projects = projectsRes?.data ?? [];
-  const assignees = users ?? [];
+  const assignees = assigneesRes ?? [];
   const createWithCustomer = createEventAction.bind(null, customerId);
 
   return (
@@ -95,27 +96,7 @@ export default async function NewEventPage({
               </Select>
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="assigneeUserIds">Assignees</Label>
-              <Select
-                id="assigneeUserIds"
-                name="assigneeUserIds"
-                multiple
-                disabled={assignees.length === 0}
-                className="min-h-28"
-              >
-                {assignees.map((user) => (
-                  <option key={user.id} value={user.id}>
-                    {user.name} ({user.email})
-                  </option>
-                ))}
-              </Select>
-              <p className="text-xs text-muted-foreground">
-                {usersError
-                  ? 'User list unavailable for this account; the event will be assigned to you.'
-                  : 'Hold Ctrl or Cmd to select multiple assignees. Leave blank to assign yourself.'}
-              </p>
-            </div>
+            <AssigneeSelect assignees={assignees} />
 
             <div className="space-y-2">
               <Label htmlFor="address">Address</Label>

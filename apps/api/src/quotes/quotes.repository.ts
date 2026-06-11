@@ -26,9 +26,26 @@ interface QuoteCursor {
   updatedAt: string;
 }
 
-const QUOTE_SELECT = `
-  q.*,
-  COALESCE(SUM(FLOOR(qli.qty * (qli.unit_price_cents + qli.labor_price_cents))), 0)::integer AS subtotal_cents
+const quoteSubtotalSelect = (quoteAlias: string): string => `
+  COALESCE(
+    (
+      SELECT SUM(COALESCE(gpl.override_price_cents, gpl.line_total_cents))
+      FROM quote_areas qa
+      INNER JOIN generated_price_lines gpl ON gpl.quote_area_id = qa.id
+      WHERE qa.quote_id = ${quoteAlias}.id
+    ),
+    (
+      SELECT SUM(FLOOR(qli.qty * (qli.unit_price_cents + qli.labor_price_cents)))
+      FROM quote_line_items qli
+      WHERE qli.quote_id = ${quoteAlias}.id
+    ),
+    0
+  )::integer AS subtotal_cents
+`;
+
+const QUOTE_SELECT = (quoteAlias: string): string => `
+  ${quoteAlias}.*,
+  ${quoteSubtotalSelect(quoteAlias)}
 `;
 
 const UPDATE_COLUMNS = {
@@ -137,11 +154,9 @@ export class QuotesRepository {
     const limitValue = addValue(input.limit + 1);
     const result = await this.pool.query<QuoteRow>(
       `
-        SELECT ${QUOTE_SELECT}
+        SELECT ${QUOTE_SELECT('q')}
         FROM quotes q
-        LEFT JOIN quote_line_items qli ON qli.quote_id = q.id
         WHERE ${where.join(' AND ')}
-        GROUP BY q.id
         ORDER BY q.updated_at DESC, q.id ASC
         LIMIT ${limitValue}
       `,
@@ -194,6 +209,7 @@ export class QuotesRepository {
         INSERT INTO quotes (
           customer_id,
           project_id,
+          phase_id,
           price_list_id,
           quote_number,
           title,
@@ -202,12 +218,13 @@ export class QuotesRepository {
           tax_rate_bps,
           terms_and_conditions
         )
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
         RETURNING *, 0::integer AS subtotal_cents
       `,
       [
         customerId,
         input.projectId ?? null,
+        input.phaseId ?? null,
         priceListId,
         quoteNumber,
         input.title,
@@ -254,12 +271,8 @@ export class QuotesRepository {
           WHERE customer_id = ${customerPlaceholder} AND id = ${quotePlaceholder} AND deleted_at IS NULL
           RETURNING *
         )
-        SELECT uq.*, COALESCE(SUM(FLOOR(qli.qty * (qli.unit_price_cents + qli.labor_price_cents))), 0)::integer AS subtotal_cents
+        SELECT uq.*, ${quoteSubtotalSelect('uq')}
         FROM updated_quote uq
-        LEFT JOIN quote_line_items qli ON qli.quote_id = uq.id
-        GROUP BY uq.id, uq.customer_id, uq.project_id, uq.phase_id, uq.price_list_id, uq.quote_number, uq.title, uq.status, uq.valid_until, uq.discount_cents,
-          uq.tax_rate_bps, uq.share_token, uq.terms_and_conditions, uq.sent_at, uq.accepted_at, uq.rejected_at,
-          uq.deleted_at, uq.deleted_by_user_id, uq.created_at, uq.updated_at
       `,
       values
     );
@@ -287,6 +300,14 @@ export class QuotesRepository {
 
   async rejectWithClient(client: PoolClient, customerId: string, quoteId: string): Promise<Quote | null> {
     return this.transitionWithClient(client, customerId, quoteId, 'rejected', 'rejected_at');
+  }
+
+  async acceptWithClient(client: PoolClient, customerId: string, quoteId: string): Promise<Quote | null> {
+    return this.transitionWithClient(client, customerId, quoteId, 'accepted', 'accepted_at');
+  }
+
+  async expireWithClient(client: PoolClient, customerId: string, quoteId: string): Promise<Quote | null> {
+    return this.transitionWithClient(client, customerId, quoteId, 'expired', null);
   }
 
   async archive(customerId: string, quoteId: string, actorUserId: string): Promise<Quote | null> {
@@ -459,11 +480,9 @@ export class QuotesRepository {
   async findByIdWithClient(client: Queryable, customerId: string, quoteId: string): Promise<Quote | null> {
     const result = await client.query<QuoteRow>(
       `
-        SELECT ${QUOTE_SELECT}
+        SELECT ${QUOTE_SELECT('q')}
         FROM quotes q
-        LEFT JOIN quote_line_items qli ON qli.quote_id = q.id
         WHERE q.customer_id = $1 AND q.id = $2 AND q.deleted_at IS NULL
-        GROUP BY q.id
       `,
       [customerId, quoteId]
     );
@@ -493,12 +512,8 @@ export class QuotesRepository {
           WHERE customer_id = $1 AND id = $2 AND deleted_at IS NULL
           RETURNING *
         )
-        SELECT uq.*, COALESCE(SUM(FLOOR(qli.qty * (qli.unit_price_cents + qli.labor_price_cents))), 0)::integer AS subtotal_cents
+        SELECT uq.*, ${quoteSubtotalSelect('uq')}
         FROM updated_quote uq
-        LEFT JOIN quote_line_items qli ON qli.quote_id = uq.id
-        GROUP BY uq.id, uq.customer_id, uq.project_id, uq.phase_id, uq.price_list_id, uq.quote_number, uq.title, uq.status, uq.valid_until, uq.discount_cents,
-          uq.tax_rate_bps, uq.share_token, uq.terms_and_conditions, uq.sent_at, uq.accepted_at, uq.rejected_at,
-          uq.deleted_at, uq.deleted_by_user_id, uq.created_at, uq.updated_at
       `,
       [customerId, quoteId, status]
     );

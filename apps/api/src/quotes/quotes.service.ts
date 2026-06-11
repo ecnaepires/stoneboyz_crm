@@ -164,7 +164,23 @@ export class QuotesService {
       throw new ConflictException({ code: 'INVALID_QUOTE_STATUS', message: 'Quote is not in sent status' });
     }
 
-    const quote = await this.quotesRepository.accept(customerId, quoteId);
+    const client = await this.pool.connect();
+    let quote: Quote | null;
+
+    try {
+      await client.query('BEGIN');
+      await this.slabsService.promoteNegotiatingManyForQuote(quoteId, input.actorUserId, client);
+      quote = await this.quotesRepository.acceptWithClient(client, customerId, quoteId);
+      if (quote === null) {
+        throw new NotFoundException({ code: 'NOT_FOUND', message: 'Quote not found' });
+      }
+      await client.query('COMMIT');
+    } catch (error) {
+      await client.query('ROLLBACK');
+      throw error;
+    } finally {
+      client.release();
+    }
 
     if (quote === null) {
       throw new NotFoundException({ code: 'NOT_FOUND', message: 'Quote not found' });
@@ -187,8 +203,12 @@ export class QuotesService {
 
     try {
       await client.query('BEGIN');
+      await this.slabsService.releaseNegotiatingManyForQuote(quoteId, input.actorUserId, client);
       await this.slabsService.releaseManyForQuote(quoteId, input.actorUserId, client);
       quote = await this.quotesRepository.rejectWithClient(client, customerId, quoteId);
+      if (quote === null) {
+        throw new NotFoundException({ code: 'NOT_FOUND', message: 'Quote not found' });
+      }
       await client.query('COMMIT');
     } catch (error) {
       await client.query('ROLLBACK');
@@ -213,7 +233,23 @@ export class QuotesService {
       throw new ConflictException({ code: 'INVALID_QUOTE_STATUS', message: 'Quote is not in sent status' });
     }
 
-    const quote = await this.quotesRepository.expire(customerId, quoteId);
+    const client = await this.pool.connect();
+    let quote: Quote | null;
+
+    try {
+      await client.query('BEGIN');
+      await this.slabsService.releaseNegotiatingManyForQuote(quoteId, input.actorUserId, client);
+      quote = await this.quotesRepository.expireWithClient(client, customerId, quoteId);
+      if (quote === null) {
+        throw new NotFoundException({ code: 'NOT_FOUND', message: 'Quote not found' });
+      }
+      await client.query('COMMIT');
+    } catch (error) {
+      await client.query('ROLLBACK');
+      throw error;
+    } finally {
+      client.release();
+    }
 
     if (quote === null) {
       throw new NotFoundException({ code: 'NOT_FOUND', message: 'Quote not found' });
@@ -231,6 +267,7 @@ export class QuotesService {
 
     try {
       await client.query('BEGIN');
+      await this.slabsService.releaseNegotiatingManyForQuote(quoteId, input.actorUserId, client);
       await this.slabsService.releaseManyForQuote(quoteId, input.actorUserId, client);
       quote = await this.quotesRepository.archiveWithClient(client, customerId, quoteId, input.actorUserId);
       await client.query('COMMIT');

@@ -203,4 +203,96 @@ describe('canvasLayoutSchema', () => {
       }
     ]);
   });
+
+  it('preserves segment reference lines for exact construction placement', () => {
+    const pieceId = '55555555-5555-4555-8555-555555555555';
+    const parsed = canvasLayoutSchema.parse({
+      pieces: [
+        {
+          pieceId,
+          x: 32,
+          y: 48,
+          rotation: 0,
+          shape: null
+        }
+      ],
+      sinks: [],
+      corners: [],
+      edges: [],
+      referenceLines: [
+        {
+          id: 'segment-1',
+          pieceId,
+          from: [30, 60],
+          to: [30, 30],
+          kind: 'segment',
+          color: '#6b7280',
+          dash: false
+        }
+      ],
+      deletedLines: []
+    });
+
+    expect(parsed.referenceLines).toEqual([
+      {
+        id: 'segment-1',
+        pieceId,
+        from: [30, 60],
+        to: [30, 30],
+        kind: 'segment',
+        color: '#6b7280',
+        dash: false
+      }
+    ]);
+  });
+});
+
+const PIECE_ID = '00000000-0000-4000-8000-000000000001';
+
+describe('canvasLayoutSchema piece kind', () => {
+  it('preserves an explicit backsplash kind', () => {
+    const parsed = canvasLayoutSchema.parse({
+      pieces: [
+        {
+          pieceId: PIECE_ID,
+          x: 0,
+          y: 0,
+          rotation: 0,
+          kind: 'backsplash',
+          shape: { type: 'chain', segments: [
+            { x: 0, y: 0, w: 300, h: 12, lengthIn: 100, widthIn: 4, orientation: 'horizontal' },
+            { x: 0, y: 0, w: 12, h: 12, lengthIn: 4, widthIn: 4, orientation: 'vertical' }
+          ] }
+        }
+      ]
+    });
+    expect(parsed.pieces[0]?.kind).toBe('backsplash');
+  });
+
+  it('defaults kind to countertop when omitted', () => {
+    const parsed = canvasLayoutSchema.parse({
+      pieces: [{ pieceId: PIECE_ID, x: 0, y: 0, rotation: 0 }]
+    });
+    expect(parsed.pieces[0]?.kind).toBe('countertop');
+  });
+});
+
+describe('canvasLayoutSchema sink counts', () => {
+  const SINK_ID = '00000000-0000-4000-8000-000000000002';
+
+  it('preserves quantity and faucet hole count', () => {
+    const parsed = canvasLayoutSchema.parse({
+      sinks: [{ sinkId: SINK_ID, pieceId: null, x: 0, y: 0, rotation: 0, quantity: 2, faucetHoleCount: 3 }]
+    });
+    expect(parsed.sinks[0]?.quantity).toBe(2);
+    expect(parsed.sinks[0]?.faucetHoleCount).toBe(3);
+  });
+
+  it('defaults quantity to 1 and faucet holes to 0', () => {
+    const parsed = canvasLayoutSchema.parse({
+      sinks: [{ sinkId: SINK_ID, pieceId: null, x: 0, y: 0, rotation: 0 }]
+    });
+    expect(parsed.sinks[0]?.quantity).toBe(1);
+    expect(parsed.sinks[0]?.faucetHoleCount).toBe(0);
+  });
 });

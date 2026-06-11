@@ -34,8 +34,6 @@ import {
 import {
   createSinkCutoutAction,
   createCounterPieceForCanvasAction,
-  generatePricingAction,
-  updateAreaAction,
   deleteCounterPieceAction,
   deleteSinkCutoutAction,
   revertDrawingRevisionAction,
@@ -47,22 +45,68 @@ import {
   DRAWING_MARKUP_COLORS,
 } from "./drawing-colors";
 import {
+  DRAWING_CENTERLINE_OFFSET_DIRECTIONS,
+  DRAWING_SEGMENT_DEFAULT_LENGTH_IN,
+  DRAWING_SEGMENT_DIRECTION_OPTIONS,
+  DRAWING_ZOOM_MAX,
+  DRAWING_ZOOM_MIN,
+  DRAWING_FILLET_MODE_LABELS,
+  DRAWING_FILLET_SIZE_PRESETS,
+  DRAWING_OFFSET_MODE_LABELS,
+  DRAWING_ROUNDED_PIECE_BODY_LISTENING,
+  DRAWING_WORKSPACE_RESET_ACTION_LABEL,
+  DRAWING_WORKSPACE_TOOL_PANEL_CLASS,
+  type DrawingLayoutHistory,
+  type DrawingCenterlinePlacementMode,
+  type DrawingCenterlineOffsetDirection,
+  type DrawingFilletModeLabel,
+  type DrawingOffsetModeLabel,
+  drawingCanvasPointFromScreenPoint,
+  drawingCenterlineOffsetDirectionForPoint,
+  drawingCenterlineOffsetDirectionsForLine,
+  drawingCenterlinePlacementModeForOffsetMode,
+  drawingCommitLayoutHistory,
+  drawingCornerForAdjacentEdges,
+  drawingCornerTreatmentForFilletMode,
+  drawingDirectCenterlineForRectangle,
+  drawingDraggedPositionFromCanvasPoints,
+  drawingFilletModeRequiresValue,
+  drawingLayoutWithRectangleMeasurementShapes,
+  drawingRedoLayoutHistory,
+  drawingReferenceLineStrokeWidth,
+  drawingZoomAtCanvasPoint,
+  drawingZoomAroundScreenPoint,
+  drawingZoomIn,
+  drawingZoomOut,
+  drawingPreviewShowsBoundingDimensions,
+  drawingPaintedEdgeId,
+  drawingUndoLayoutHistory,
+} from "./drawing-workspace";
+import {
   applyOffsetToSegments,
   backsplashCornerCandidatesForEdges,
+  buildConstructionLineFromDirection,
+  buildOffsetCenterline,
   buildReferenceLine,
   buildReferenceLineCornerVisuals,
   buildDeletedLine,
+  centerlineForChainPoint,
+  chainVisibleEdges,
   extendReferenceLineToEdges,
   isRectangularUnion,
   legacyShapeToChain,
+  measurementTotalsFromLayout,
+  offsetCenterline,
   removeReferenceLine,
   visibleBoundaryEdges,
 } from "@stoneboyz/domain";
-import type { DrawingReferenceLine } from "@stoneboyz/domain";
+import type {
+  DrawingLineDirection,
+  DrawingReferenceLine,
+} from "@stoneboyz/domain";
 
 interface DrawingPreviewLayerProps {
   drawPreview: DrawPreview | null;
-  segmentPreview: SegmentPreview | null;
   marqueeSelection: {
     start: { x: number; y: number };
     end: { x: number; y: number };
@@ -73,28 +117,17 @@ interface DrawingPreviewLayerProps {
 
 function DrawingPreviewLayer({
   drawPreview,
-  segmentPreview,
   marqueeSelection,
   pan,
   zoom,
 }: DrawingPreviewLayerProps) {
+  const showPreviewBoundingDimensions = drawingPreviewShowsBoundingDimensions(
+    drawPreview?.segments?.length ?? 0,
+  );
+
   return (
     <Layer>
       <Group x={pan.x} y={pan.y} scaleX={zoom} scaleY={zoom}>
-        {segmentPreview ? (
-          <Line
-            points={[
-              segmentPreview.from.x,
-              segmentPreview.from.y,
-              segmentPreview.to.x,
-              segmentPreview.to.y,
-            ]}
-            stroke={PIECE_STROKE}
-            strokeWidth={2}
-            dash={[6, 4]}
-          />
-        ) : null}
-
         {marqueeSelection
           ? (() => {
               const selectionRect = selectionRectFromPoints(
@@ -158,30 +191,34 @@ function DrawingPreviewLayer({
                 strokeWidth={2}
               />
             )}
-            <Line
-              points={[0, -10, drawPreview.w, -10]}
-              stroke="#d1d5db"
-              strokeWidth={1}
-            />
-            <Line
-              points={[-10, 0, -10, drawPreview.h]}
-              stroke="#d1d5db"
-              strokeWidth={1}
-            />
-            <Text
-              text={formatInches(drawPreview.lengthIn)}
-              x={drawPreview.w / 2 - 28}
-              y={-24}
-              fontSize={12}
-              fill="#4b5563"
-            />
-            <Text
-              text={formatInches(drawPreview.widthIn)}
-              x={-50}
-              y={drawPreview.h / 2 - 6}
-              fontSize={12}
-              fill="#4b5563"
-            />
+            {showPreviewBoundingDimensions ? (
+              <>
+                <Line
+                  points={[0, -10, drawPreview.w, -10]}
+                  stroke="#d1d5db"
+                  strokeWidth={1}
+                />
+                <Line
+                  points={[-10, 0, -10, drawPreview.h]}
+                  stroke="#d1d5db"
+                  strokeWidth={1}
+                />
+                <Text
+                  text={formatInches(drawPreview.lengthIn)}
+                  x={drawPreview.w / 2 - 28}
+                  y={-24}
+                  fontSize={12}
+                  fill="#4b5563"
+                />
+                <Text
+                  text={formatInches(drawPreview.widthIn)}
+                  x={-50}
+                  y={drawPreview.h / 2 - 6}
+                  fontSize={12}
+                  fill="#4b5563"
+                />
+              </>
+            ) : null}
             {!drawPreview.segments && drawPreview.leg ? (
               <Group
                 x={drawPreview.leg.x - drawPreview.x}
@@ -297,7 +334,7 @@ type Tool =
 type EditorStep = 1 | 2 | 3 | 4 | 5 | 6;
 type EdgeKey = "top" | "right" | "bottom" | "left";
 type CornerKey = "topLeft" | "topRight" | "bottomRight" | "bottomLeft";
-type CornerTreatment = "none" | "radius" | "clip" | "bumpOut" | "notch";
+type CornerTreatment = "none" | "radius" | "clip";
 type EdgeTreatment =
   | "finished"
   | "appliance"
@@ -377,6 +414,7 @@ export interface PieceLayout {
   x: number;
   y: number;
   rotation: number;
+  kind?: "countertop" | "backsplash";
   groupId?: string | null;
   shape?: PieceShape | null;
 }
@@ -417,7 +455,7 @@ export interface ReferenceLineLayout {
   pieceId: string;
   from: [number, number];
   to: [number, number];
-  kind: "cabinet" | "wall" | "centerline" | "dimension";
+  kind: DrawingReferenceLine["kind"] | "dimension";
   color: string;
   dash?: boolean;
 }
@@ -492,8 +530,6 @@ interface Props {
   initialLayout: CanvasLayout | null;
   latestRevision: DrawingRevisionSummary | null;
   revisions: DrawingRevisionSummary[];
-  pricingLines: GeneratedPricingLine[];
-  hasPriceList: boolean;
   isDraft: boolean;
   fullscreen?: boolean;
 }
@@ -529,11 +565,6 @@ interface TextNote {
   x: number;
   y: number;
   text: string;
-}
-
-interface SegmentPreview {
-  from: { x: number; y: number };
-  to: { x: number; y: number };
 }
 
 interface CreatedCounterPiece {
@@ -601,14 +632,12 @@ interface ChainEdgeActionState {
   sourceLineId?: string;
 }
 
-const steps: Array<{ id: EditorStep; title: string; shortTitle: string }> = [
-  { id: 1, title: "Counter Dimensions", shortTitle: "Counter Dimensions" },
-  { id: 2, title: "Curves & Bumpouts", shortTitle: "Curves & Bumpouts" },
-  { id: 3, title: "Splash & Edge", shortTitle: "Splash & Edge" },
-  { id: 4, title: "Sink & Cooktop", shortTitle: "Sink & Cooktop" },
-  { id: 5, title: "Color & Edge", shortTitle: "Color & Edge" },
-  { id: 6, title: "Price Details", shortTitle: "Price Details" },
-];
+interface CenterlineOffsetTarget {
+  id: string;
+  pieceId: string;
+  line: ShapeEdge;
+  color: string;
+}
 
 const sinkTypeOptions: SinkType[] = ["undermount", "drop_in", "farm"];
 const sinkShapeOptions: SinkShape[] = [
@@ -750,6 +779,10 @@ function formatInches(value: number) {
     : `${whole} ${numerator}/${denominator}"`;
 }
 
+function formatMeasurementNumber(value: number) {
+  return value.toLocaleString(undefined, { maximumFractionDigits: 2 });
+}
+
 function toolCursor(tool: Tool, isDraft: boolean) {
   if (!isDraft) return "default";
   if (tool === "draw") return "crosshair";
@@ -806,15 +839,12 @@ function nextCorner(corner: CornerKey): CornerKey {
 
 function treatmentLabel(treatment: CornerTreatment) {
   if (treatment === "radius") return "Radius";
-  if (treatment === "clip") return "Clip";
-  if (treatment === "bumpOut") return "Bump Out";
-  if (treatment === "notch") return "Notch";
+  if (treatment === "clip") return "Chamfer";
   return "None";
 }
 
 function treatmentMarker(treatment: CornerTreatment) {
   if (treatment === "none") return "-Std-";
-  if (treatment === "bumpOut") return "Bump";
   return treatmentLabel(treatment);
 }
 
@@ -1088,6 +1118,11 @@ interface MarqueeSelection {
 }
 
 interface SelectionDragState {
+  start: { x: number; y: number };
+  pieces: Array<{ pieceId: string; x: number; y: number }>;
+}
+
+interface PiecePointerDragState {
   start: { x: number; y: number };
   pieces: Array<{ pieceId: string; x: number; y: number }>;
 }
@@ -1440,7 +1475,18 @@ function matchingWallOffsetReferenceLine(
   lines: ReferenceLineLayout[],
   pieceId: string,
   edge: ShapeEdge,
+  sourceLineId?: string,
 ) {
+  if (sourceLineId) {
+    const sourceLine = lines.find(
+      (line) =>
+        line.id === sourceLineId &&
+        line.pieceId === pieceId &&
+        isWallOffsetReferenceLine(line),
+    );
+    if (sourceLine) return sourceLine;
+  }
+
   return (
     lines.find(
       (line) =>
@@ -1679,6 +1725,41 @@ function boundaryEdgeLength(edge: ShapeEdge) {
   );
 }
 
+function splitCenterlineAroundLabel(edge: ShapeEdge, gap = 8) {
+  const dx = edge.to[0] - edge.from[0];
+  const dy = edge.to[1] - edge.from[1];
+  const length = Math.hypot(dx, dy);
+  const midpoint = edgeMidpoint(edge);
+  if (length <= gap * 2) {
+    return {
+      label: midpoint,
+      segments: [
+        [edge.from[0], edge.from[1], edge.to[0], edge.to[1]] as number[],
+      ],
+    };
+  }
+
+  const ux = dx / length;
+  const uy = dy / length;
+  return {
+    label: midpoint,
+    segments: [
+      [
+        edge.from[0],
+        edge.from[1],
+        midpoint.x - ux * gap,
+        midpoint.y - uy * gap,
+      ],
+      [
+        midpoint.x + ux * gap,
+        midpoint.y + uy * gap,
+        edge.to[0],
+        edge.to[1],
+      ],
+    ],
+  };
+}
+
 function rectangleShapeEdge(
   width: number,
   height: number,
@@ -1688,6 +1769,191 @@ function rectangleShapeEdge(
   if (edge === "right") return { from: [width, 0], to: [width, height] };
   if (edge === "bottom") return { from: [width, height], to: [0, height] };
   return { from: [0, height], to: [0, 0] };
+}
+
+type RectangleCornerVisual = {
+  corner: CornerKey;
+  treatment: Extract<CornerTreatment, "radius" | "clip">;
+  legPx: number;
+};
+
+function rectangleCornerVisualsFor(
+  width: number,
+  height: number,
+  corners: Map<CornerKey, CornerLayout>,
+) {
+  const maxLegPx = Math.max(Math.min(width, height) / 2 - 0.001, 0);
+  return ([
+    "topLeft",
+    "topRight",
+    "bottomRight",
+    "bottomLeft",
+  ] as CornerKey[])
+    .map((corner): RectangleCornerVisual | null => {
+      const saved = corners.get(corner);
+      if (
+        !saved ||
+        (saved.treatment !== "radius" && saved.treatment !== "clip") ||
+        !saved.valueIn ||
+        saved.valueIn <= 0 ||
+        maxLegPx <= 0
+      ) {
+        return null;
+      }
+      const requestedLegPx =
+        saved.treatment === "clip"
+          ? (saved.valueIn * SCALE) / 2
+          : saved.valueIn * SCALE;
+      return {
+        corner,
+        treatment: saved.treatment,
+        legPx: Math.min(requestedLegPx, maxLegPx),
+      };
+    })
+    .filter((visual): visual is RectangleCornerVisual => visual !== null);
+}
+
+function rectangleCornerLeg(
+  visuals: RectangleCornerVisual[],
+  corner: CornerKey,
+) {
+  return visuals.find((visual) => visual.corner === corner)?.legPx ?? 0;
+}
+
+function rectangleRenderedEdgeSegments(
+  width: number,
+  height: number,
+  edge: EdgeKey,
+  visuals: RectangleCornerVisual[],
+): ShapeEdge[] {
+  const topLeft = rectangleCornerLeg(visuals, "topLeft");
+  const topRight = rectangleCornerLeg(visuals, "topRight");
+  const bottomRight = rectangleCornerLeg(visuals, "bottomRight");
+  const bottomLeft = rectangleCornerLeg(visuals, "bottomLeft");
+  const segment: ShapeEdge =
+    edge === "top"
+      ? { from: [topLeft, 0], to: [width - topRight, 0] }
+      : edge === "right"
+        ? { from: [width, topRight], to: [width, height - bottomRight] }
+        : edge === "bottom"
+          ? { from: [width - bottomRight, height], to: [bottomLeft, height] }
+          : { from: [0, height - bottomLeft], to: [0, topLeft] };
+  return Math.hypot(
+    segment.to[0] - segment.from[0],
+    segment.to[1] - segment.from[1],
+  ) > 0.001
+    ? [segment]
+    : [];
+}
+
+function rectangleCornerConnector(
+  width: number,
+  height: number,
+  visual: RectangleCornerVisual,
+): ShapeEdge | null {
+  if (visual.treatment !== "clip") return null;
+  const leg = visual.legPx;
+  if (visual.corner === "topLeft") {
+    return { from: [0, leg], to: [leg, 0] };
+  }
+  if (visual.corner === "topRight") {
+    return { from: [width - leg, 0], to: [width, leg] };
+  }
+  if (visual.corner === "bottomRight") {
+    return { from: [width, height - leg], to: [width - leg, height] };
+  }
+  return { from: [leg, height], to: [0, height - leg] };
+}
+
+function rectangleCornerArc(
+  width: number,
+  height: number,
+  visual: RectangleCornerVisual,
+) {
+  if (visual.treatment !== "radius") return null;
+  const radius = visual.legPx;
+  if (visual.corner === "topLeft") {
+    return {
+      center: [radius, radius] as [number, number],
+      startAngle: Math.PI,
+      endAngle: Math.PI * 1.5,
+      radius,
+    };
+  }
+  if (visual.corner === "topRight") {
+    return {
+      center: [width - radius, radius] as [number, number],
+      startAngle: Math.PI * 1.5,
+      endAngle: Math.PI * 2,
+      radius,
+    };
+  }
+  if (visual.corner === "bottomRight") {
+    return {
+      center: [width - radius, height - radius] as [number, number],
+      startAngle: 0,
+      endAngle: Math.PI / 2,
+      radius,
+    };
+  }
+  return {
+    center: [radius, height - radius] as [number, number],
+    startAngle: Math.PI / 2,
+    endAngle: Math.PI,
+    radius,
+  };
+}
+
+function drawRectangleWithCornerVisuals(
+  context: Konva.Context,
+  width: number,
+  height: number,
+  visuals: RectangleCornerVisual[],
+) {
+  const topLeft = visuals.find((visual) => visual.corner === "topLeft");
+  const topRight = visuals.find((visual) => visual.corner === "topRight");
+  const bottomRight = visuals.find((visual) => visual.corner === "bottomRight");
+  const bottomLeft = visuals.find((visual) => visual.corner === "bottomLeft");
+  const tl = topLeft?.legPx ?? 0;
+  const tr = topRight?.legPx ?? 0;
+  const br = bottomRight?.legPx ?? 0;
+  const bl = bottomLeft?.legPx ?? 0;
+
+  context.beginPath();
+  context.moveTo(tl, 0);
+  context.lineTo(width - tr, 0);
+  if (topRight?.treatment === "radius") {
+    context.arc(width - tr, tr, tr, Math.PI * 1.5, Math.PI * 2, false);
+  } else if (topRight?.treatment === "clip") {
+    context.lineTo(width, tr);
+  } else {
+    context.lineTo(width, 0);
+  }
+  context.lineTo(width, height - br);
+  if (bottomRight?.treatment === "radius") {
+    context.arc(width - br, height - br, br, 0, Math.PI / 2, false);
+  } else if (bottomRight?.treatment === "clip") {
+    context.lineTo(width - br, height);
+  } else {
+    context.lineTo(width, height);
+  }
+  context.lineTo(bl, height);
+  if (bottomLeft?.treatment === "radius") {
+    context.arc(bl, height - bl, bl, Math.PI / 2, Math.PI, false);
+  } else if (bottomLeft?.treatment === "clip") {
+    context.lineTo(0, height - bl);
+  } else {
+    context.lineTo(0, height);
+  }
+  context.lineTo(0, tl);
+  if (topLeft?.treatment === "radius") {
+    context.arc(tl, tl, tl, Math.PI, Math.PI * 1.5, false);
+  } else if (topLeft?.treatment === "clip") {
+    context.lineTo(tl, 0);
+  } else {
+    context.lineTo(0, 0);
+  }
+  context.closePath();
 }
 
 function chainSegmentIndexForEdge(shape: ChainShapeLayout, edge: ShapeEdge) {
@@ -2408,19 +2674,17 @@ export function DrawingCanvasInner({
   initialLayout,
   latestRevision,
   revisions,
-  pricingLines,
-  hasPriceList,
   isDraft,
   fullscreen = false,
 }: Props) {
   const router = useRouter();
+  const [optimisticPieces, setOptimisticPieces] =
+    useState<DrawingPiece[]>(pieces);
   const [layout, setLayout] = useState<CanvasLayout>(() =>
     mergeLayout(initialLayout, pieces, sinks),
   );
-  const [layoutHistory, setLayoutHistory] = useState<{
-    past: CanvasLayout[];
-    future: CanvasLayout[];
-  }>({ past: [], future: [] });
+  const [layoutHistory, setLayoutHistory] =
+    useState<DrawingLayoutHistory<CanvasLayout>>({ past: [], future: [] });
   const [selectedPieceId, setSelectedPieceId] = useState<string | null>(null);
   const [selectedPieceIds, setSelectedPieceIds] = useState<string[]>([]);
   const [selectedSinkId, setSelectedSinkId] = useState<string | null>(null);
@@ -2486,14 +2750,11 @@ export function DrawingCanvasInner({
     y: number;
   } | null>(null);
   const [textDraft, setTextDraft] = useState("");
-  const [segmentStart, setSegmentStart] = useState<{
-    x: number;
-    y: number;
-  } | null>(null);
-  const [segmentPreview, setSegmentPreview] = useState<SegmentPreview | null>(
-    null,
+  const [segmentLengthIn, setSegmentLengthIn] = useState(
+    String(DRAWING_SEGMENT_DEFAULT_LENGTH_IN),
   );
-  const segmentCommittedOnPointerDownRef = useRef(false);
+  const [segmentDirection, setSegmentDirection] =
+    useState<DrawingLineDirection>("up");
   const [editDraft, setEditDraft] = useState<{
     pieceId: string;
     name: string;
@@ -2505,15 +2766,6 @@ export function DrawingCanvasInner({
   const [revisionsOpen, setRevisionsOpen] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
   const [exitConfirmOpen, setExitConfirmOpen] = useState(false);
-  const [areaDraft, setAreaDraft] = useState({
-    name: area.name,
-    sortOrder: String(area.sortOrder),
-    material: area.material ?? "",
-    color: area.color ?? "",
-    edgeProfile: area.edgeProfile ?? "",
-    notes: area.notes ?? "",
-  });
-  const [areaSaving, setAreaSaving] = useState(false);
   const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null);
   const [sinkContextMenu, setSinkContextMenu] =
     useState<SinkContextMenuState | null>(null);
@@ -2521,9 +2773,19 @@ export function DrawingCanvasInner({
     null,
   );
   const [offsetAmount, setOffsetAmount] = useState("1");
+  const [offsetMode, setOffsetMode] =
+    useState<DrawingOffsetModeLabel>("Offset Edge");
   const [offsetEditorOpen, setOffsetEditorOpen] = useState(false);
+  const [filletMode, setFilletMode] =
+    useState<DrawingFilletModeLabel>("Radius");
+  const [filletAmount, setFilletAmount] = useState("1");
+  const [filletEditorOpen, setFilletEditorOpen] = useState(false);
   const [chainEdgeAction, setChainEdgeAction] =
     useState<ChainEdgeActionState | null>(null);
+  const [centerlinePlacementMode, setCenterlinePlacementMode] =
+    useState<DrawingCenterlinePlacementMode>("midpoint");
+  const [centerlineOffsetTarget, setCenterlineOffsetTarget] =
+    useState<CenterlineOffsetTarget | null>(null);
   const [hoveredChainEdgeId, setHoveredChainEdgeId] = useState<string | null>(
     null,
   );
@@ -2539,6 +2801,7 @@ export function DrawingCanvasInner({
   const [isPending, startTransition] = useTransition();
   const stageRef = useRef<Konva.Stage | null>(null);
   const stageContainerRef = useRef<HTMLDivElement | null>(null);
+  const piecePointerDragRef = useRef<PiecePointerDragState | null>(null);
   const [canvasWidth, setCanvasWidth] = useState(CANVAS_W);
   const [canvasHeight, setCanvasHeight] = useState(CANVAS_H);
   const layoutRef = useRef(layout);
@@ -2558,14 +2821,18 @@ export function DrawingCanvasInner({
       return;
     }
 
-    setLayoutHistory((prev) => ({
-      past: [...prev.past.slice(-49), previousLayout],
-      future: [],
-    }));
+    setLayoutHistory((history) =>
+      drawingCommitLayoutHistory({
+        history,
+        previousLayout,
+        nextLayout: layout,
+      }),
+    );
     lastLayoutForHistoryRef.current = layout;
   }, [layout]);
 
   useEffect(() => {
+    setOptimisticPieces(pieces);
     layoutHistoryModeRef.current = "skip";
     setLayout((currentLayout) => {
       const nextLayout = mergeLayout(initialLayout, pieces, sinks);
@@ -2595,29 +2862,7 @@ export function DrawingCanvasInner({
   useEffect(() => {
     setSaveNotes("");
     setIsDirty(false);
-    setLayoutHistory({ past: [], future: [] });
-    layoutHistoryModeRef.current = "skip";
-    lastLayoutForHistoryRef.current = layoutRef.current;
   }, [latestRevision?.id]);
-
-  useEffect(() => {
-    setAreaDraft({
-      name: area.name,
-      sortOrder: String(area.sortOrder),
-      material: area.material ?? "",
-      color: area.color ?? "",
-      edgeProfile: area.edgeProfile ?? "",
-      notes: area.notes ?? "",
-    });
-  }, [
-    area.color,
-    area.edgeProfile,
-    area.id,
-    area.material,
-    area.name,
-    area.notes,
-    area.sortOrder,
-  ]);
 
   useEffect(() => {
     if (!editDraft) return;
@@ -2694,6 +2939,143 @@ export function DrawingCanvasInner({
     [],
   );
 
+  const placeCenterlineFromSource = useCallback(
+    (params: {
+      pieceId: string;
+      line: ShapeEdge;
+      direction: DrawingCenterlineOffsetDirection;
+      color?: string;
+    }) => {
+      const offsetIn = Number(offsetAmount);
+      if (!Number.isFinite(offsetIn) || offsetIn <= 0) {
+        setCanvasError("Enter a positive centerline offset.");
+        return;
+      }
+
+      const id = `centerline-${drawingPaintedEdgeId(
+        params.pieceId,
+        params.line,
+      )}:${params.direction}:${Number(offsetIn.toFixed(4))}`;
+      const centerline = buildOffsetCenterline({
+        id,
+        pieceId: params.pieceId,
+        sourceLine: params.line,
+        offsetIn,
+        direction: params.direction,
+        scale: SCALE,
+        color: params.color ?? "#000000",
+      });
+
+      if (!centerline) {
+        setCanvasError(
+          "Use left or right for vertical sources, up or down for horizontal sources.",
+        );
+        return;
+      }
+
+      setSelectedPieceId(params.pieceId);
+      setCenterlineOffsetTarget({
+        id,
+        pieceId: params.pieceId,
+        line: {
+          from: centerline.from,
+          to: centerline.to,
+        },
+        color: params.color ?? "#000000",
+      });
+      setLayout((prev) => ({
+        ...prev,
+        referenceLines: [
+          ...prev.referenceLines.filter((line) => line.id !== centerline.id),
+          centerline,
+        ],
+      }));
+      setCanvasError(null);
+      markDirty();
+    },
+    [markDirty, offsetAmount],
+  );
+
+  const placeDirectCenterline = useCallback(
+    (params: { pieceId: string; line: ShapeEdge }) => {
+      const id = `centerline-${drawingPaintedEdgeId(
+        params.pieceId,
+        params.line,
+      )}`;
+      setSelectedPieceId(params.pieceId);
+      setCenterlineOffsetTarget({
+        id,
+        pieceId: params.pieceId,
+        line: params.line,
+        color: "#000000",
+      });
+      setLayout((prev) => ({
+        ...prev,
+        referenceLines: [
+          ...prev.referenceLines.filter((line) => line.id !== id),
+          {
+            id,
+            pieceId: params.pieceId,
+            from: params.line.from,
+            to: params.line.to,
+            kind: "centerline" as const,
+            color: "#000000",
+            dash: true,
+          },
+        ],
+      }));
+      setCanvasError(null);
+      markDirty();
+    },
+    [markDirty],
+  );
+
+  const applyCenterlineOffset = useCallback(
+    (direction: DrawingCenterlineOffsetDirection) => {
+      if (!centerlineOffsetTarget) {
+        setCanvasError("Select a centerline first.");
+        return;
+      }
+
+      const offsetIn = Number(offsetAmount);
+      if (!Number.isFinite(offsetIn) || offsetIn <= 0) {
+        setCanvasError("Enter a positive centerline offset.");
+        return;
+      }
+
+      const moved = offsetCenterline({
+        line: centerlineOffsetTarget.line,
+        offsetIn,
+        direction,
+        scale: SCALE,
+      });
+      if (!moved) {
+        setCanvasError("Choose a valid side for this centerline.");
+        return;
+      }
+
+      setCenterlineOffsetTarget({
+        ...centerlineOffsetTarget,
+        line: moved,
+      });
+      setLayout((prev) => ({
+        ...prev,
+        referenceLines: prev.referenceLines.map((line) =>
+          line.id === centerlineOffsetTarget.id
+            ? {
+                ...line,
+                from: moved.from,
+                to: moved.to,
+              }
+            : line,
+        ),
+      }));
+      setCanvasError(null);
+      markDirty();
+    },
+    [centerlineOffsetTarget, markDirty, offsetAmount],
+  );
+
   const resetTransientState = useCallback(() => {
     setSelectedPieceId(null);
     setSelectedPieceIds([]);
@@ -2703,7 +3085,9 @@ export function DrawingCanvasInner({
     setSinkContextMenu(null);
     setEdgeEditor(null);
     setOffsetEditorOpen(false);
+    setFilletEditorOpen(false);
     setChainEdgeAction(null);
+    setCenterlineOffsetTarget(null);
     setHoveredChainEdgeId(null);
     setCornerEditor(null);
     setEdgeTreatmentEditor(null);
@@ -2736,55 +3120,51 @@ export function DrawingCanvasInner({
     setEditDraft(null);
     setMarqueeSelection(null);
     setSelectionDrag(null);
-    setSegmentStart(null);
-    setSegmentPreview(null);
     setBacksplashPopupOpen(false);
     setSelectedBacksplashCorner(null);
     setConfirmedBacksplashSpan(null);
     setCanvasError(null);
   }, []);
 
-  const undoLayout = useCallback(() => {
-    const history = layoutHistoryRef.current;
-    const previous = history.past[history.past.length - 1];
-    if (!previous) return;
+  const resetLayout = useCallback(() => {
+    setLayout(mergeLayout(null, pieces, sinks));
+    resetLayoutActionState();
+    setIsDirty(false);
+  }, [pieces, resetLayoutActionState, sinks]);
 
-    const current = layoutRef.current;
-    layoutHistoryModeRef.current = "skip";
-    setLayoutHistory({
-      past: history.past.slice(0, -1),
-      future: [current, ...history.future].slice(0, 50),
+  const undoLayout = useCallback(() => {
+    const result = drawingUndoLayoutHistory({
+      history: layoutHistoryRef.current,
+      currentLayout: layoutRef.current,
     });
-    setLayout(previous);
+    if (!result) return;
+
+    layoutHistoryModeRef.current = "skip";
+    setLayoutHistory(result.history);
+    setLayout(result.layout);
     resetLayoutActionState();
     markDirty();
   }, [markDirty, resetLayoutActionState]);
 
   const redoLayout = useCallback(() => {
-    const history = layoutHistoryRef.current;
-    const next = history.future[0];
-    if (!next) return;
-
-    const current = layoutRef.current;
-    layoutHistoryModeRef.current = "skip";
-    setLayoutHistory({
-      past: [...history.past.slice(-49), current],
-      future: history.future.slice(1),
+    const result = drawingRedoLayoutHistory({
+      history: layoutHistoryRef.current,
+      currentLayout: layoutRef.current,
     });
-    setLayout(next);
+    if (!result) return;
+
+    layoutHistoryModeRef.current = "skip";
+    setLayoutHistory(result.history);
+    setLayout(result.layout);
     resetLayoutActionState();
     markDirty();
   }, [markDirty, resetLayoutActionState]);
 
   const screenToCanvas = useCallback(
     (point: { x: number; y: number }) => {
-      const safeZoom = zoom || 1;
-      return {
-        x: (point.x - pan.x) / safeZoom,
-        y: (point.y - pan.y) / safeZoom,
-      };
+      return drawingCanvasPointFromScreenPoint({ point, pan, zoom });
     },
-    [pan.x, pan.y, zoom],
+    [pan, zoom],
   );
 
   const getPointer = useCallback(() => {
@@ -2949,6 +3329,45 @@ export function DrawingCanvasInner({
               treatment: "finished",
               splashHeightIn: null,
               label: null,
+              color: paintColor,
+            },
+          ],
+        };
+      });
+      markDirty();
+    },
+    [markDirty, paintColor],
+  );
+
+  const paintShapeEdge = useCallback(
+    (pieceId: string, edge: ShapeEdge) => {
+      setLayout((prev) => {
+        const existing = prev.paintedEdges.find(
+          (paintedEdge) =>
+            paintedEdge.pieceId === pieceId &&
+            shapeEdgeMatchesLine(edge, paintedEdge),
+        );
+
+        if (existing) {
+          return {
+            ...prev,
+            paintedEdges: prev.paintedEdges.map((paintedEdge) =>
+              paintedEdge.id === existing.id
+                ? { ...paintedEdge, color: paintColor }
+                : paintedEdge,
+            ),
+          };
+        }
+
+        return {
+          ...prev,
+          paintedEdges: [
+            ...prev.paintedEdges,
+            {
+              id: drawingPaintedEdgeId(pieceId, edge),
+              pieceId,
+              from: edge.from,
+              to: edge.to,
               color: paintColor,
             },
           ],
@@ -3492,6 +3911,28 @@ export function DrawingCanvasInner({
     [areaId, customerId, quoteId, router],
   );
 
+  const withPieceKinds = useCallback(
+    (toSave: CanvasLayout, piecesSource?: DrawingPiece[]): CanvasLayout => {
+      const source = piecesSource ?? optimisticPieces;
+      return drawingLayoutWithRectangleMeasurementShapes(
+        {
+          ...toSave,
+          pieces: toSave.pieces.map((piece) => {
+            const kind =
+              piece.kind ?? source.find((dp) => dp.id === piece.pieceId)?.kind;
+            if (kind === undefined) {
+              throw new Error(`Missing piece kind for ${piece.pieceId}`);
+            }
+
+            return { ...piece, kind };
+          }),
+        },
+        source.map(getRenderedPiece),
+      );
+    },
+    [optimisticPieces, getRenderedPiece],
+  );
+
   const persistDrawing = useCallback(
     async (mode: "continue" | "save") => {
       setSaving(true);
@@ -3499,7 +3940,7 @@ export function DrawingCanvasInner({
         customerId,
         quoteId,
         areaId,
-        layoutRef.current,
+        withPieceKinds(layoutRef.current),
         saveNotes.trim() || null,
       );
       setSaving(false);
@@ -3514,7 +3955,7 @@ export function DrawingCanvasInner({
       }
       router.refresh();
     },
-    [areaId, customerId, quoteId, resetTransientState, router, saveNotes],
+    [areaId, customerId, quoteId, resetTransientState, router, saveNotes, withPieceKinds],
   );
 
   const addCounterPiece = useCallback(
@@ -3544,6 +3985,14 @@ export function DrawingCanvasInner({
         if (!isCreatedCounterPiece(first)) {
           return;
         }
+        const createdPiece: DrawingPiece = {
+          id: first.id,
+          name: null,
+          lengthIn: preview.lengthIn,
+          widthIn: preview.widthIn,
+          kind: "countertop",
+        };
+        const nextPieces = [...optimisticPieces, createdPiece];
 
         const createdLayouts: PieceLayout[] = [
           {
@@ -3595,15 +4044,17 @@ export function DrawingCanvasInner({
           ...snapshot,
           pieces: [...snapshot.pieces, ...createdLayouts],
         };
+        setOptimisticPieces(nextPieces);
         setLayout(nextLayout);
         const saveResult = await saveDrawingAction(
           customerId,
           quoteId,
           areaId,
-          nextLayout,
+          withPieceKinds(nextLayout, nextPieces),
           null,
         );
         if (!saveResult.ok) {
+          setOptimisticPieces(optimisticPieces);
           setLayout(snapshot);
           setCanvasError(saveResult.error);
           return;
@@ -3612,7 +4063,7 @@ export function DrawingCanvasInner({
         router.refresh();
       });
     },
-    [areaId, buildPieceFormData, customerId, pieces.length, quoteId, router],
+    [areaId, buildPieceFormData, customerId, optimisticPieces, pieces.length, quoteId, router, withPieceKinds],
   );
 
   const addBacksplashPiece = useCallback(
@@ -3687,16 +4138,25 @@ export function DrawingCanvasInner({
 
         const first = createResult.data;
         if (!isCreatedCounterPiece(first)) return;
+        const createdPiece: DrawingPiece = {
+          id: first.id,
+          name: `B/S${nextBacksplashNumber}`,
+          lengthIn,
+          widthIn: heightIn,
+          kind: "backsplash",
+        };
+        const nextPieces = [...optimisticPieces, createdPiece];
 
         const snapshot = layoutRef.current;
         const nextLayout = {
           ...snapshot,
           pieces: [
             ...snapshot.pieces,
-            { pieceId: first.id, x: bx, y: by, rotation },
+            { pieceId: first.id, x: bx, y: by, rotation, kind: "backsplash" as const },
           ],
         };
 
+        setOptimisticPieces(nextPieces);
         setLayout(nextLayout);
         setConfirmedBacksplashSpan(null);
         setSelectedPieceId(first.id);
@@ -3708,13 +4168,17 @@ export function DrawingCanvasInner({
           customerId,
           quoteId,
           areaId,
-          nextLayout,
+          withPieceKinds(nextLayout, nextPieces),
           null,
         );
         if (!saveResult.ok) {
+          setOptimisticPieces(optimisticPieces);
           setLayout(snapshot);
           setCanvasError(saveResult.error);
+          return;
         }
+        setIsDirty(false);
+        router.refresh();
       });
     },
     [
@@ -3722,8 +4186,11 @@ export function DrawingCanvasInner({
       backsplashHeightIn,
       backsplashOffsetIn,
       customerId,
+      optimisticPieces,
       pieces,
       quoteId,
+      router,
+      withPieceKinds,
     ],
   );
 
@@ -3739,6 +4206,56 @@ export function DrawingCanvasInner({
     },
     [markDirty],
   );
+
+  const beginPiecePointerDrag = useCallback(
+    (pieceIds: string[]) => {
+      const start = getPointer();
+      if (!start) return;
+
+      const pieceIdSet = new Set(pieceIds);
+      const dragPieces = layoutRef.current.pieces
+        .filter((piece) => pieceIdSet.has(piece.pieceId))
+        .map((piece) => ({
+          pieceId: piece.pieceId,
+          x: piece.x,
+          y: piece.y,
+        }));
+      if (dragPieces.length === 0) return;
+
+      piecePointerDragRef.current = { start, pieces: dragPieces };
+    },
+    [getPointer],
+  );
+
+  const finishPiecePointerDrag = useCallback(() => {
+    const drag = piecePointerDragRef.current;
+    piecePointerDragRef.current = null;
+    if (!drag) return false;
+
+    const current = getPointer();
+    if (!current) return false;
+
+    const dragPieces = new Map(
+      drag.pieces.map((piece) => [
+        piece.pieceId,
+        drawingDraggedPositionFromCanvasPoints({
+          origin: { x: piece.x, y: piece.y },
+          start: drag.start,
+          current,
+        }),
+      ]),
+    );
+
+    setLayout((prev) => ({
+      ...prev,
+      pieces: prev.pieces.map((piece) => {
+        const draggedPosition = dragPieces.get(piece.pieceId);
+        return draggedPosition ? { ...piece, ...draggedPosition } : piece;
+      }),
+    }));
+    markDirty();
+    return true;
+  }, [getPointer, markDirty]);
 
   const handleGroupDragEnd = useCallback(
     (
@@ -3800,36 +4317,6 @@ export function DrawingCanvasInner({
       }
     });
   }, [areaId, customerId, editDraft, markDirty, pieces, quoteId, router]);
-
-  const saveAreaDetails = useCallback(() => {
-    if (!areaDraft.name.trim()) return;
-
-    const formData = new FormData();
-    formData.set("name", areaDraft.name.trim());
-    formData.set("sortOrder", areaDraft.sortOrder.trim() || "0");
-    if (areaDraft.material.trim())
-      formData.set("material", areaDraft.material.trim());
-    if (areaDraft.color.trim()) formData.set("color", areaDraft.color.trim());
-    if (areaDraft.edgeProfile.trim())
-      formData.set("edgeProfile", areaDraft.edgeProfile.trim());
-    if (areaDraft.notes.trim()) formData.set("notes", areaDraft.notes.trim());
-
-    setAreaSaving(true);
-    startTransition(async () => {
-      const result = await updateAreaAction(
-        customerId,
-        quoteId,
-        areaId,
-        formData,
-      );
-      setAreaSaving(false);
-      if (!result.ok) {
-        setCanvasError(result.error);
-        return;
-      }
-      router.refresh();
-    });
-  }, [areaDraft, areaId, customerId, quoteId, router, startTransition]);
 
   const savePieceDimensions = useCallback(
     (piece: DrawingPiece, lengthIn: number, widthIn: number) => {
@@ -3954,7 +4441,7 @@ export function DrawingCanvasInner({
           customerId,
           quoteId,
           areaId,
-          nextLayout,
+          withPieceKinds(nextLayout),
           null,
         );
         if (!saveResult.ok) {
@@ -3981,7 +4468,7 @@ export function DrawingCanvasInner({
         }
       });
     },
-    [areaId, customerId, markDirty, pieces, quoteId, roundSixteenth, router],
+    [areaId, customerId, markDirty, pieces, quoteId, roundSixteenth, router, withPieceKinds],
   );
 
   const createOffsetChainSegment = useCallback(
@@ -4102,7 +4589,10 @@ export function DrawingCanvasInner({
   );
 
   const connectChainEdges = useCallback(
-    (targetEdge: ShapeEdge) => {
+    (target: ShapeEdge | { edge: ShapeEdge; sourceLineId?: string }) => {
+      const targetEdge = "edge" in target ? target.edge : target;
+      const targetSourceLineId =
+        "edge" in target ? target.sourceLineId : undefined;
       if (!chainEdgeAction || chainEdgeAction.mode !== "connect") return;
       if (shapeEdgesEqual(chainEdgeAction.edge, targetEdge)) return;
       const currentLayout = layoutRef.current;
@@ -4127,11 +4617,13 @@ export function DrawingCanvasInner({
           currentLayout.referenceLines,
           chainEdgeAction.pieceId,
           chainEdgeAction.edge,
+          chainEdgeAction.sourceLineId,
         );
       const secondReferenceLine = matchingWallOffsetReferenceLine(
         currentLayout.referenceLines,
         chainEdgeAction.pieceId,
         targetEdge,
+        targetSourceLineId,
       );
       const filletCorner =
         firstReferenceLine && secondReferenceLine
@@ -4141,28 +4633,53 @@ export function DrawingCanvasInner({
               existingRects,
             )
           : null;
+      const treatment = drawingCornerTreatmentForFilletMode(filletMode);
 
       if (filletCorner && firstReferenceLine && secondReferenceLine) {
-        const joinedReferenceLines = squareJoinReferenceLinePair(
-          firstReferenceLine,
-          secondReferenceLine,
+        const cornersWithoutCurrent = currentLayout.corners.filter(
+          (corner) =>
+            corner.pieceId !== chainEdgeAction.pieceId ||
+            corner.corner !== filletCorner,
         );
-        if (!joinedReferenceLines) return;
+        let nextLayout: CanvasLayout;
 
-        const nextLayout: CanvasLayout = {
-          ...currentLayout,
-          referenceLines: currentLayout.referenceLines.map((line) => {
-            const joinedLine = joinedReferenceLines.find(
-              (candidate) => candidate.id === line.id,
-            );
-            return joinedLine ?? line;
-          }),
-          corners: currentLayout.corners.filter(
-            (corner) =>
-              corner.pieceId !== chainEdgeAction.pieceId ||
-              corner.corner !== filletCorner,
-          ),
-        };
+        if (treatment === "none") {
+          const joinedReferenceLines = squareJoinReferenceLinePair(
+            firstReferenceLine,
+            secondReferenceLine,
+          );
+          if (!joinedReferenceLines) return;
+
+          nextLayout = {
+            ...currentLayout,
+            referenceLines: currentLayout.referenceLines.map((line) => {
+              const joinedLine = joinedReferenceLines.find(
+                (candidate) => candidate.id === line.id,
+              );
+              return joinedLine ?? line;
+            }),
+            corners: cornersWithoutCurrent,
+          };
+        } else {
+          const parsedValue = Number(filletAmount);
+          if (!Number.isFinite(parsedValue) || parsedValue <= 0) {
+            setCanvasError("Enter a positive fillet size.");
+            return;
+          }
+
+          nextLayout = {
+            ...currentLayout,
+            corners: [
+              ...cornersWithoutCurrent,
+              {
+                pieceId: chainEdgeAction.pieceId,
+                corner: filletCorner,
+                treatment,
+                valueIn: parsedValue,
+              },
+            ],
+          };
+        }
         const snapshot = currentLayout;
         setCanvasError(null);
         setLayout(nextLayout);
@@ -4176,7 +4693,7 @@ export function DrawingCanvasInner({
             customerId,
             quoteId,
             areaId,
-            nextLayout,
+            withPieceKinds(nextLayout),
             null,
           );
           if (!saveResult.ok) {
@@ -4202,6 +4719,38 @@ export function DrawingCanvasInner({
           cabinetEdge,
         });
         if (connector) {
+          const connectorCorner = cornerForReferenceLinePair(
+            singleWallLine,
+            connector,
+            existingRects,
+          );
+          const cornersWithoutCurrent = connectorCorner
+            ? currentLayout.corners.filter(
+                (corner) =>
+                  corner.pieceId !== chainEdgeAction.pieceId ||
+                  corner.corner !== connectorCorner,
+              )
+            : currentLayout.corners;
+          const parsedValue = Number(filletAmount);
+          const nextCorners =
+            treatment === "none" || !connectorCorner
+              ? cornersWithoutCurrent
+              : Number.isFinite(parsedValue) && parsedValue > 0
+                ? [
+                    ...cornersWithoutCurrent,
+                    {
+                      pieceId: chainEdgeAction.pieceId,
+                      corner: connectorCorner,
+                      treatment,
+                      valueIn: parsedValue,
+                    },
+                  ]
+                : null;
+          if (!nextCorners) {
+            setCanvasError("Enter a positive fillet size.");
+            return;
+          }
+
           const nextLayout: CanvasLayout = {
             ...currentLayout,
             referenceLines: [
@@ -4210,6 +4759,7 @@ export function DrawingCanvasInner({
               ),
               connector,
             ],
+            corners: nextCorners,
           };
           const snapshot = currentLayout;
           setCanvasError(null);
@@ -4224,7 +4774,7 @@ export function DrawingCanvasInner({
               customerId,
               quoteId,
               areaId,
-              nextLayout,
+              withPieceKinds(nextLayout),
               null,
             );
             if (!saveResult.ok) {
@@ -4239,14 +4789,87 @@ export function DrawingCanvasInner({
         }
       }
 
+      const plainCorner = drawingCornerForAdjacentEdges(
+        chainEdgeAction.edge,
+        targetEdge,
+        existingRects,
+      );
+      if (plainCorner) {
+        const cornersWithoutCurrent = currentLayout.corners.filter(
+          (corner) =>
+            corner.pieceId !== chainEdgeAction.pieceId ||
+            corner.corner !== plainCorner,
+        );
+        const parsedValue = Number(filletAmount);
+        const nextCorners =
+          treatment === "none"
+            ? cornersWithoutCurrent
+            : Number.isFinite(parsedValue) && parsedValue > 0
+              ? [
+                  ...cornersWithoutCurrent,
+                  {
+                    pieceId: chainEdgeAction.pieceId,
+                    corner: plainCorner,
+                    treatment,
+                    valueIn: parsedValue,
+                  },
+                ]
+              : null;
+        if (!nextCorners) {
+          setCanvasError("Enter a positive fillet size.");
+          return;
+        }
+
+        const nextLayout: CanvasLayout = {
+          ...currentLayout,
+          corners: nextCorners,
+        };
+        const snapshot = currentLayout;
+        setCanvasError(null);
+        setLayout(nextLayout);
+        setSelectedPieceId(chainEdgeAction.pieceId);
+        setChainEdgeAction(null);
+        setHoveredChainEdgeId(null);
+        markDirty();
+
+        startTransition(async () => {
+          const saveResult = await saveDrawingAction(
+            customerId,
+            quoteId,
+            areaId,
+            withPieceKinds(nextLayout),
+            null,
+          );
+          if (!saveResult.ok) {
+            setLayout(snapshot);
+            setCanvasError(saveResult.error);
+            return;
+          }
+          setIsDirty(false);
+          router.refresh();
+        });
+        return;
+      }
+
       setChainEdgeAction(null);
       setHoveredChainEdgeId(null);
       setCanvasError(
-        "Fillet needs a green wall offset line plus a touching side or another green wall line.",
+        "Fillet needs two adjacent edges on the same piece, or a green wall offset line plus its touching side.",
       );
       return;
     },
-    [areaId, chainEdgeAction, customerId, markDirty, pieces, quoteId, router],
+    [
+      areaId,
+      chainEdgeAction,
+      customerId,
+      filletAmount,
+      filletMode,
+      markDirty,
+      pieces,
+      quoteId,
+      router,
+      withPieceKinds,
+    ],
   );
 
   const applyChainEdgeClickDirection = useCallback(
@@ -4384,7 +5007,7 @@ export function DrawingCanvasInner({
               customerId,
               quoteId,
               areaId,
-              nextLayout,
+              withPieceKinds(nextLayout),
               null,
             );
             if (!saveResult.ok) {
@@ -4525,7 +5148,7 @@ export function DrawingCanvasInner({
             customerId,
             quoteId,
             areaId,
-            nextLayout,
+            withPieceKinds(nextLayout),
             null,
           );
           if (!saveResult.ok) {
@@ -4590,6 +5213,7 @@ export function DrawingCanvasInner({
       quoteId,
       roundSixteenth,
       router,
+      withPieceKinds,
     ],
   );
 
@@ -4699,7 +5323,7 @@ export function DrawingCanvasInner({
             customerId,
             quoteId,
             areaId,
-            nextLayout,
+            withPieceKinds(nextLayout),
             null,
           );
           if (!saveResult.ok) {
@@ -4728,7 +5352,7 @@ export function DrawingCanvasInner({
         });
       }
     },
-    [areaId, customerId, markDirty, pieces, quoteId, roundSixteenth, router],
+    [areaId, customerId, markDirty, pieces, quoteId, roundSixteenth, router, withPieceKinds],
   );
 
   const saveCornerTreatment = useCallback(
@@ -5005,6 +5629,11 @@ export function DrawingCanvasInner({
         (piece) => piece.pieceId === pieceId,
       );
       if (!sourcePiece || !sourceLayout) return;
+      const sourceKind = sourcePiece.kind ?? sourceLayout.kind;
+      if (sourceKind === undefined) {
+        setCanvasError(`Missing piece kind for ${pieceId}`);
+        return;
+      }
 
       startTransition(async () => {
         try {
@@ -5033,6 +5662,7 @@ export function DrawingCanvasInner({
                   y: sourceLayout.y + 24,
                   rotation: sourceLayout.rotation,
                   shape: sourceLayout.shape ?? null,
+                  kind: sourceKind,
                 },
               ],
             }));
@@ -5064,80 +5694,57 @@ export function DrawingCanvasInner({
     ],
   );
 
-  const resetSegmentInteraction = useCallback(() => {
-    setSegmentStart(null);
-    setSegmentPreview(null);
-  }, []);
-
-  const addSegmentLine = useCallback(
-    (preview: SegmentPreview) => {
-      const length = Math.hypot(
-        preview.to.x - preview.from.x,
-        preview.to.y - preview.from.y,
-      );
-      if (length < 4) return;
-
+  const placeSegmentAtPointer = useCallback(
+    (pointer: { x: number; y: number }) => {
+      const lengthIn = Number(segmentLengthIn);
+      if (!Number.isFinite(lengthIn) || lengthIn <= 0) {
+        setCanvasError("Enter a positive segment length.");
+        return;
+      }
       const pieceId =
         selectedPieceId ??
         pieceIdAtCanvasPoint({
-          point: preview.from,
+          point: pointer,
           pieces,
           layouts: layoutRef.current.pieces,
         });
       if (!pieceId) {
-        setCanvasError(
-          "Select a counter piece or start the segment on a piece.",
-        );
+        setCanvasError("Click a start point on a countertop piece.");
         return;
       }
       const pieceLayout = layoutRef.current.pieces.find(
         (piece) => piece.pieceId === pieceId,
       );
       if (!pieceLayout) {
-        setCanvasError(
-          "Select a counter piece or start the segment on a piece.",
-        );
+        setCanvasError("Click a start point on a countertop piece.");
         return;
       }
-      const from = canvasPointToPiecePoint(pieceLayout, preview.from);
-      const to = canvasPointToPiecePoint(pieceLayout, preview.to);
+      const anchor = canvasPointToPiecePoint(pieceLayout, pointer);
+      const line = buildConstructionLineFromDirection({
+        id: lineId("segment"),
+        pieceId,
+        kind: "segment",
+        anchor: [anchor.x, anchor.y],
+        direction: segmentDirection,
+        lengthIn,
+        scale: SCALE,
+        color: PIECE_STROKE,
+      });
+      if (!line) {
+        setCanvasError("Enter a positive segment length.");
+        return;
+      }
 
+      setSelectedPieceId(pieceId);
+      setSelectedPieceIds([pieceId]);
       setLayout((prev) => ({
         ...prev,
-        referenceLines: [
-          ...prev.referenceLines,
-          buildReferenceLine({
-            id: lineId("segment"),
-            pieceId,
-            edge: {
-              from: [from.x, from.y],
-              to: [to.x, to.y],
-            },
-            kind: "cabinet",
-            color: PIECE_STROKE,
-          }),
-        ],
+        referenceLines: [...prev.referenceLines, line],
       }));
+      setCanvasError(null);
       markDirty();
     },
-    [markDirty, pieces, selectedPieceId],
-  );
-
-  const handleSegmentPointerDown = useCallback(
-    (pointer: { x: number; y: number }) => {
-      if (segmentStart) {
-        segmentCommittedOnPointerDownRef.current = true;
-        addSegmentLine({ from: segmentStart, to: pointer });
-        resetSegmentInteraction();
-        return;
-      }
-      setSelectedPieceId(null);
-      setSelectedPieceIds([]);
-      setSelectedSinkId(null);
-      setSegmentStart(pointer);
-      setSegmentPreview({ from: pointer, to: pointer });
-    },
-    [addSegmentLine, resetSegmentInteraction, segmentStart],
+    [markDirty, pieces, segmentDirection, segmentLengthIn, selectedPieceId],
   );
 
   const extendReferenceLine = useCallback(
@@ -5295,7 +5902,7 @@ export function DrawingCanvasInner({
       }
 
       if (tool === "segment") {
-        handleSegmentPointerDown(pointer);
+        placeSegmentAtPointer(pointer);
         return;
       }
 
@@ -5318,10 +5925,10 @@ export function DrawingCanvasInner({
       chainEdgeAction,
       confirmedBacksplashSpan,
       getPointer,
-      handleSegmentPointerDown,
       isDraft,
       pan,
       pieces,
+      placeSegmentAtPointer,
       selectedBacksplashCorner,
       tool,
     ],
@@ -5389,13 +5996,6 @@ export function DrawingCanvasInner({
       }
       return;
     }
-    if (tool === "segment" && segmentStart) {
-      const pointer = getPointer();
-      if (pointer) {
-        setSegmentPreview({ from: segmentStart, to: pointer });
-      }
-      return;
-    }
     updateDrawFromScreenPoint(
       screenPointer.x +
         (stageContainerRef.current?.getBoundingClientRect().left ?? 0),
@@ -5406,7 +6006,6 @@ export function DrawingCanvasInner({
     getPointer,
     marqueeSelection,
     panStart,
-    segmentStart,
     selectionDrag,
     tool,
     updateSelectionDrag,
@@ -5514,53 +6113,6 @@ export function DrawingCanvasInner({
   ]);
 
   useEffect(() => {
-    if (!segmentStart || tool !== "segment") return;
-
-    const handleWindowMouseMove = (event: MouseEvent) => {
-      const containerRect = stageContainerRef.current?.getBoundingClientRect();
-      if (!containerRect) return;
-      const pointer = {
-        x: (event.clientX - containerRect.left - pan.x) / zoom,
-        y: (event.clientY - containerRect.top - pan.y) / zoom,
-      };
-      setSegmentPreview({ from: segmentStart, to: pointer });
-    };
-
-    const handleWindowMouseUp = () => {
-      if (segmentCommittedOnPointerDownRef.current) {
-        segmentCommittedOnPointerDownRef.current = false;
-        return;
-      }
-      if (
-        segmentPreview &&
-        Math.hypot(
-          segmentPreview.to.x - segmentPreview.from.x,
-          segmentPreview.to.y - segmentPreview.from.y,
-        ) >= 4
-      ) {
-        addSegmentLine(segmentPreview);
-        resetSegmentInteraction();
-      }
-    };
-
-    window.addEventListener("mousemove", handleWindowMouseMove);
-    window.addEventListener("mouseup", handleWindowMouseUp);
-    return () => {
-      window.removeEventListener("mousemove", handleWindowMouseMove);
-      window.removeEventListener("mouseup", handleWindowMouseUp);
-    };
-  }, [
-    addSegmentLine,
-    pan.x,
-    pan.y,
-    resetSegmentInteraction,
-    segmentPreview,
-    segmentStart,
-    tool,
-    zoom,
-  ]);
-
-  useEffect(() => {
     if (!selectionDrag || tool !== "select") return;
 
     const pointerFromMouseEvent = (event: MouseEvent) => {
@@ -5653,10 +6205,13 @@ export function DrawingCanvasInner({
     dividerBefore?: boolean;
   }> = [
     {
-      label: "Pen",
+      label: "Counter",
       icon: "/",
-      action: () => setTool("draw"),
-      active: tool === "draw",
+      action: () => {
+        setActiveStep(1);
+        setTool("draw");
+      },
+      active: tool === "draw" && activeStep === 1,
       draftOnly: true,
     },
     {
@@ -5687,7 +6242,10 @@ export function DrawingCanvasInner({
     {
       label: "Distance",
       icon: "⌞",
-      action: () => setTool("select"),
+      action: () => {
+        setActiveStep(1);
+        setTool("select");
+      },
       active: tool === "select" && activeStep === 1,
       draftOnly: true,
       tone: "orange",
@@ -5695,8 +6253,11 @@ export function DrawingCanvasInner({
     {
       label: "Fillet",
       icon: "⌜",
-      action: () =>
-        setTool((prev) => (prev === "connect" ? "draw" : "connect")),
+      action: () => {
+        setTool("connect");
+        setChainEdgeAction(null);
+        setFilletEditorOpen(true);
+      },
       active: tool === "connect",
       draftOnly: true,
       tone: "blue",
@@ -5705,6 +6266,7 @@ export function DrawingCanvasInner({
       label: "Offset",
       icon: "=",
       action: () => {
+        setOffsetMode("Offset Edge");
         setTool("offset");
         setOffsetEditorOpen(true);
       },
@@ -5714,12 +6276,16 @@ export function DrawingCanvasInner({
     {
       label: "Centerline",
       icon: "⊕",
-      action: () => setTool("centerline"),
+      action: () => {
+        setTool("centerline");
+        setCenterlinePlacementMode("midpoint");
+        setChainEdgeAction(null);
+      },
       active: tool === "centerline",
       draftOnly: true,
     },
     {
-      label: "Paint",
+      label: "Color",
       icon: "🎨",
       action: () => setTool("paint"),
       active: tool === "paint",
@@ -5729,12 +6295,35 @@ export function DrawingCanvasInner({
       label: "Back Splash",
       icon: "▰",
       action: () => {
+        setActiveStep(3);
         setTool("backsplash");
         setBacksplashPopupOpen(true);
       },
       active: tool === "backsplash",
       draftOnly: true,
       tone: "purple",
+    },
+    {
+      label: "Sink",
+      icon: "□",
+      action: () => {
+        setActiveStep(4);
+        setTool("select");
+      },
+      active: activeStep === 4 && !sinkCreateOpen,
+      draftOnly: true,
+      tone: "blue",
+    },
+    {
+      label: "Faucet",
+      icon: "○",
+      action: () => {
+        setActiveStep(4);
+        setSinkCreateOpen(true);
+      },
+      active: sinkCreateOpen,
+      draftOnly: true,
+      tone: "blue",
     },
     {
       label: "Legend",
@@ -5782,12 +6371,40 @@ export function DrawingCanvasInner({
       tone: "orange",
     },
     {
-      label: "Color",
+      label: "Edge",
       icon: "•",
-      action: () => setActiveStep(5),
-      active: activeStep === 5,
+      action: () => {
+        setActiveStep(3);
+        setTool("select");
+      },
+      active: activeStep === 3 && tool === "select",
       draftOnly: true,
       tone: "red",
+    },
+    {
+      label: "Zoom In",
+      icon: "+",
+      action: () => zoomViewportFromToolbar(drawingZoomIn),
+      disabled: zoom >= DRAWING_ZOOM_MAX,
+      tone: "muted",
+      dividerBefore: true,
+    },
+    {
+      label: "Zoom Out",
+      icon: "-",
+      action: () => zoomViewportFromToolbar(drawingZoomOut),
+      disabled: zoom <= DRAWING_ZOOM_MIN,
+      tone: "muted",
+    },
+    {
+      label: `${Math.round(zoom * 100)}%`,
+      icon: "1",
+      action: () => {
+        setZoom(1);
+        setPan({ x: 0, y: 0 });
+      },
+      disabled: zoom === 1 && pan.x === 0 && pan.y === 0,
+      tone: "muted",
     },
     {
       label: "Undo",
@@ -5795,7 +6412,6 @@ export function DrawingCanvasInner({
       action: undoLayout,
       disabled: layoutHistory.past.length === 0,
       tone: "muted",
-      dividerBefore: true,
     },
     {
       label: "Redo",
@@ -5805,11 +6421,94 @@ export function DrawingCanvasInner({
       tone: "muted",
     },
   ];
-  const activeStepTitle =
-    steps.find((step) => step.id === activeStep)?.title ?? "Drawing";
   const selectedPiece = selectedPieceId
     ? (pieceMap.get(selectedPieceId) ?? null)
     : null;
+  const liveMeasurementTotals = useMemo(
+    () => measurementTotalsFromLayout(withPieceKinds(layout)),
+    [layout, withPieceKinds],
+  );
+  const selectedCanvasFocusPoint = useMemo(() => {
+    const pieceIds = selectedPieceIdsForAction.filter((pieceId) =>
+      pieceMap.has(pieceId),
+    );
+    if (pieceIds.length === 0) return null;
+
+    const bounds = pieceIds
+      .flatMap((pieceId) => {
+        const piece = pieceMap.get(pieceId);
+        const pieceLayout = layout.pieces.find((item) => item.pieceId === pieceId);
+        if (!piece || !pieceLayout) return [];
+        return [canvasBoundsForPiece(getRenderedPiece(piece), pieceLayout)];
+      })
+      .reduce<CanvasRect | null>((current, rect) => {
+        if (!current) return rect;
+        const minX = Math.min(current.x, rect.x);
+        const minY = Math.min(current.y, rect.y);
+        const maxX = Math.max(current.x + current.width, rect.x + rect.width);
+        const maxY = Math.max(current.y + current.height, rect.y + rect.height);
+        return {
+          x: minX,
+          y: minY,
+          width: maxX - minX,
+          height: maxY - minY,
+        };
+      }, null);
+
+    if (!bounds) return null;
+
+    return {
+      x: bounds.x + bounds.width / 2,
+      y: bounds.y + bounds.height / 2,
+    };
+  }, [getRenderedPiece, layout.pieces, pieceMap, selectedPieceIdsForAction]);
+
+  const zoomViewportToCanvasPoint = useCallback(
+    (
+      zoomAction: (zoom: number) => number,
+      canvasPoint: { x: number; y: number },
+      screenPoint: { x: number; y: number },
+    ) => {
+      const nextZoom = zoomAction(zoom);
+      const nextViewport = drawingZoomAtCanvasPoint({
+        canvasPoint,
+        screenPoint,
+        pan,
+        zoom,
+        nextZoom,
+      });
+
+      setZoom(nextViewport.zoom);
+      setPan(nextViewport.pan);
+    },
+    [pan, zoom],
+  );
+
+  const zoomViewportFromToolbar = useCallback(
+    (zoomAction: (zoom: number) => number) => {
+      const screenPoint = {
+        x: canvasWidth / 2,
+        y: canvasHeight / 2,
+      };
+      const canvasPoint =
+        selectedCanvasFocusPoint ??
+        drawingCanvasPointFromScreenPoint({
+          point: screenPoint,
+          pan,
+          zoom,
+        });
+
+      zoomViewportToCanvasPoint(zoomAction, canvasPoint, screenPoint);
+    },
+    [
+      canvasHeight,
+      canvasWidth,
+      pan,
+      selectedCanvasFocusPoint,
+      zoom,
+      zoomViewportToCanvasPoint,
+    ],
+  );
   const edgeLengthPreview = useMemo<EdgeLengthPreviewModel | null>(() => {
     if (!edgeEditor) return null;
     const basePiece = pieceMap.get(edgeEditor.pieceId);
@@ -5886,10 +6585,10 @@ export function DrawingCanvasInner({
         setRoundSixteenth((prev) => !prev);
       } else if (key === "j") {
         event.preventDefault();
-        setZoom((prev) => Math.min(prev + 0.15, 2.25));
+        zoomViewportFromToolbar(drawingZoomIn);
       } else if (key === "k") {
         event.preventDefault();
-        setZoom((prev) => Math.max(prev - 0.15, 0.45));
+        zoomViewportFromToolbar(drawingZoomOut);
       } else if (key === "l") {
         event.preventDefault();
         setZoom(1);
@@ -5903,7 +6602,9 @@ export function DrawingCanvasInner({
         setOffsetEditorOpen(true);
       } else if (key === "c" && isDraft) {
         event.preventDefault();
-        setTool((prev) => (prev === "connect" ? "draw" : "connect"));
+        setTool("connect");
+        setChainEdgeAction(null);
+        setFilletEditorOpen(true);
       } else if (key === "s" && isDraft) {
         event.preventDefault();
         setTool((prev) => (prev === "segment" ? "draw" : "segment"));
@@ -5918,19 +6619,18 @@ export function DrawingCanvasInner({
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [isDraft, redoLayout, undoLayout]);
+  }, [isDraft, redoLayout, undoLayout, zoomViewportFromToolbar]);
 
   useEffect(() => {
+    if (tool !== "offset") {
+      setOffsetEditorOpen(false);
+    }
+    if (tool !== "connect") {
+      setFilletEditorOpen(false);
+    }
     if (tool === "offset" || tool === "connect") return;
-    setOffsetEditorOpen(false);
     setChainEdgeAction(null);
     setHoveredChainEdgeId(null);
-  }, [tool]);
-
-  useEffect(() => {
-    if (tool === "segment") return;
-    setSegmentStart(null);
-    setSegmentPreview(null);
   }, [tool]);
 
   useEffect(() => {
@@ -6004,6 +6704,14 @@ export function DrawingCanvasInner({
             </Button>
             <Button
               size="sm"
+              variant="outline"
+              onClick={resetLayout}
+              disabled={!isDraft}
+            >
+              {DRAWING_WORKSPACE_RESET_ACTION_LABEL}
+            </Button>
+            <Button
+              size="sm"
               onClick={() => setSaveModalOpen(true)}
               disabled={!isDraft || saving}
             >
@@ -6023,285 +6731,32 @@ export function DrawingCanvasInner({
               Exit
             </Button>
           </div>
-          <div className="text-xs text-muted-foreground">
-            {latestRevision
-              ? `Revision ${latestRevision.revisionNumber} saved ${formatDate(latestRevision.createdAt)}`
-              : "No saved revisions yet"}
-            {isDirty ? " • Unsaved changes" : ""}
+          <div className="flex flex-wrap items-center justify-end gap-x-4 gap-y-1 text-xs">
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[#1f3f1d]">
+              <span>
+                Countertop:{" "}
+                <strong>{formatMeasurementNumber(liveMeasurementTotals.countertopSqFt)} sq ft</strong>
+              </span>
+              <span>
+                Combined:{" "}
+                <strong>{formatMeasurementNumber(liveMeasurementTotals.combinedSqFt)} sq ft</strong>
+              </span>
+              <span>
+                Edge:{" "}
+                <strong>{formatMeasurementNumber(liveMeasurementTotals.finishedEdgeLinFt)} lin ft</strong>
+              </span>
+            </div>
+            <div className="text-muted-foreground">
+              {latestRevision
+                ? `Revision ${latestRevision.revisionNumber} saved ${formatDate(latestRevision.createdAt)}`
+                : "No saved revisions yet"}
+              {isDirty ? " • Unsaved changes" : ""}
+            </div>
           </div>
-        </div>
-
-        <div className="flex items-stretch bg-[#6ba464] text-white">
-          {steps.map((step) => (
-            <button
-              key={step.id}
-              type="button"
-              className={`flex min-h-14 flex-1 items-center justify-center gap-3 border-r border-white/35 px-3 text-left transition ${
-                activeStep === step.id ? "bg-[#2f6b2c]" : "hover:bg-[#5b9655]"
-              }`}
-              onClick={() => setActiveStep(step.id)}
-            >
-              <span className="font-serif text-3xl leading-none">
-                {step.id}
-              </span>
-              <span className="text-sm font-semibold leading-tight">
-                {step.shortTitle}
-              </span>
-            </button>
-          ))}
         </div>
 
         <div className="flex min-h-0 flex-1">
           <div className="min-w-0 flex-1 bg-white">
-            {activeStep >= 5 ? (
-              <div className="min-h-[560px] p-6">
-                <div className="flex flex-wrap items-start justify-between gap-3">
-                  <div>
-                    <h4 className="text-lg font-semibold text-[#2f6b2c]">
-                      {activeStepTitle}
-                    </h4>
-                    <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
-                      Moraware keeps area work and pricing inside the editor.
-                      Step 5 starts the area setup, Step 6 finishes pricing.
-                    </p>
-                  </div>
-                  <div className="rounded-md border border-[#c8dec3] bg-white px-3 py-2 text-xs text-muted-foreground">
-                    Editing area:{" "}
-                    <span className="font-semibold text-foreground">
-                      {areaDraft.name || area.name}
-                    </span>
-                  </div>
-                </div>
-
-                {activeStep === 5 ? (
-                  <div className="mt-4 grid gap-4 lg:grid-cols-[1.2fr_0.8fr]">
-                    <div className="rounded-lg border border-[#c8dec3] bg-white p-4">
-                      <div className="grid gap-4 md:grid-cols-2">
-                        <div className="space-y-2">
-                          <Label htmlFor={`area-name-${areaId}`}>Name *</Label>
-                          <Input
-                            id={`area-name-${areaId}`}
-                            value={areaDraft.name}
-                            onChange={(event) =>
-                              setAreaDraft((prev) => ({
-                                ...prev,
-                                name: event.target.value,
-                              }))
-                            }
-                          />
-                        </div>
-                        <div className="space-y-2">
-                          <Label htmlFor={`area-sort-${areaId}`}>Sort</Label>
-                          <Input
-                            id={`area-sort-${areaId}`}
-                            type="number"
-                            value={areaDraft.sortOrder}
-                            onChange={(event) =>
-                              setAreaDraft((prev) => ({
-                                ...prev,
-                                sortOrder: event.target.value,
-                              }))
-                            }
-                          />
-                        </div>
-                        <div className="space-y-2">
-                          <Label htmlFor={`area-material-${areaId}`}>
-                            Material
-                          </Label>
-                          <Input
-                            id={`area-material-${areaId}`}
-                            value={areaDraft.material}
-                            onChange={(event) =>
-                              setAreaDraft((prev) => ({
-                                ...prev,
-                                material: event.target.value,
-                              }))
-                            }
-                          />
-                        </div>
-                        <div className="space-y-2">
-                          <Label htmlFor={`area-color-${areaId}`}>Color</Label>
-                          <Input
-                            id={`area-color-${areaId}`}
-                            value={areaDraft.color}
-                            onChange={(event) =>
-                              setAreaDraft((prev) => ({
-                                ...prev,
-                                color: event.target.value,
-                              }))
-                            }
-                          />
-                        </div>
-                        <div className="space-y-2 md:col-span-2">
-                          <Label htmlFor={`area-edge-${areaId}`}>
-                            Edge Profile
-                          </Label>
-                          <Input
-                            id={`area-edge-${areaId}`}
-                            value={areaDraft.edgeProfile}
-                            onChange={(event) =>
-                              setAreaDraft((prev) => ({
-                                ...prev,
-                                edgeProfile: event.target.value,
-                              }))
-                            }
-                          />
-                        </div>
-                        <div className="space-y-2 md:col-span-2">
-                          <Label htmlFor={`area-notes-${areaId}`}>Notes</Label>
-                          <Input
-                            id={`area-notes-${areaId}`}
-                            value={areaDraft.notes}
-                            onChange={(event) =>
-                              setAreaDraft((prev) => ({
-                                ...prev,
-                                notes: event.target.value,
-                              }))
-                            }
-                          />
-                        </div>
-                      </div>
-
-                      <div className="mt-4 flex flex-wrap gap-2">
-                        <Button
-                          onClick={() => void saveAreaDetails()}
-                          disabled={areaSaving || !isDraft}
-                        >
-                          {areaSaving ? "Saving..." : "Save Area"}
-                        </Button>
-                        <Button
-                          variant="outline"
-                          onClick={() => setActiveStep(6)}
-                          disabled={!isDraft}
-                        >
-                          Next: Price Details
-                        </Button>
-                      </div>
-                    </div>
-
-                    <div className="rounded-lg border border-[#c8dec3] bg-[#f3f8ef] p-4">
-                      <p className="text-sm font-semibold text-[#2f6b2c]">
-                        Slabs & Layout
-                      </p>
-                      <p className="mt-2 text-sm text-muted-foreground">
-                        This is the Moraware Step 5 home for area ordering, slab
-                        planning, and alternate color options.
-                      </p>
-                      <div className="mt-4 rounded-md border border-dashed border-[#b9d3b3] bg-white p-3 text-sm text-muted-foreground">
-                        Next slice: surface slab rows and color-option
-                        reordering here, then bring the quote pricing table into
-                        Step 6.
-                      </div>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="mt-4 grid gap-4 lg:grid-cols-[0.9fr_1.1fr]">
-                    <div className="rounded-lg border border-[#c8dec3] bg-white p-4">
-                      <p className="text-sm font-semibold text-[#2f6b2c]">
-                        Price Details
-                      </p>
-                      <dl className="mt-3 grid grid-cols-2 gap-3 text-sm">
-                        <div>
-                          <dt className="text-muted-foreground">Price List</dt>
-                          <dd>{hasPriceList ? "Assigned" : "None"}</dd>
-                        </div>
-                        <div>
-                          <dt className="text-muted-foreground">Tax Rate</dt>
-                          <dd>See quote header</dd>
-                        </div>
-                        <div>
-                          <dt className="text-muted-foreground">Discount</dt>
-                          <dd>See quote header</dd>
-                        </div>
-                        <div>
-                          <dt className="text-muted-foreground">Expiration</dt>
-                          <dd>See quote header</dd>
-                        </div>
-                      </dl>
-                      <div className="mt-4">
-                        <form
-                          action={generatePricingAction.bind(
-                            null,
-                            customerId,
-                            quoteId,
-                            areaId,
-                          )}
-                        >
-                          <Button
-                            type="submit"
-                            size="sm"
-                            disabled={!isDraft || !hasPriceList}
-                          >
-                            Generate Pricing
-                          </Button>
-                        </form>
-                      </div>
-                      <p className="mt-3 text-xs text-muted-foreground">
-                        Step 6 keeps pricing in the editor and surfaces the
-                        generated lines by area.
-                      </p>
-                    </div>
-
-                    <div className="rounded-lg border border-[#c8dec3] bg-white p-4">
-                      <div className="flex items-center justify-between gap-3">
-                        <p className="text-sm font-semibold text-[#2f6b2c]">
-                          Generated Lines
-                        </p>
-                        <span className="text-xs text-muted-foreground">
-                          {pricingLines.length} line
-                          {pricingLines.length === 1 ? "" : "s"}
-                        </span>
-                      </div>
-                      <div className="mt-3 overflow-x-auto">
-                        <Table>
-                          <TableHeader>
-                            <TableRow>
-                              <TableHead>Category</TableHead>
-                              <TableHead>Label</TableHead>
-                              <TableHead>Qty</TableHead>
-                              <TableHead>Unit</TableHead>
-                              <TableHead>Total</TableHead>
-                            </TableRow>
-                          </TableHeader>
-                          <TableBody>
-                            {pricingLines.length === 0 ? (
-                              <TableRow>
-                                <TableCell
-                                  colSpan={5}
-                                  className="text-sm text-muted-foreground"
-                                >
-                                  No generated pricing lines yet.
-                                </TableCell>
-                              </TableRow>
-                            ) : (
-                              pricingLines.map((line) => (
-                                <TableRow key={line.id}>
-                                  <TableCell>
-                                    {line.category.replaceAll("_", " ")}
-                                  </TableCell>
-                                  <TableCell>{line.label}</TableCell>
-                                  <TableCell>
-                                    {line.quantity.toFixed(3)}
-                                  </TableCell>
-                                  <TableCell>{line.unit}</TableCell>
-                                  <TableCell>
-                                    $
-                                    {(
-                                      (line.overridePriceCents ??
-                                        line.lineTotalCents) / 100
-                                    ).toFixed(2)}
-                                  </TableCell>
-                                </TableRow>
-                              ))
-                            )}
-                          </TableBody>
-                        </Table>
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </div>
-            ) : (
               <div
                 ref={stageContainerRef}
                 className={fullscreen ? "relative h-full min-h-0" : "relative"}
@@ -6311,6 +6766,24 @@ export function DrawingCanvasInner({
                   width={canvasWidth}
                   height={canvasHeight}
                   style={{ cursor: toolCursor(tool, isDraft) }}
+                  onWheel={(event) => {
+                    event.evt.preventDefault();
+                    const stagePoint =
+                      stageRef.current?.getStage().getPointerPosition();
+                    if (!stagePoint) return;
+
+                    const zoomAction =
+                      event.evt.deltaY < 0 ? drawingZoomIn : drawingZoomOut;
+                    const nextViewport = drawingZoomAroundScreenPoint({
+                      screenPoint: stagePoint,
+                      pan,
+                      zoom,
+                      zoomAction,
+                    });
+
+                    setZoom(nextViewport.zoom);
+                    setPan(nextViewport.pan);
+                  }}
                   onMouseDown={handleStageMouseDown}
                   onMouseMove={handleStageMouseMove}
                   onMouseUp={handleStageMouseUp}
@@ -6338,14 +6811,14 @@ export function DrawingCanvasInner({
                         }}
                       />
 
-                      {pieces.length === 0 && tool !== "draw" ? (
+                      {pieces.length === 0 ? (
                         <Text
                           x={32}
                           y={34}
                           width={420}
                           text={
                             isDraft
-                              ? 'Drag with the pencil to draw the first counter piece. Depth locks to 25 1/2".'
+                              ? 'Drag with Counter to draw the first counter piece. Depth locks to 25 1/2".'
                               : "No drawing has been created yet."
                           }
                           fontSize={14}
@@ -6415,7 +6888,7 @@ export function DrawingCanvasInner({
                                   event.cancelBubble = true;
                                   const pointer = getPointer();
                                   if (pointer) {
-                                    handleSegmentPointerDown(pointer);
+                                    placeSegmentAtPointer(pointer);
                                   }
                                   return;
                                 }
@@ -6512,15 +6985,21 @@ export function DrawingCanvasInner({
                                 event.evt.preventDefault();
                                 openPieceContextMenu(basePiece.id);
                               }}
-                              onDragEnd={(event) =>
+                              onDragStart={() =>
+                                beginPiecePointerDrag(
+                                  groupItems.map((item) => item.pieceId),
+                                )
+                              }
+                              onDragEnd={(event) => {
+                                if (finishPiecePointerDrag()) return;
                                 handleGroupDragEnd(
                                   pos.groupId as string,
                                   originX,
                                   originY,
                                   event.target.x(),
                                   event.target.y(),
-                                )
-                              }
+                                );
+                              }}
                             >
                               {groupItems.map((groupPos, index) => {
                                 const groupPiece = pieceMap.get(
@@ -6767,6 +7246,9 @@ export function DrawingCanvasInner({
                             .filter((corner) => corner.pieceId === pos.pieceId)
                             .map((corner) => [corner.corner, corner] as const),
                         );
+                        const rectangleCornerVisuals = !chainShape
+                          ? rectangleCornerVisualsFor(w, h, cornerTreatments)
+                          : [];
                         const edgeTreatments = new Map(
                           layout.edges
                             .filter((edge) => edge.pieceId === pos.pieceId)
@@ -6796,12 +7278,15 @@ export function DrawingCanvasInner({
                             corners: Array.from(cornerTreatments.values()),
                             scale: SCALE,
                           });
-                        const visibleCompoundEdges = compoundEdges
-                          ? visibleBoundaryEdges({
-                              rects: compoundEdges.rects,
+                        const visibleChainEdges = resolvedChainLayout
+                          ? chainVisibleEdges({
+                              shape: resolvedChainLayout,
                               deletedLines: effectiveDeletedLines,
                             })
                           : [];
+                        const visibleCompoundEdges = visibleChainEdges.map(
+                          (item) => item.edge,
+                        );
                         const visibleRectangleDimensionEdges =
                           !chainShape
                             ? (
@@ -6855,7 +7340,7 @@ export function DrawingCanvasInner({
                                 event.cancelBubble = true;
                                 const pointer = getPointer();
                                 if (pointer) {
-                                  handleSegmentPointerDown(pointer);
+                                  placeSegmentAtPointer(pointer);
                                 }
                                 return;
                               }
@@ -6900,13 +7385,7 @@ export function DrawingCanvasInner({
                                       visibleCompoundEdges,
                                     );
                                   if (boundaryEdge) {
-                                    paintPieceEdge(
-                                      pos.pieceId,
-                                      boundaryEdgeKey(
-                                        boundaryEdge,
-                                        chainShape.rects,
-                                      ),
-                                    );
+                                    paintShapeEdge(pos.pieceId, boundaryEdge);
                                   }
                                   return;
                                 }
@@ -6923,36 +7402,67 @@ export function DrawingCanvasInner({
                               }
                               if (tool === "centerline") {
                                 const pointer = getPointer();
-                                if (pointer) {
-                                  const localX = pointer.x - pos.x;
-                                  const snapPoints = [0, w / 2, w];
-                                  const snapX = snapPoints.reduce(
-                                    (nearest, point) =>
-                                      Math.abs(point - localX) <
-                                      Math.abs(nearest - localX)
-                                        ? point
-                                        : nearest,
-                                  );
-                                  setLayout((prev) => ({
-                                    ...prev,
-                                    referenceLines: [
-                                      ...prev.referenceLines.filter(
-                                        (l) =>
-                                          l.id !==
-                                          `centerline-${pos.pieceId}-${snapX}`,
-                                      ),
-                                      {
-                                        id: `centerline-${pos.pieceId}-${snapX}`,
-                                        pieceId: pos.pieceId,
-                                        from: [snapX, 0] as [number, number],
-                                        to: [snapX, h] as [number, number],
-                                        kind: "centerline" as const,
-                                        color: "#000000",
-                                        dash: true,
-                                      },
-                                    ],
-                                  }));
+                                if (!pointer) return;
+                                const localX = pointer.x - pos.x;
+                                const localY = pointer.y - pos.y;
+                                if (centerlinePlacementMode === "midpoint") {
+                                  const line = resolvedChainLayout
+                                    ? centerlineForChainPoint({
+                                        shape: resolvedChainLayout,
+                                        point: [localX, localY],
+                                      })
+                                    : drawingDirectCenterlineForRectangle(w, h);
+                                  if (line) {
+                                    placeDirectCenterline({
+                                      pieceId: basePiece.id,
+                                      line,
+                                    });
+                                  }
+                                  return;
                                 }
+                                if (centerlineOffsetTarget) {
+                                  applyCenterlineOffset(
+                                    drawingCenterlineOffsetDirectionForPoint(
+                                      centerlineOffsetTarget.line,
+                                      [localX, localY],
+                                    ),
+                                  );
+                                  return;
+                                }
+                                const sourceEdge = resolvedChainLayout
+                                  ? nearestShapeBoundaryEdge(
+                                      localX,
+                                      localY,
+                                      visibleCompoundEdges,
+                                      Math.max(w, h),
+                                    )
+                                  : (() => {
+                                      const edgeKey = nearestRectangleEdge(
+                                        localX,
+                                        localY,
+                                        w,
+                                        h,
+                                        Math.max(w, h),
+                                      );
+                                      return edgeKey
+                                        ? rectangleShapeEdge(w, h, edgeKey)
+                                        : null;
+                                    })();
+                                if (!sourceEdge) {
+                                  setCanvasError(
+                                    "Select an edge or reference line for centerline source.",
+                                  );
+                                  return;
+                                }
+                                placeCenterlineFromSource({
+                                  pieceId: basePiece.id,
+                                  line: sourceEdge,
+                                  direction:
+                                    drawingCenterlineOffsetDirectionForPoint(
+                                      sourceEdge,
+                                      [localX, localY],
+                                    ),
+                                });
                                 return;
                               }
                               if (
@@ -6979,13 +7489,17 @@ export function DrawingCanvasInner({
                               event.evt.preventDefault();
                               openPieceContextMenu(basePiece.id);
                             }}
-                            onDragEnd={(event) =>
+                            onDragStart={() =>
+                              beginPiecePointerDrag([pos.pieceId])
+                            }
+                            onDragEnd={(event) => {
+                              if (finishPiecePointerDrag()) return;
                               handleDragEnd(
                                 pos.pieceId,
                                 event.target.x(),
                                 event.target.y(),
-                              )
-                            }
+                              );
+                            }}
                           >
                             {chainShape ? (
                               <>
@@ -6999,8 +7513,9 @@ export function DrawingCanvasInner({
                                     fill={pieceFill}
                                   />
                                 ))}
-                                {visibleCompoundEdges.map((edge, index) =>
+                                {visibleChainEdges.map((visibleEdge, index) =>
                                   (() => {
+                                    const { edge, segmentIndex } = visibleEdge;
                                     const edgeActionId = `${pos.pieceId}:${index}`;
                                     const isActionSelected =
                                       chainEdgeAction?.pieceId ===
@@ -7009,19 +7524,27 @@ export function DrawingCanvasInner({
                                         chainEdgeAction.edge,
                                         edge,
                                       );
+                                    const isCenterlineSourceSelected =
+                                      centerlineOffsetTarget?.pieceId ===
+                                        pos.pieceId &&
+                                      shapeEdgesEqual(
+                                        centerlineOffsetTarget.line,
+                                        edge,
+                                      );
                                     const isActionHovered =
                                       hoveredChainEdgeId === edgeActionId;
                                     const selectable =
                                       tool === "offset" ||
                                       tool === "connect" ||
                                       tool === "deleteLine" ||
-                                      tool === "paint";
-                                    const edgeKey = boundaryEdgeKey(
+                                      tool === "paint" ||
+                                      tool === "centerline";
+                                    const paintedEdge = findPaintedEdge(
+                                      layout.paintedEdges,
+                                      pos.pieceId,
                                       edge,
-                                      chainShape.rects,
                                     );
-                                    const edgeLayout =
-                                      edgeTreatments.get(edgeKey);
+                                    const edgeColor = paintedEdge?.color;
 
                                     return (
                                       <Group key={`chain-edge-${index}`}>
@@ -7033,23 +7556,26 @@ export function DrawingCanvasInner({
                                             edge.to[1],
                                           ]}
                                           stroke={
-                                            isActionSelected || isActionHovered
+                                            isActionSelected ||
+                                            isCenterlineSourceSelected ||
+                                            isActionHovered
                                               ? tool === "paint"
                                                 ? paintColor
                                                 : GUIDE_COLOR
-                                              : edgeLayout?.color
-                                                ? edgeLayout.color
+                                              : edgeColor
+                                                ? edgeColor
                                                 : isSelected
                                                   ? SELECT_STROKE
                                                   : PIECE_STROKE
                                           }
                                           strokeWidth={
-                                            edgeLayout?.color ||
+                                            edgeColor ||
                                             (tool === "paint" &&
                                               (isActionSelected ||
                                                 isActionHovered))
                                               ? PAINTED_EDGE_STROKE_WIDTH
                                               : isActionSelected ||
+                                                  isCenterlineSourceSelected ||
                                                   isActionHovered
                                                 ? 4
                                                 : isSelected
@@ -7081,48 +7607,7 @@ export function DrawingCanvasInner({
                                             onClick={(event) => {
                                               event.cancelBubble = true;
                                               if (tool === "paint") {
-                                                setLayout((prev) => {
-                                                  const existing =
-                                                    prev.edges.find(
-                                                      (savedEdge) =>
-                                                        savedEdge.pieceId ===
-                                                          pos.pieceId &&
-                                                        savedEdge.edge ===
-                                                          edgeKey,
-                                                    );
-                                                  if (existing) {
-                                                    return {
-                                                      ...prev,
-                                                      edges: prev.edges.map(
-                                                        (savedEdge) =>
-                                                          savedEdge.pieceId ===
-                                                            pos.pieceId &&
-                                                          savedEdge.edge ===
-                                                            edgeKey
-                                                            ? {
-                                                                ...savedEdge,
-                                                                color:
-                                                                  paintColor,
-                                                              }
-                                                            : savedEdge,
-                                                      ),
-                                                    };
-                                                  }
-                                                  return {
-                                                    ...prev,
-                                                    edges: [
-                                                      ...prev.edges,
-                                                      {
-                                                        pieceId: pos.pieceId,
-                                                        edge: edgeKey,
-                                                        treatment: "finished",
-                                                        splashHeightIn: null,
-                                                        label: null,
-                                                        color: paintColor,
-                                                      },
-                                                    ],
-                                                  };
-                                                });
+                                                paintShapeEdge(pos.pieceId, edge);
                                                 return;
                                               }
                                               if (tool === "deleteLine") {
@@ -7133,14 +7618,60 @@ export function DrawingCanvasInner({
                                                 );
                                                 return;
                                               }
-                                              if (!isChainShape(pos.shape))
+                                              if (tool === "centerline") {
+                                                const pointer = getPointer();
+                                                const localPoint: [
+                                                  number,
+                                                  number,
+                                                ] = pointer
+                                                  ? [
+                                                      pointer.x - pos.x,
+                                                      pointer.y - pos.y,
+                                                    ]
+                                                  : edge.from;
+                                                if (
+                                                  centerlinePlacementMode ===
+                                                  "midpoint"
+                                                ) {
+                                                  const line =
+                                                    resolvedChainLayout
+                                                      ? centerlineForChainPoint({
+                                                          shape:
+                                                            resolvedChainLayout,
+                                                          point: localPoint,
+                                                        })
+                                                      : drawingDirectCenterlineForRectangle(
+                                                          w,
+                                                          h,
+                                                        );
+                                                  if (line) {
+                                                    placeDirectCenterline({
+                                                      pieceId: basePiece.id,
+                                                      line,
+                                                    });
+                                                  }
+                                                  return;
+                                                }
+                                                if (centerlineOffsetTarget) {
+                                                  applyCenterlineOffset(
+                                                    drawingCenterlineOffsetDirectionForPoint(
+                                                      centerlineOffsetTarget.line,
+                                                      localPoint,
+                                                    ),
+                                                  );
+                                                  return;
+                                                }
+                                                placeCenterlineFromSource({
+                                                  pieceId: basePiece.id,
+                                                  line: edge,
+                                                  direction:
+                                                    drawingCenterlineOffsetDirectionForPoint(
+                                                      edge,
+                                                      localPoint,
+                                                    ),
+                                                });
                                                 return;
-                                              const segmentIndex =
-                                                chainSegmentIndexForEdge(
-                                                  pos.shape,
-                                                  edge,
-                                                );
-                                              if (segmentIndex < 0) return;
+                                              }
                                               if (
                                                 tool === "connect" &&
                                                 chainEdgeAction?.mode ===
@@ -7174,6 +7705,20 @@ export function DrawingCanvasInner({
                                   })(),
                                 )}
                               </>
+                            ) : rectangleCornerVisuals.length > 0 ? (
+                              <Shape
+                                listening={DRAWING_ROUNDED_PIECE_BODY_LISTENING}
+                                fill={pieceFill}
+                                sceneFunc={(context, shape) => {
+                                  drawRectangleWithCornerVisuals(
+                                    context,
+                                    w,
+                                    h,
+                                    rectangleCornerVisuals,
+                                  );
+                                  context.fillShape(shape);
+                                }}
+                              />
                             ) : (
                               <Rect
                                 width={w}
@@ -7211,47 +7756,70 @@ export function DrawingCanvasInner({
                                   const isActionSelected =
                                     chainEdgeAction?.pieceId === pos.pieceId &&
                                     shapeEdgesEqual(chainEdgeAction.edge, edge);
+                                  const isCenterlineSourceSelected =
+                                    centerlineOffsetTarget?.pieceId ===
+                                      pos.pieceId &&
+                                    shapeEdgesEqual(
+                                      centerlineOffsetTarget.line,
+                                      edge,
+                                    );
                                   const isActionHovered =
                                     hoveredChainEdgeId === edgeActionId;
+                                  const renderedEdgeSegments =
+                                    rectangleRenderedEdgeSegments(
+                                      w,
+                                      h,
+                                      edgeKey,
+                                      rectangleCornerVisuals,
+                                    );
 
                                   return (
                                     <Group key={edgeActionId}>
-                                      <Line
-                                        points={[
-                                          edge.from[0],
-                                          edge.from[1],
-                                          edge.to[0],
-                                          edge.to[1],
-                                        ]}
-                                        stroke={
-                                          isActionSelected || isActionHovered
-                                            ? tool === "paint"
-                                              ? paintColor
-                                              : GUIDE_COLOR
-                                            : edgeLayout?.color
-                                              ? edgeLayout.color
-                                              : isSelected
-                                                ? SELECT_STROKE
-                                                : PIECE_STROKE
-                                        }
-                                        strokeWidth={
-                                          edgeLayout?.color ||
-                                          (tool === "paint" &&
-                                            (isActionSelected ||
-                                              isActionHovered))
-                                            ? PAINTED_EDGE_STROKE_WIDTH
-                                            : isActionSelected ||
-                                                isActionHovered
-                                              ? 4
-                                              : isSelected
-                                                ? 2
-                                                : 1
-                                        }
-                                      />
+                                      {renderedEdgeSegments.map(
+                                        (renderedEdge, renderedEdgeIndex) => (
+                                          <Line
+                                            key={`${edgeActionId}:segment:${renderedEdgeIndex}`}
+                                            points={[
+                                              renderedEdge.from[0],
+                                              renderedEdge.from[1],
+                                              renderedEdge.to[0],
+                                              renderedEdge.to[1],
+                                            ]}
+                                            stroke={
+                                              isActionSelected ||
+                                              isCenterlineSourceSelected ||
+                                              isActionHovered
+                                                ? tool === "paint"
+                                                  ? paintColor
+                                                  : GUIDE_COLOR
+                                                : edgeLayout?.color
+                                                  ? edgeLayout.color
+                                                  : isSelected
+                                                    ? SELECT_STROKE
+                                                    : PIECE_STROKE
+                                            }
+                                            strokeWidth={
+                                              edgeLayout?.color ||
+                                              (tool === "paint" &&
+                                                (isActionSelected ||
+                                                  isActionHovered))
+                                                ? PAINTED_EDGE_STROKE_WIDTH
+                                                : isActionSelected ||
+                                                    isCenterlineSourceSelected ||
+                                                    isActionHovered
+                                                  ? 4
+                                                  : isSelected
+                                                    ? 2
+                                                    : 1
+                                            }
+                                          />
+                                        ),
+                                      )}
                                       {tool === "offset" ||
                                       tool === "connect" ||
                                       tool === "deleteLine" ||
-                                      tool === "paint" ? (
+                                      tool === "paint" ||
+                                      tool === "centerline" ? (
                                         <Line
                                           points={[
                                             edge.from[0],
@@ -7325,6 +7893,60 @@ export function DrawingCanvasInner({
                                               );
                                               return;
                                             }
+                                            if (tool === "centerline") {
+                                              const pointer = getPointer();
+                                              const localPoint: [
+                                                number,
+                                                number,
+                                              ] = pointer
+                                                ? [
+                                                    pointer.x - pos.x,
+                                                    pointer.y - pos.y,
+                                                  ]
+                                                : edge.from;
+                                              if (
+                                                centerlinePlacementMode ===
+                                                "midpoint"
+                                              ) {
+                                                const line =
+                                                  resolvedChainLayout
+                                                    ? centerlineForChainPoint({
+                                                        shape:
+                                                          resolvedChainLayout,
+                                                        point: localPoint,
+                                                      })
+                                                    : drawingDirectCenterlineForRectangle(
+                                                        w,
+                                                        h,
+                                                      );
+                                                if (line) {
+                                                  placeDirectCenterline({
+                                                    pieceId: basePiece.id,
+                                                    line,
+                                                  });
+                                                }
+                                                return;
+                                              }
+                                              if (centerlineOffsetTarget) {
+                                                applyCenterlineOffset(
+                                                  drawingCenterlineOffsetDirectionForPoint(
+                                                    centerlineOffsetTarget.line,
+                                                    localPoint,
+                                                  ),
+                                                );
+                                                return;
+                                              }
+                                              placeCenterlineFromSource({
+                                                pieceId: basePiece.id,
+                                                line: edge,
+                                                direction:
+                                                  drawingCenterlineOffsetDirectionForPoint(
+                                                    edge,
+                                                    localPoint,
+                                                  ),
+                                              });
+                                              return;
+                                            }
                                             if (
                                               tool === "connect" &&
                                               chainEdgeAction?.mode ===
@@ -7355,6 +7977,59 @@ export function DrawingCanvasInner({
                                     </Group>
                                   );
                                 })}
+                                {rectangleCornerVisuals.map((visual) => {
+                                  const arc = rectangleCornerArc(w, h, visual);
+                                  const connector = rectangleCornerConnector(
+                                    w,
+                                    h,
+                                    visual,
+                                  );
+                                  if (arc) {
+                                    return (
+                                      <Shape
+                                        key={`corner-visual-${visual.corner}`}
+                                        listening={false}
+                                        sceneFunc={(context, shape) => {
+                                          context.beginPath();
+                                          context.arc(
+                                            arc.center[0],
+                                            arc.center[1],
+                                            arc.radius,
+                                            arc.startAngle,
+                                            arc.endAngle,
+                                            false,
+                                          );
+                                          context.strokeShape(shape);
+                                        }}
+                                        stroke={
+                                          isSelected
+                                            ? SELECT_STROKE
+                                            : PIECE_STROKE
+                                        }
+                                        strokeWidth={isSelected ? 2 : 1}
+                                      />
+                                    );
+                                  }
+                                  if (!connector) return null;
+                                  return (
+                                    <Line
+                                      key={`corner-visual-${visual.corner}`}
+                                      listening={false}
+                                      points={[
+                                        connector.from[0],
+                                        connector.from[1],
+                                        connector.to[0],
+                                        connector.to[1],
+                                      ]}
+                                      stroke={
+                                        isSelected
+                                          ? SELECT_STROKE
+                                          : PIECE_STROKE
+                                      }
+                                      strokeWidth={isSelected ? 2 : 1}
+                                    />
+                                  );
+                                })}
                               </>
                             ) : null}
                             {compoundEdges && !chainShape ? (
@@ -7364,18 +8039,25 @@ export function DrawingCanvasInner({
                                   const isActionSelected =
                                     chainEdgeAction?.pieceId === pos.pieceId &&
                                     shapeEdgesEqual(chainEdgeAction.edge, edge);
+                                  const isCenterlineSourceSelected =
+                                    centerlineOffsetTarget?.pieceId ===
+                                      pos.pieceId &&
+                                    shapeEdgesEqual(
+                                      centerlineOffsetTarget.line,
+                                      edge,
+                                    );
                                   const isActionHovered =
                                     hoveredChainEdgeId === edgeActionId;
                                   const segmentIndex = rectIndexForEdge(
                                     compoundEdges.rects,
                                     edge,
                                   );
-                                  const edgeKey = boundaryEdgeKey(
+                                  const paintedEdge = findPaintedEdge(
+                                    layout.paintedEdges,
+                                    pos.pieceId,
                                     edge,
-                                    compoundEdges.rects,
                                   );
-                                  const edgeLayout =
-                                    edgeTreatments.get(edgeKey);
+                                  const edgeColor = paintedEdge?.color;
 
                                   return (
                                     <Group key={edgeActionId}>
@@ -7387,23 +8069,26 @@ export function DrawingCanvasInner({
                                           edge.to[1],
                                         ]}
                                         stroke={
-                                          isActionSelected || isActionHovered
+                                          isActionSelected ||
+                                          isCenterlineSourceSelected ||
+                                          isActionHovered
                                             ? tool === "paint"
                                               ? paintColor
                                               : GUIDE_COLOR
-                                            : edgeLayout?.color
-                                              ? edgeLayout.color
+                                            : edgeColor
+                                              ? edgeColor
                                               : isSelected
                                                 ? SELECT_STROKE
                                                 : PIECE_STROKE
                                         }
                                         strokeWidth={
-                                          edgeLayout?.color ||
+                                          edgeColor ||
                                           (tool === "paint" &&
                                             (isActionSelected ||
                                               isActionHovered))
                                             ? PAINTED_EDGE_STROKE_WIDTH
                                             : isActionSelected ||
+                                                isCenterlineSourceSelected ||
                                                 isActionHovered
                                               ? 4
                                               : isSelected
@@ -7414,7 +8099,8 @@ export function DrawingCanvasInner({
                                       {tool === "offset" ||
                                       tool === "connect" ||
                                       tool === "deleteLine" ||
-                                      tool === "paint" ? (
+                                      tool === "paint" ||
+                                      tool === "centerline" ? (
                                         <Line
                                           points={[
                                             edge.from[0],
@@ -7436,47 +8122,7 @@ export function DrawingCanvasInner({
                                           onClick={(event) => {
                                             event.cancelBubble = true;
                                             if (tool === "paint") {
-                                              setLayout((prev) => {
-                                                const existing =
-                                                  prev.edges.find(
-                                                    (savedEdge) =>
-                                                      savedEdge.pieceId ===
-                                                        pos.pieceId &&
-                                                      savedEdge.edge ===
-                                                        edgeKey,
-                                                  );
-                                                if (existing) {
-                                                  return {
-                                                    ...prev,
-                                                    edges: prev.edges.map(
-                                                      (savedEdge) =>
-                                                        savedEdge.pieceId ===
-                                                          pos.pieceId &&
-                                                        savedEdge.edge ===
-                                                          edgeKey
-                                                          ? {
-                                                              ...savedEdge,
-                                                              color: paintColor,
-                                                            }
-                                                          : savedEdge,
-                                                    ),
-                                                  };
-                                                }
-                                                return {
-                                                  ...prev,
-                                                  edges: [
-                                                    ...prev.edges,
-                                                    {
-                                                      pieceId: pos.pieceId,
-                                                      edge: edgeKey,
-                                                      treatment: "finished",
-                                                      splashHeightIn: null,
-                                                      label: null,
-                                                      color: paintColor,
-                                                    },
-                                                  ],
-                                                };
-                                              });
+                                              paintShapeEdge(pos.pieceId, edge);
                                               return;
                                             }
                                             setSelectedPieceId(basePiece.id);
@@ -7486,6 +8132,61 @@ export function DrawingCanvasInner({
                                                 pos,
                                                 edge,
                                               );
+                                              return;
+                                            }
+                                            if (tool === "centerline") {
+                                              if (segmentIndex < 0) return;
+                                              const pointer = getPointer();
+                                              const localPoint: [
+                                                number,
+                                                number,
+                                              ] = pointer
+                                                ? [
+                                                    pointer.x - pos.x,
+                                                    pointer.y - pos.y,
+                                                  ]
+                                                : edge.from;
+                                              if (
+                                                centerlinePlacementMode ===
+                                                "midpoint"
+                                              ) {
+                                                const line =
+                                                  resolvedChainLayout
+                                                    ? centerlineForChainPoint({
+                                                        shape:
+                                                          resolvedChainLayout,
+                                                        point: localPoint,
+                                                      })
+                                                    : drawingDirectCenterlineForRectangle(
+                                                        w,
+                                                        h,
+                                                      );
+                                                if (line) {
+                                                  placeDirectCenterline({
+                                                    pieceId: basePiece.id,
+                                                    line,
+                                                  });
+                                                }
+                                                return;
+                                              }
+                                              if (centerlineOffsetTarget) {
+                                                applyCenterlineOffset(
+                                                  drawingCenterlineOffsetDirectionForPoint(
+                                                    centerlineOffsetTarget.line,
+                                                    localPoint,
+                                                  ),
+                                                );
+                                                return;
+                                              }
+                                              placeCenterlineFromSource({
+                                                pieceId: basePiece.id,
+                                                line: edge,
+                                                direction:
+                                                  drawingCenterlineOffsetDirectionForPoint(
+                                                    edge,
+                                                    localPoint,
+                                                  ),
+                                              });
                                               return;
                                             }
                                             if (segmentIndex < 0) return;
@@ -7516,55 +8217,50 @@ export function DrawingCanvasInner({
                                 })}
                               </>
                             ) : null}
-                            {referenceLines
-                              .filter((line) => line.kind === "centerline")
-                              .map((line) => {
-                                const midY = (line.from[1] + line.to[1]) / 2;
-                                const gap = 8;
-                                const isHovered =
-                                  hoveredChainEdgeId === `reference:${line.id}`;
-                                return (
+	                            {referenceLines
+	                              .filter((line) => line.kind === "centerline")
+	                              .map((line) => {
+	                                const visual = splitCenterlineAroundLabel(line);
+	                                const isSelectedCenterline =
+	                                  centerlineOffsetTarget?.id === line.id;
+	                                const isHovered =
+	                                  hoveredChainEdgeId === `reference:${line.id}`;
+	                                return (
                                   <Group key={line.id}>
-                                    <Line
-                                      points={[
-                                        line.from[0],
-                                        line.from[1],
-                                        line.to[0],
-                                        midY - gap,
-                                      ]}
-                                      stroke={
-                                        isHovered ? GUIDE_COLOR : line.color
-                                      }
-                                      strokeWidth={1}
-                                      dash={[6, 5]}
-                                    />
+                                    {visual.segments.map((segment, index) => (
+                                      <Line
+                                        key={`centerline-segment-${index}`}
+	                                        points={segment}
+	                                        stroke={
+	                                          isSelectedCenterline || isHovered
+	                                            ? GUIDE_COLOR
+	                                            : line.color
+	                                        }
+	                                        strokeWidth={
+	                                          isSelectedCenterline || isHovered
+	                                            ? 2
+	                                            : 1
+	                                        }
+	                                        dash={[6, 5]}
+	                                      />
+                                    ))}
                                     <Text
                                       text="CL"
-                                      x={line.from[0]}
-                                      y={midY}
+                                      x={visual.label.x}
+                                      y={visual.label.y}
                                       offsetX={5}
                                       offsetY={4}
-                                      fontSize={10}
-                                      fill={
-                                        isHovered ? GUIDE_COLOR : line.color
-                                      }
-                                    />
-                                    <Line
-                                      points={[
-                                        line.from[0],
-                                        midY + gap,
-                                        line.to[0],
-                                        line.to[1],
-                                      ]}
-                                      stroke={
-                                        isHovered ? GUIDE_COLOR : line.color
-                                      }
-                                      strokeWidth={1}
-                                      dash={[6, 5]}
-                                    />
-                                    {tool === "deleteLine" ||
-                                    tool === "paint" ||
-                                    tool === "extend" ? (
+	                                      fontSize={10}
+	                                      fill={
+	                                        isSelectedCenterline || isHovered
+	                                          ? GUIDE_COLOR
+	                                          : line.color
+	                                      }
+	                                    />
+	                                    {tool === "deleteLine" ||
+	                                    tool === "paint" ||
+	                                    tool === "extend" ||
+	                                    tool === "centerline" ? (
                                       <Line
                                         points={[
                                           line.from[0],
@@ -7582,9 +8278,26 @@ export function DrawingCanvasInner({
                                         onMouseLeave={() =>
                                           setHoveredChainEdgeId(null)
                                         }
-                                        onClick={(event) => {
-                                          event.cancelBubble = true;
-                                          if (tool === "extend") {
+	                                        onClick={(event) => {
+	                                          event.cancelBubble = true;
+	                                          if (tool === "centerline") {
+	                                            setCenterlinePlacementMode(
+	                                              "offset",
+	                                            );
+	                                            setSelectedPieceId(basePiece.id);
+	                                            setCenterlineOffsetTarget({
+	                                              id: line.id,
+	                                              pieceId: line.pieceId,
+	                                              line: {
+	                                                from: line.from,
+	                                                to: line.to,
+	                                              },
+	                                              color: line.color,
+	                                            });
+	                                            setCanvasError(null);
+	                                            return;
+	                                          }
+	                                          if (tool === "extend") {
                                             extendReferenceLine(
                                               basePiece.id,
                                               line.id,
@@ -7627,6 +8340,13 @@ export function DrawingCanvasInner({
                               const isActionSelected =
                                 chainEdgeAction?.pieceId === pos.pieceId &&
                                 shapeEdgesEqual(chainEdgeAction.edge, lineEdge);
+                              const isCenterlineSourceSelected =
+                                centerlineOffsetTarget?.pieceId ===
+                                  pos.pieceId &&
+                                shapeEdgesEqual(
+                                  centerlineOffsetTarget.line,
+                                  lineEdge,
+                                );
                               const isHovered =
                                 hoveredChainEdgeId ===
                                 `reference:${line.sourceLineId}`;
@@ -7640,22 +8360,22 @@ export function DrawingCanvasInner({
                                       line.to[1],
                                     ]}
                                     stroke={
-                                      isActionSelected || isHovered
+                                      isActionSelected ||
+                                      isCenterlineSourceSelected ||
+                                      isHovered
                                         ? tool === "paint"
                                           ? paintColor
                                           : GUIDE_COLOR
                                         : line.color
                                     }
                                     strokeWidth={
-                                      tool === "paint" &&
-                                      (isActionSelected || isHovered)
-                                        ? PAINTED_EDGE_STROKE_WIDTH
-                                        : isActionSelected
-                                          ? 4
-                                          : isHovered ||
-                                              line.color === PIECE_STROKE
-                                            ? 2
-                                            : 1
+                                      drawingReferenceLineStrokeWidth({
+                                        paintActive: tool === "paint",
+                                        active: isActionSelected,
+                                        hovered: isHovered,
+                                        centerlineSource:
+                                          isCenterlineSourceSelected,
+                                      })
                                     }
                                     dash={line.dash ? [6, 5] : []}
                                   />
@@ -7663,7 +8383,8 @@ export function DrawingCanvasInner({
                                   tool === "offset" ||
                                   tool === "connect" ||
                                   tool === "paint" ||
-                                  tool === "extend" ? (
+                                  tool === "extend" ||
+                                  tool === "centerline" ? (
                                     <Line
                                       points={[
                                         line.from[0],
@@ -7707,6 +8428,56 @@ export function DrawingCanvasInner({
                                           markDirty();
                                           return;
                                         }
+                                        if (tool === "centerline") {
+                                          const pointer = getPointer();
+                                          const localPoint: [number, number] =
+                                            pointer
+                                              ? [
+                                                  pointer.x - pos.x,
+                                                  pointer.y - pos.y,
+                                                ]
+                                              : lineEdge.from;
+                                          if (
+                                            centerlinePlacementMode ===
+                                            "midpoint"
+                                          ) {
+                                            const line = resolvedChainLayout
+                                              ? centerlineForChainPoint({
+                                                  shape: resolvedChainLayout,
+                                                  point: localPoint,
+                                                })
+                                              : drawingDirectCenterlineForRectangle(
+                                                  w,
+                                                  h,
+                                                );
+                                            if (line) {
+                                              placeDirectCenterline({
+                                                pieceId: basePiece.id,
+                                                line,
+                                              });
+                                            }
+                                            return;
+                                          }
+                                          if (centerlineOffsetTarget) {
+                                            applyCenterlineOffset(
+                                              drawingCenterlineOffsetDirectionForPoint(
+                                                centerlineOffsetTarget.line,
+                                                localPoint,
+                                              ),
+                                            );
+                                            return;
+                                          }
+                                          placeCenterlineFromSource({
+                                            pieceId: basePiece.id,
+                                            line: lineEdge,
+                                            direction:
+                                              drawingCenterlineOffsetDirectionForPoint(
+                                                lineEdge,
+                                                localPoint,
+                                              ),
+                                          });
+                                          return;
+                                        }
                                         if (tool === "offset") {
                                           beginOffsetEdgeAction({
                                             pieceId: basePiece.id,
@@ -7724,8 +8495,11 @@ export function DrawingCanvasInner({
                                               basePiece.id
                                           ) {
                                             connectChainEdges({
-                                              from: line.from,
-                                              to: line.to,
+                                              edge: {
+                                                from: line.from,
+                                                to: line.to,
+                                              },
+                                              sourceLineId: line.sourceLineId,
                                             });
                                             return;
                                           }
@@ -7735,6 +8509,7 @@ export function DrawingCanvasInner({
                                             edge: lineEdge,
                                             segmentIndex: 0,
                                             mode: "connect",
+                                            sourceLineId: line.sourceLineId,
                                           });
                                           return;
                                         }
@@ -7780,6 +8555,34 @@ export function DrawingCanvasInner({
                                 />
                               );
                             })}
+                            {referenceLineVisuals.connectors.map(
+                              (connector) => {
+                                const isHovered =
+                                  connector.sourceLineIds.some(
+                                    (lineId) =>
+                                      hoveredChainEdgeId ===
+                                      `reference:${lineId}`,
+                                  );
+                                return (
+                                  <Line
+                                    key={connector.id}
+                                    listening={false}
+                                    points={[
+                                      connector.from[0],
+                                      connector.from[1],
+                                      connector.to[0],
+                                      connector.to[1],
+                                    ]}
+                                    stroke={
+                                      isHovered
+                                        ? GUIDE_COLOR
+                                        : connector.color
+                                    }
+                                    strokeWidth={isHovered ? 2 : 1}
+                                  />
+                                );
+                              },
+                            )}
                             {!chainShape ? (
                               <>
                                 {rectangleLengthDimension?.[0] === "top" ? (
@@ -7944,7 +8747,8 @@ export function DrawingCanvasInner({
                             ) : null}
                             {compoundEdges ? (
                               <>
-                                {visibleCompoundEdges.map((edge, index) => {
+                                {visibleChainEdges.map((visibleEdge, index) => {
+                                  const { edge, segmentIndex } = visibleEdge;
                                   const dimensionId = `${pos.pieceId}:${index}`;
                                   const isHovered =
                                     hoveredDimension === dimensionId;
@@ -7966,13 +8770,6 @@ export function DrawingCanvasInner({
                                       guide.label,
                                       edgeText,
                                     );
-                                  const segmentIndex = isChainShape(pos.shape)
-                                    ? chainSegmentIndexForEdge(pos.shape, edge)
-                                    : rectIndexForEdge(
-                                        compoundEdges.rects,
-                                        edge,
-                                      );
-
                                   if (edgeLength < 1) return null;
 
                                   return (
@@ -8366,7 +9163,8 @@ export function DrawingCanvasInner({
                               : null}
                             {compoundEdges && activeStep === 3 ? (
                               <>
-                                {visibleCompoundEdges.map((edge, index) => {
+                                {visibleChainEdges.map((visibleEdge, index) => {
+                                  const { edge } = visibleEdge;
                                   const edgeKey = boundaryEdgeKey(
                                     edge,
                                     compoundEdges.rects,
@@ -8458,35 +9256,37 @@ export function DrawingCanvasInner({
                                 })}
                               </>
                             ) : null}
-                            {RECTANGLE_EDGE_KEYS.map(
-                              (edgeKey) => {
-                                const edgeLayout = edgeTreatments.get(edgeKey);
-                                const isEdgeHovered =
-                                  hoveredPaintEdge?.pieceId === pos.pieceId &&
-                                  hoveredPaintEdge?.edge === edgeKey;
-                                const pts: Record<EdgeKey, number[]> = {
-                                  top: [0, 0, w, 0],
-                                  right: [w, 0, w, h],
-                                  bottom: [0, h, w, h],
-                                  left: [0, 0, 0, h],
-                                };
-                                const stroke = isEdgeHovered
-                                  ? paintColor
-                                  : edgeLayout?.color;
-                                if (!stroke)
-                                  return null;
-                                return (
-                                  <Line
-                                    key={edgeKey}
-                                    points={pts[edgeKey]}
-                                    stroke={stroke}
-                                    strokeWidth={PAINTED_EDGE_STROKE_WIDTH}
-                                    opacity={1}
-                                  />
-                                );
-                              },
-                            )}
-                            {tool === "paint"
+                            {!chainShape
+                              ? RECTANGLE_EDGE_KEYS.map(
+                                  (edgeKey) => {
+                                    const edgeLayout = edgeTreatments.get(edgeKey);
+                                    const isEdgeHovered =
+                                      hoveredPaintEdge?.pieceId === pos.pieceId &&
+                                      hoveredPaintEdge?.edge === edgeKey;
+                                    const pts: Record<EdgeKey, number[]> = {
+                                      top: [0, 0, w, 0],
+                                      right: [w, 0, w, h],
+                                      bottom: [0, h, w, h],
+                                      left: [0, 0, 0, h],
+                                    };
+                                    const stroke = isEdgeHovered
+                                      ? paintColor
+                                      : edgeLayout?.color;
+                                    if (!stroke)
+                                      return null;
+                                    return (
+                                      <Line
+                                        key={edgeKey}
+                                        points={pts[edgeKey]}
+                                        stroke={stroke}
+                                        strokeWidth={PAINTED_EDGE_STROKE_WIDTH}
+                                        opacity={1}
+                                      />
+                                    );
+                                  },
+                                )
+                              : null}
+                            {tool === "paint" && !chainShape
                               ? RECTANGLE_EDGE_KEYS.map(
                                   (edgeKey) => {
                                     const pts: Record<EdgeKey, number[]> = {
@@ -8720,7 +9520,6 @@ export function DrawingCanvasInner({
                   </Layer>
                   <DrawingPreviewLayer
                     drawPreview={drawPreview}
-                    segmentPreview={segmentPreview}
                     marqueeSelection={marqueeSelection}
                     pan={pan}
                     zoom={zoom}
@@ -8824,10 +9623,9 @@ export function DrawingCanvasInner({
                   </div>
                 ) : null}
               </div>
-            )}
           </div>
 
-          <aside className="w-40 border-l bg-[#eeecea] py-1 text-sm shadow-inner">
+          <aside className={DRAWING_WORKSPACE_TOOL_PANEL_CLASS}>
             {toolbarItems.map((item) => (
               <div key={item.label}>
                 {item.dividerBefore ? (
@@ -8868,9 +9666,8 @@ export function DrawingCanvasInner({
         <div className="rounded-md border bg-white p-4 shadow-sm">
           <p className="font-semibold text-[#2f6b2c]">Add Counter</p>
           <p className="mt-1 text-sm text-muted-foreground">
-            Moraware opens a modal here for counter name, size, splash, edge,
-            curves, sinks, and cutouts. This panel marks the workflow hook for
-            that same control.
+            Draw counters on the canvas, then select a piece to adjust its
+            measured dimensions.
           </p>
           <Button
             className="mt-3"
@@ -8893,9 +9690,18 @@ export function DrawingCanvasInner({
               <p className="mt-1 text-sm text-muted-foreground">
                 {tool === "offset"
                   ? "Select the cabinet/reference edge, then click the side where the new parallel counter edge should appear. The old line stays as a dashed reference."
-                  : "Click a green wall offset line and the side or green line you want it to meet."}
+                  : `${filletMode}: click edge one, then click edge two on the same piece.`}
               </p>
             </div>
+            {tool === "connect" ? (
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => setFilletEditorOpen(true)}
+              >
+                Options
+              </Button>
+            ) : null}
             <Button
               size="sm"
               variant="outline"
@@ -8912,8 +9718,78 @@ export function DrawingCanvasInner({
               ? "Offset clicks can be inside the piece; selection is ignored while offset is active."
               : tool === "offset"
                 ? "Select a counter piece first, then click the edge you want to adjust."
-                : "Select a counter piece first, then click a green wall line and a side."}
+                : "Select a counter piece first, then click two matching miter-offset edges."}
           </p>
+        </div>
+      ) : null}
+      {tool === "centerline" ? (
+        <div className="rounded-md border border-[#c8dec3] bg-white p-3 shadow-sm">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <p className="font-semibold text-[#2f6b2c]">Centerline</p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Source: {centerlineOffsetTarget ? "selected" : "none"}
+              </p>
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <Label
+                htmlFor={`centerline-offset-inches-${areaId}`}
+                className="text-xs font-semibold text-[#1f3f1d]"
+              >
+                Offset
+              </Label>
+              <Input
+                id={`centerline-offset-inches-${areaId}`}
+                type="number"
+                min="0.0625"
+                step="0.0625"
+                value={offsetAmount}
+                className="h-8 w-24 border-[#5f9659] bg-white px-2 text-xs"
+                onChange={(event) => setOffsetAmount(event.target.value)}
+              />
+              <span className="text-xs text-[#5f9659]">&quot;</span>
+              {(centerlineOffsetTarget
+                ? drawingCenterlineOffsetDirectionsForLine(
+                    centerlineOffsetTarget.line,
+                  )
+                : DRAWING_CENTERLINE_OFFSET_DIRECTIONS
+              ).map((direction) => {
+                const label =
+                  direction === "left"
+                    ? "←"
+                    : direction === "right"
+                      ? "→"
+                      : direction === "up"
+                        ? "↑"
+                        : "↓";
+                return (
+                  <Button
+                    key={direction}
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    aria-label={`Offset centerline ${direction}`}
+                    title={`Offset ${direction}`}
+                    disabled={!isDraft || !centerlineOffsetTarget}
+                    className="h-8 w-8 border-[#5f9659] p-0 text-sm text-[#2f6b2c]"
+                    onClick={() => applyCenterlineOffset(direction)}
+                  >
+                    {label}
+                  </Button>
+                );
+              })}
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => {
+                  setTool("draw");
+                  setCenterlineOffsetTarget(null);
+                }}
+              >
+                Done
+              </Button>
+            </div>
+          </div>
         </div>
       ) : null}
       {tool === "paint" && (
@@ -8944,20 +9820,44 @@ export function DrawingCanvasInner({
             <div>
               <p className="font-semibold text-[#2f6b2c]">Segment</p>
               <p className="mt-1 text-sm text-muted-foreground">
-                Click two points, or click and drag, to draw one straight line.
+                Enter length, choose direction, then click the start point on
+                the countertop.
               </p>
             </div>
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => {
-                setTool("draw");
-                setSegmentStart(null);
-                setSegmentPreview(null);
-              }}
-            >
+            <Button size="sm" variant="outline" onClick={() => setTool("draw")}>
               Done
             </Button>
+          </div>
+          <div className="mt-3 flex flex-wrap items-center gap-3">
+            <Label htmlFor={`segment-length-${areaId}`}>Length</Label>
+            <Input
+              id={`segment-length-${areaId}`}
+              type="number"
+              min="0.0625"
+              step="0.0625"
+              value={segmentLengthIn}
+              onChange={(event) => setSegmentLengthIn(event.target.value)}
+              className="h-8 w-24"
+            />
+            <span className="text-xs text-muted-foreground">&quot;</span>
+            <div className="grid grid-cols-3 gap-1">
+              {DRAWING_SEGMENT_DIRECTION_OPTIONS.map((option) => (
+                <Button
+                  key={option.value}
+                  type="button"
+                  variant={
+                    segmentDirection === option.value ? "default" : "outline"
+                  }
+                  size="sm"
+                  aria-label={`Segment direction ${option.title}`}
+                  title={option.title}
+                  onClick={() => setSegmentDirection(option.value)}
+                  className="h-8 w-8 p-0"
+                >
+                  {option.label}
+                </Button>
+              ))}
+            </div>
           </div>
         </div>
       ) : null}
@@ -9178,43 +10078,6 @@ export function DrawingCanvasInner({
         </div>
       ) : null}
 
-      <div className="flex flex-wrap items-center gap-2">
-        <Button
-          size="sm"
-          variant="outline"
-          onClick={() => {
-            setLayout(mergeLayout(null, pieces, sinks));
-            setSelectedPieceId(null);
-            setSelectedPieceIds([]);
-            setContextMenu(null);
-            setMarqueeSelection(null);
-            setSelectionDrag(null);
-            setEdgeEditor(null);
-            setCornerEditor(null);
-            setEdgeTreatmentEditor(null);
-            setEditDraft(null);
-            setIsDirty(false);
-          }}
-        >
-          Reset Layout
-        </Button>
-        <p className="text-xs text-muted-foreground">
-          {isPending
-            ? "Updating drawing..."
-            : tool === "offset"
-              ? "Offset mode: enter inches, click the real chain edge, then click white space on the side where you want the new parallel run."
-              : tool === "segment"
-                ? "Segment mode: click two points or drag to draw one straight line."
-                : tool === "extend"
-                  ? "Extend mode: click a centerline or segment to meet the counter edge or green wall offset."
-                  : tool === "select"
-                    ? "Select mode: drag a box around pieces, then delete the selected pieces from the side panel."
-                    : tool === "connect"
-                      ? "Fillet mode: click a green wall offset line and the side or green line it should meet."
-                      : 'Drag with the pencil to create a 25 1/2" deep counter. Use on-piece controls for rotate, duplicate, and delete.'}
-        </p>
-      </div>
-
       <Modal
         open={helpOpen}
         title="CounterGo Help"
@@ -9222,11 +10085,11 @@ export function DrawingCanvasInner({
       >
         <div className="space-y-3 text-sm text-muted-foreground">
           <p>
-            Use the step tabs to move through the Moraware workflow in order.
+            Use the field tools in any order while measuring the Sheet.
           </p>
           <p>
-            Drag with the pencil in Counter Dimensions to draw new counter
-            pieces. Click a piece to manage it directly from the drawing.
+            Drag with Counter to draw new pieces. Click a dimension label to
+            enter the measured value.
           </p>
           <p>
             Revisions stores saved drawing states so you can revert to an
@@ -9365,6 +10228,105 @@ export function DrawingCanvasInner({
       </Modal>
 
       <Modal
+        open={filletEditorOpen && tool === "connect"}
+        title="Fillet"
+        onClose={() => setFilletEditorOpen(false)}
+        panelClassName="w-full max-w-[320px] overflow-hidden rounded-sm border border-[#5f9659] bg-[#f3f8ef] shadow-2xl"
+        headerClassName="flex items-center justify-between bg-[#6aa464] px-3 py-3 text-white"
+        bodyClassName="px-4 py-4"
+        closeLabel="X"
+      >
+        <div className="space-y-4">
+          <div className="grid grid-cols-3 gap-2">
+            {DRAWING_FILLET_MODE_LABELS.map((mode) => (
+              <Button
+                key={mode}
+                type="button"
+                variant={filletMode === mode ? "default" : "outline"}
+                onClick={() => setFilletMode(mode)}
+                className={
+                  filletMode === mode
+                    ? "h-8 bg-[#5f9659] px-2 text-xs text-white hover:bg-[#4f8549]"
+                    : "h-8 border-[#5f9659] bg-[#f8fcf6] px-2 text-xs text-[#2f6b2c] hover:bg-white"
+                }
+              >
+                {mode}
+              </Button>
+            ))}
+          </div>
+          {drawingFilletModeRequiresValue(filletMode) ? (
+            <>
+              <div className="flex items-center gap-2 text-xs">
+                <Label
+                  htmlFor={`fillet-inches-${areaId}`}
+                  className="font-semibold text-[#1f3f1d]"
+                >
+                  Size:
+                </Label>
+                <Input
+                  id={`fillet-inches-${areaId}`}
+                  type="number"
+                  min="0.0625"
+                  step="0.0625"
+                  value={filletAmount}
+                  autoFocus
+                  className="h-7 w-28 border-[#5f9659] bg-white px-2 text-xs shadow-inner focus-visible:ring-[#5f9659]"
+                  onChange={(event) => setFilletAmount(event.target.value)}
+                />
+                <span className="text-xs text-[#5f9659]">&quot;</span>
+              </div>
+              <div className="grid grid-cols-4 gap-2">
+                {DRAWING_FILLET_SIZE_PRESETS.map((preset) => {
+                  const label = Number.isInteger(preset)
+                    ? String(preset)
+                    : `${Math.floor(preset)} 1/2`;
+                  return (
+                    <Button
+                      key={preset}
+                      type="button"
+                      variant="outline"
+                      onClick={() => setFilletAmount(String(preset))}
+                      className="h-8 border-[#5f9659] bg-white px-2 text-xs text-[#2f6b2c] hover:bg-[#f8fcf6]"
+                    >
+                      {label}&quot;
+                    </Button>
+                  );
+                })}
+              </div>
+            </>
+          ) : null}
+          <div className="grid grid-cols-2 gap-2">
+            <Button
+              variant="outline"
+              onClick={() => setFilletEditorOpen(false)}
+              className="h-8 border-[#5f9659] bg-[#f8fcf6] text-xs text-[#2f6b2c] hover:bg-white"
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={() => {
+                if (drawingFilletModeRequiresValue(filletMode)) {
+                  const numericValue = Number(filletAmount);
+                  if (!Number.isFinite(numericValue) || numericValue <= 0) {
+                    setCanvasError("Enter a positive fillet size.");
+                    return;
+                  }
+                }
+                setCanvasError(null);
+                setTool("connect");
+                setChainEdgeAction(null);
+                setFilletEditorOpen(false);
+              }}
+              disabled={!isDraft}
+              className="h-8 bg-[#5f9659] text-xs text-white hover:bg-[#4f8549]"
+            >
+              Start
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      <Modal
         open={cornerEditor !== null}
         title={`Edit Corner - ${cornerEditor ? treatmentLabel(cornerEditor.treatment) : "None"}`}
         onClose={() => setCornerEditor(null)}
@@ -9380,8 +10342,6 @@ export function DrawingCanvasInner({
                   [
                     "radius",
                     "clip",
-                    "bumpOut",
-                    "notch",
                     "none",
                   ] as CornerTreatment[]
                 ).map((treatment) => (
@@ -9452,14 +10412,31 @@ export function DrawingCanvasInner({
 
       <Modal
         open={offsetEditorOpen && tool === "offset"}
-        title="Offset Edge"
+        title="Offset"
         onClose={() => setOffsetEditorOpen(false)}
         panelClassName="w-full max-w-[285px] overflow-hidden rounded-sm border border-[#5f9659] bg-[#f3f8ef] shadow-2xl"
         headerClassName="flex items-center justify-between bg-[#6aa464] px-3 py-3 text-white"
-        bodyClassName="px-8 py-4"
+        bodyClassName="px-4 py-4"
         closeLabel="X"
       >
         <div className="space-y-4">
+          <div className="grid grid-cols-2 gap-2">
+            {DRAWING_OFFSET_MODE_LABELS.map((mode) => (
+              <Button
+                key={mode}
+                type="button"
+                variant={offsetMode === mode ? "default" : "outline"}
+                onClick={() => setOffsetMode(mode)}
+                className={
+                  offsetMode === mode
+                    ? "h-8 bg-[#5f9659] px-2 text-xs text-white hover:bg-[#4f8549]"
+                    : "h-8 border-[#5f9659] bg-[#f8fcf6] px-2 text-xs text-[#2f6b2c] hover:bg-white"
+                }
+              >
+                {mode}
+              </Button>
+            ))}
+          </div>
           <div className="flex items-center gap-2 text-xs">
             <Label
               htmlFor={`offset-inches-${areaId}`}
@@ -9495,12 +10472,21 @@ export function DrawingCanvasInner({
                   return;
                 }
                 setCanvasError(null);
+                if (offsetMode === "Offset Centerline") {
+                  setTool("centerline");
+                  setCenterlinePlacementMode(
+                    drawingCenterlinePlacementModeForOffsetMode(offsetMode),
+                  );
+                  setCenterlineOffsetTarget(null);
+                } else {
+                  setTool("offset");
+                }
                 setOffsetEditorOpen(false);
               }}
               disabled={!isDraft}
               className="h-8 bg-[#5f9659] text-xs text-white hover:bg-[#4f8549]"
             >
-              Save
+              Start
             </Button>
           </div>
         </div>

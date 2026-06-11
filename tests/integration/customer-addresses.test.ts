@@ -27,10 +27,7 @@ interface CapturedEvent {
 const resetDatabase = async (app: INestApplication): Promise<void> => {
   const pool = app.get<Pool>(DATABASE_POOL);
 
-  await pool.query('DROP TABLE IF EXISTS customer_notes CASCADE;');
-  await pool.query('DROP TABLE IF EXISTS customer_addresses CASCADE;');
-  await pool.query('DROP TABLE IF EXISTS customer_contacts CASCADE;');
-  await pool.query('DROP TABLE IF EXISTS customers CASCADE;');
+  await pool.query('DROP SCHEMA public CASCADE; CREATE SCHEMA public;');
 
   const migrationsDir = join(process.cwd(), 'db/migrations');
   const migrationFiles = (await readdir(migrationsDir))
@@ -44,6 +41,11 @@ const resetDatabase = async (app: INestApplication): Promise<void> => {
 
   const seedSql = await readFile(join(process.cwd(), 'db/seeds/test-customers.sql'), 'utf8');
   await pool.query(seedSql);
+};
+
+const resetAddresses = async (app: INestApplication): Promise<void> => {
+  const pool = app.get<Pool>(DATABASE_POOL);
+  await pool.query('DELETE FROM customer_addresses WHERE customer_id = $1', [SEEDED_CUSTOMER_ID]);
 };
 
 let app: INestApplication;
@@ -89,7 +91,7 @@ describe('customer addresses', () => {
 
   beforeEach(async () => {
     captured.length = 0;
-    await resetDatabase(app);
+    await resetAddresses(app);
   });
 
   afterAll(async () => {

@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { archiveOrderAction, addPaymentAction, removePaymentAction } from '../_actions';
+import { archiveOrderAction, addPaymentAction, requestDepositAction, voidPaymentAction } from '../_actions';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -22,6 +22,17 @@ const statusLabel = {
   unpaid: 'Unpaid',
   partially_paid: 'Partial',
   paid: 'Paid',
+};
+
+const depositStatusLabel = {
+  not_requested: 'Not Requested',
+  requested: 'Requested',
+  paid: 'Paid',
+};
+
+const paymentRecordStatusLabel = {
+  recorded: 'Recorded',
+  void: 'Void',
 };
 
 const paymentMethodLabel = {
@@ -57,7 +68,9 @@ export default async function OrderDetailPage({
   }
 
   const addPaymentWithIds = addPaymentAction.bind(null, customerId, orderId);
+  const requestDepositWithIds = requestDepositAction.bind(null, customerId, orderId);
   const archiveWithIds = archiveOrderAction.bind(null, customerId, orderId);
+  const nextPaymentCents = order.depositBalanceCents > 0 ? order.depositBalanceCents : order.balanceDueCents;
 
   return (
     <div className="max-w-5xl">
@@ -147,7 +160,48 @@ export default async function OrderDetailPage({
                   {money(order.balanceDueCents)}
                 </dd>
               </div>
+              <div>
+                <dt className="text-muted-foreground">Deposit Status</dt>
+                <dd className="font-medium">{depositStatusLabel[order.depositStatus]}</dd>
+              </div>
+              <div>
+                <dt className="text-muted-foreground">Deposit Required</dt>
+                <dd>{money(order.depositRequiredCents)}</dd>
+              </div>
+              <div>
+                <dt className="text-muted-foreground">Deposit Paid</dt>
+                <dd className={order.depositPaidCents > 0 ? 'font-medium text-green-700' : undefined}>
+                  {money(order.depositPaidCents)}
+                </dd>
+              </div>
+              <div>
+                <dt className="text-muted-foreground">Deposit Due</dt>
+                <dd className={order.depositBalanceCents > 0 ? 'font-medium text-red-700' : 'font-medium'}>
+                  {money(order.depositBalanceCents)}
+                </dd>
+              </div>
             </dl>
+            <form action={requestDepositWithIds} className="mt-4 rounded-md border p-3">
+              <div className="grid grid-cols-1 gap-3 md:grid-cols-[1fr_auto] md:items-end">
+                <div className="space-y-2">
+                  <Label htmlFor="depositAmount">Deposit Amount</Label>
+                  <Input
+                    id="depositAmount"
+                    name="depositAmount"
+                    type="number"
+                    step="0.01"
+                    min="0.01"
+                    max={(order.totalCents / 100).toFixed(2)}
+                    defaultValue={order.depositRequiredCents > 0 ? (order.depositRequiredCents / 100).toFixed(2) : undefined}
+                    placeholder="Manual deposit amount"
+                    required
+                  />
+                </div>
+                <Button type="submit" variant="outline">
+                  {order.depositRequiredCents > 0 ? 'Update Deposit' : 'Request Deposit'}
+                </Button>
+              </div>
+            </form>
           </CardContent>
         </Card>
 
@@ -165,6 +219,7 @@ export default async function OrderDetailPage({
                     <TableHead>Date</TableHead>
                     <TableHead>Method</TableHead>
                     <TableHead>Amount</TableHead>
+                    <TableHead>Status</TableHead>
                     <TableHead>Reference</TableHead>
                     <TableHead />
                   </TableRow>
@@ -174,12 +229,17 @@ export default async function OrderDetailPage({
                     <TableRow key={payment.id}>
                       <TableCell>{payment.paymentDate}</TableCell>
                       <TableCell>{paymentMethodLabel[payment.paymentMethod]}</TableCell>
-                      <TableCell>{money(payment.amountCents)}</TableCell>
+                      <TableCell className={payment.status === 'void' ? 'text-muted-foreground line-through' : undefined}>
+                        {money(payment.amountCents)}
+                      </TableCell>
+                      <TableCell>{paymentRecordStatusLabel[payment.status]}</TableCell>
                       <TableCell>{payment.referenceNumber ?? '-'}</TableCell>
                       <TableCell className="text-right">
-                        <form action={removePaymentAction.bind(null, customerId, orderId, payment.id)}>
-                          <Button type="submit" variant="ghost" size="sm">Remove</Button>
-                        </form>
+                        {payment.status === 'recorded' && (
+                          <form action={voidPaymentAction.bind(null, customerId, orderId, payment.id)}>
+                            <Button type="submit" variant="ghost" size="sm">Void</Button>
+                          </form>
+                        )}
                       </TableCell>
                     </TableRow>
                   ))}
@@ -188,14 +248,23 @@ export default async function OrderDetailPage({
             )}
 
             <form action={addPaymentWithIds} className="mt-4 rounded-md border p-3">
-              <div className="grid grid-cols-4 gap-3">
+              <div className="grid grid-cols-1 gap-3 md:grid-cols-4">
                 <div className="space-y-2">
                   <Label htmlFor="paymentDate">Date *</Label>
                   <Input id="paymentDate" name="paymentDate" type="date" defaultValue={today()} required />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="amount">Amount *</Label>
-                  <Input id="amount" name="amount" type="number" step="0.01" min="0.01" required />
+                  <Input
+                    id="amount"
+                    name="amount"
+                    type="number"
+                    step="0.01"
+                    min="0.01"
+                    max={(order.balanceDueCents / 100).toFixed(2)}
+                    defaultValue={nextPaymentCents > 0 ? (nextPaymentCents / 100).toFixed(2) : undefined}
+                    required
+                  />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="paymentMethod">Method *</Label>
@@ -214,12 +283,12 @@ export default async function OrderDetailPage({
                   <Label htmlFor="referenceNumber">Reference</Label>
                   <Input id="referenceNumber" name="referenceNumber" />
                 </div>
-                <div className="col-span-4 space-y-2">
+                <div className="space-y-2 md:col-span-4">
                   <Label htmlFor="notes">Notes</Label>
                   <Input id="notes" name="notes" />
                 </div>
               </div>
-              <Button type="submit" className="mt-3">Add Payment</Button>
+              <Button type="submit" className="mt-3">Record Payment</Button>
             </form>
           </CardContent>
         </Card>

@@ -8,7 +8,7 @@ export type ValidationResult =
   | { ok: true }
   | { ok: false; error: string };
 
-const VALID_THICKNESSES = new Set([0.5, 0.75, 1.25]);
+const VALID_THICKNESSES_IN = new Set([2 / 2.54, 3 / 2.54]);
 
 export function validateSlabMeasurement(
   measurement: Partial<SlabMeasurement>,
@@ -24,11 +24,11 @@ export function validateSlabMeasurement(
   }
 
   if (
-    typeof measurement.lengthIn !== "number" ||
-    typeof measurement.widthIn !== "number" ||
-    typeof measurement.thicknessIn !== "number"
+    !Number.isFinite(measurement.lengthIn) ||
+    !Number.isFinite(measurement.widthIn) ||
+    !Number.isFinite(measurement.thicknessIn)
   ) {
-    return { ok: false, error: "dimensions must be numbers" };
+    return { ok: false, error: "dimensions must be finite numbers" };
   }
 
   if (
@@ -43,10 +43,10 @@ export function validateSlabMeasurement(
     return { ok: false, error: "slab exceeds maximum dimensions" };
   }
 
-  if (!VALID_THICKNESSES.has(measurement.thicknessIn)) {
+  if (!VALID_THICKNESSES_IN.has(measurement.thicknessIn)) {
     return {
       ok: false,
-      error: "thickness must be 0.5in, 0.75in, or 1.25in",
+      error: "thickness must be 2cm or 3cm",
     };
   }
 

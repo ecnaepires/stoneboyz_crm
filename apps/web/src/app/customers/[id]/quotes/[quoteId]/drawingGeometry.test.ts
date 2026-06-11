@@ -638,8 +638,17 @@ describe("drawing geometry workflow rules", () => {
     ]);
   });
 
-  it("renders radius visuals across matching wall offset lines", () => {
+  it("renders radius visuals across matching wall offset lines while cabinet references stay straight", () => {
     const referenceLines = [
+      {
+        id: "bottom-cabinet",
+        pieceId: "piece-1",
+        from: [0, 76.5] as [number, number],
+        to: [300, 76.5] as [number, number],
+        kind: "cabinet" as const,
+        color: "#6b7280",
+        dash: true,
+      },
       {
         id: "bottom-offset",
         pieceId: "piece-1",
@@ -673,11 +682,21 @@ describe("drawing geometry workflow rules", () => {
 
     expect(result.segments).toEqual([
       {
+        id: "bottom-cabinet",
+        sourceLineId: "bottom-cabinet",
+        pieceId: "piece-1",
+        from: [0, 76.5],
+        to: [300, 76.5],
+        kind: "cabinet",
+        color: "#6b7280",
+        dash: true,
+      },
+      {
         id: "bottom-offset",
         sourceLineId: "bottom-offset",
         pieceId: "piece-1",
         from: [0, 81],
-        to: [291, 81],
+        to: [295.5, 81],
         kind: "wall",
         color: "#78aa72",
         dash: false,
@@ -687,7 +706,7 @@ describe("drawing geometry workflow rules", () => {
         sourceLineId: "right-offset",
         pieceId: "piece-1",
         from: [304.5, 0],
-        to: [304.5, 67.5],
+        to: [304.5, 72],
         kind: "wall",
         color: "#78aa72",
         dash: false,
@@ -698,13 +717,81 @@ describe("drawing geometry workflow rules", () => {
         id: "bottom-offset:right-offset:radius",
         pieceId: "piece-1",
         color: "#78aa72",
-        center: [304.5, 81],
-        radius: 13.5,
-        startAngle: Math.PI,
-        endAngle: (3 * Math.PI) / 2,
+        center: [295.5, 72],
+        radius: 9,
+        startAngle: 0,
+        endAngle: Math.PI / 2,
         sourceLineIds: ["bottom-offset", "right-offset"],
       },
     ]);
+  });
+
+  it("renders a two-inch chamfer as one inch on each adjacent edge", () => {
+    const referenceLines = [
+      {
+        id: "bottom-offset",
+        pieceId: "piece-1",
+        from: [0, 81] as [number, number],
+        to: [300, 81] as [number, number],
+        kind: "wall" as const,
+        color: "#78aa72",
+      },
+      {
+        id: "right-offset",
+        pieceId: "piece-1",
+        from: [304.5, 0] as [number, number],
+        to: [304.5, 76.5] as [number, number],
+        kind: "wall" as const,
+        color: "#78aa72",
+      },
+    ];
+
+    const result = buildReferenceLineCornerVisuals({
+      referenceLines,
+      rects: [{ x: 0, y: 0, w: 300, h: 76.5 }],
+      corners: [
+        {
+          corner: "bottomRight",
+          treatment: "clip",
+          valueIn: 2,
+        },
+      ],
+      scale: SCALE,
+    });
+
+    expect(result.segments).toEqual([
+      {
+        id: "bottom-offset",
+        sourceLineId: "bottom-offset",
+        pieceId: "piece-1",
+        from: [0, 81],
+        to: [301.5, 81],
+        kind: "wall",
+        color: "#78aa72",
+        dash: false,
+      },
+      {
+        id: "right-offset",
+        sourceLineId: "right-offset",
+        pieceId: "piece-1",
+        from: [304.5, 0],
+        to: [304.5, 78],
+        kind: "wall",
+        color: "#78aa72",
+        dash: false,
+      },
+    ]);
+    expect(result.connectors).toEqual([
+      {
+        id: "bottom-offset:right-offset:clip",
+        pieceId: "piece-1",
+        color: "#78aa72",
+        from: [301.5, 81],
+        to: [304.5, 78],
+        sourceLineIds: ["bottom-offset", "right-offset"],
+      },
+    ]);
+    expect(result.arcs).toEqual([]);
   });
 
   it("leaves wall lines untouched when offsets do not form a square corner", () => {

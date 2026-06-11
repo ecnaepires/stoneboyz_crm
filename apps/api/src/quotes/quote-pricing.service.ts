@@ -1,30 +1,199 @@
-import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException, Inject, Injectable, NotFoundException } from '@nestjs/common';
 import {
-  generatePriceLines,
   type GeneratedPriceLine,
   type OverrideGeneratedPriceLineInput,
-  type PriceListItemInput,
+  PRICE_CATEGORY_VALUES,
+  type PriceCategory,
+  type PriceListItem,
   type Quote,
-  type QuoteArea
+  type QuoteArea,
+  type QuotePricingSelection,
+  type UpsertQuotePricingSelectionInput,
+  quantityForMeasurementBasis,
+  unitForChargeMethod
 } from '@stoneboyz/domain';
+import type { Pool } from 'pg';
+import { DATABASE_POOL } from '../database.provider.js';
+import { InvalidSlabStatusError, SlabsRepository } from '../inventory/slabs.repository.js';
 import { PriceListItemsRepository } from '../price-lists/price-list-items.repository.js';
 import { QuoteAreasRepository } from './quote-areas.repository.js';
 import { QuotePricingRepository } from './quote-pricing.repository.js';
+import { QuotePricingSelectionsRepository } from './quote-pricing-selections.repository.js';
 import { QuotesRepository } from './quotes.repository.js';
+
+const isPriceCategory = (value: string): value is PriceCategory =>
+  (PRICE_CATEGORY_VALUES as readonly string[]).includes(value);
 
 @Injectable()
 export class QuotePricingService {
   constructor(
+    @Inject(DATABASE_POOL) private readonly pool: Pool,
+    private readonly slabsRepository: SlabsRepository,
     private readonly quotesRepository: QuotesRepository,
     private readonly quoteAreasRepository: QuoteAreasRepository,
     private readonly priceListItemsRepository: PriceListItemsRepository,
-    private readonly quotePricingRepository: QuotePricingRepository
+    private readonly quotePricingRepository: QuotePricingRepository,
+    private readonly quotePricingSelectionsRepository: QuotePricingSelectionsRepository
   ) {}
 
   async listPricingLines(customerId: string, quoteId: string, areaId: string): Promise<{ data: GeneratedPriceLine[] }> {
     await this.ensureAreaExists(customerId, quoteId, areaId);
 
     return { data: await this.quotePricingRepository.listByAreaId(areaId) };
+  }
+
+  async getPricingSelections(customerId: string, quoteId: string): Promise<QuotePricingSelection> {
+    await this.ensureQuoteExists(customerId, quoteId);
+    return this.quotePricingSelectionsRepository.get(quoteId);
+  }
+
+  async upsertPricingSelections(
+    customerId: string,
+    quoteId: string,
+    input: UpsertQuotePricingSelectionInput
+  ): Promise<QuotePricingSelection> {
+    const quote = await this.ensureQuoteExists(customerId, quoteId);
+
+    if (quote.status !== 'draft') {
+      throw new ConflictException({ code: 'INVALID_QUOTE_STATUS', message: 'Quote is not in draft status' });
+    }
+
+    for (const area of input.areas ?? []) {
+      const quoteArea = await this.quoteAreasRepository.findById(quoteId, area.areaId);
+      if (quoteArea === null) {
+        throw new NotFoundException({ code: 'NOT_FOUND', message: 'Quote area not found' });
+      }
+    }
+
+    const client = await this.pool.connect();
+
+    try {
+      await client.query('BEGIN');
+
+      const currentSelection = await this.quotePricingSelectionsRepository.get(quoteId, client);
+      const nextSelection = {
+        ...currentSelection,
+        areas: currentSelection.areas.map((area) => ({ ...area }))
+      };
+      const negotiatedSlabIds = new Set<string>();
+      const pendingMaterialChanges: Array<{
+        areaId: string;
+        previousMaterialSlabId: string | null;
+        nextMaterialSource: 'external' | 'inventory';
+        nextMaterialSlabId: string | null;
+      }> = [];
+
+      for (const area of input.areas ?? []) {
+        const existingAreaSelection = nextSelection.areas.find((candidate) => candidate.areaId === area.areaId);
+        const nextMaterialSource = Object.hasOwn(area, 'materialSource')
+          ? (area.materialSource ?? 'external')
+          : (existingAreaSelection?.materialSource ?? 'external');
+        const nextMaterialSlabId =
+          nextMaterialSource === 'inventory'
+            ? Object.hasOwn(area, 'materialSlabId')
+              ? (area.materialSlabId ?? null)
+              : (existingAreaSelection?.materialSlabId ?? null)
+            : null;
+        const nextMaterialItemId = Object.hasOwn(area, 'materialItemId')
+          ? (area.materialItemId ?? null)
+          : (existingAreaSelection?.materialItemId ?? null);
+        const previousMaterialSlabId = existingAreaSelection?.materialSlabId ?? null;
+
+        if (nextMaterialSource === 'inventory' && (nextMaterialItemId === null || nextMaterialSlabId === null)) {
+          throw new BadRequestException({
+            code: 'VALIDATION_ERROR',
+            message: 'Inventory material requires a material price item and candidate slab'
+          });
+        }
+
+        const nextAreaSelection = {
+          areaId: area.areaId,
+          materialItemId: nextMaterialItemId,
+          materialSource: nextMaterialSource,
+          materialSlabId: nextMaterialSlabId,
+          externalMaterialNote: Object.hasOwn(area, 'externalMaterialNote')
+            ? (area.externalMaterialNote ?? null)
+            : (existingAreaSelection?.externalMaterialNote ?? null),
+          edgeItemId: Object.hasOwn(area, 'edgeItemId') ? (area.edgeItemId ?? null) : (existingAreaSelection?.edgeItemId ?? null),
+          fabricationItemId: Object.hasOwn(area, 'fabricationItemId')
+            ? (area.fabricationItemId ?? null)
+            : (existingAreaSelection?.fabricationItemId ?? null),
+          splashItemId: Object.hasOwn(area, 'splashItemId') ? (area.splashItemId ?? null) : (existingAreaSelection?.splashItemId ?? null),
+          sinkItemId: Object.hasOwn(area, 'sinkItemId') ? (area.sinkItemId ?? null) : (existingAreaSelection?.sinkItemId ?? null),
+          faucetHoleItemId: Object.hasOwn(area, 'faucetHoleItemId')
+            ? (area.faucetHoleItemId ?? null)
+            : (existingAreaSelection?.faucetHoleItemId ?? null)
+        };
+        const existingIndex = nextSelection.areas.findIndex((candidate) => candidate.areaId === area.areaId);
+        if (existingIndex === -1) {
+          nextSelection.areas.push(nextAreaSelection);
+        } else {
+          nextSelection.areas[existingIndex] = nextAreaSelection;
+        }
+
+        pendingMaterialChanges.push({
+          areaId: area.areaId,
+          previousMaterialSlabId,
+          nextMaterialSource,
+          nextMaterialSlabId
+        });
+      }
+
+      for (const change of pendingMaterialChanges) {
+        const { areaId, previousMaterialSlabId, nextMaterialSource, nextMaterialSlabId } = change;
+        if (previousMaterialSlabId !== null && previousMaterialSlabId !== nextMaterialSlabId) {
+          const otherAreaStillUsesPreviousSlab = nextSelection.areas.some(
+            (candidate) => candidate.areaId !== areaId && candidate.materialSlabId === previousMaterialSlabId
+          );
+
+          if (!otherAreaStillUsesPreviousSlab) {
+            await this.slabsRepository.release(previousMaterialSlabId, client);
+          }
+        }
+
+        if (nextMaterialSource === 'inventory' && nextMaterialSlabId !== null) {
+          const quoteAlreadyUsesNextSlab = currentSelection.areas.some(
+            (candidate) => candidate.materialSlabId === nextMaterialSlabId
+          );
+
+          if (quoteAlreadyUsesNextSlab || negotiatedSlabIds.has(nextMaterialSlabId)) {
+            continue;
+          }
+
+          let slab;
+          try {
+            slab = await this.slabsRepository.negotiate(nextMaterialSlabId, client);
+          } catch (error) {
+            if (error instanceof InvalidSlabStatusError) {
+              const currentSlab = await this.slabsRepository.findById(nextMaterialSlabId, client);
+              const message =
+                currentSlab?.status === 'negotiating'
+                  ? 'This Slab is already being negotiated on another quote. Pick another inventory Slab or use external material.'
+                  : 'This Slab is no longer available. Pick another inventory Slab or use external material.';
+
+              throw new ConflictException({ code: 'SLAB_NOT_AVAILABLE', message });
+            }
+
+            throw error;
+          }
+
+          if (slab === null) {
+            throw new NotFoundException({ code: 'NOT_FOUND', message: 'Slab not found' });
+          }
+
+          negotiatedSlabIds.add(nextMaterialSlabId);
+        }
+      }
+
+      const selection = await this.quotePricingSelectionsRepository.upsertWithClient(client, quoteId, input);
+      await client.query('COMMIT');
+      return selection;
+    } catch (error) {
+      await client.query('ROLLBACK');
+      throw error;
+    } finally {
+      client.release();
+    }
   }
 
   async generatePricingLines(
@@ -39,19 +208,72 @@ export class QuotePricingService {
       throw new ConflictException({ code: 'INVALID_QUOTE_STATUS', message: 'Quote is not in draft status' });
     }
 
-    if (quote.priceListId === null) {
-      return { data: await this.quotePricingRepository.upsertLines(areaId, []) };
+    // Selections-only (2026-06-08 design): price lines come solely from the saved
+    // per-area Quote Pricing Selection. No legacy price-list auto-fallback — an area
+    // with no selections generates no lines, so the quote never shows prices the
+    // salesperson did not pick.
+    const selectedLines = await this.generateSelectedPricingLines(quoteId, areaId, area);
+    return { data: await this.quotePricingRepository.upsertLines(areaId, selectedLines) };
+  }
+
+  private async generateSelectedPricingLines(
+    quoteId: string,
+    areaId: string,
+    _area: QuoteArea
+  ): Promise<Array<{
+    category: PriceCategory;
+    label: string;
+    quantity: number;
+    unit: string;
+    unitPriceCents: number;
+    priceListItemId: string;
+    sortOrder: number;
+  }>> {
+    const selection = await this.quotePricingSelectionsRepository.get(quoteId);
+    const areaSelection = selection.areas.find((candidate) => candidate.areaId === areaId);
+    const selectedIds = [
+      areaSelection?.materialItemId,
+      areaSelection?.fabricationItemId ?? selection.defaultFabricationItemId,
+      areaSelection?.edgeItemId,
+      areaSelection?.splashItemId,
+      areaSelection?.sinkItemId,
+      areaSelection?.faucetHoleItemId
+    ].filter((value): value is string => value !== null && value !== undefined);
+
+    if (selectedIds.length === 0) {
+      return [];
     }
 
-    const priceListItems: PriceListItemInput[] = (await this.priceListItemsRepository.list(quote.priceListId)).map((item) => ({
-      id: item.id,
-      category: item.category,
-      unitPriceCents: item.priceCents
-    }));
-    const measurementTotals = await this.quoteAreasRepository.pricingMeasurementTotalsForArea(areaId);
-    const lines = generatePriceLines(measurementTotals, { material: area.material, color: area.color }, priceListItems);
+    const itemsById = await this.priceListItemsRepository.findManyByIds(selectedIds);
+    const totals = await this.quoteAreasRepository.pricingMeasurementTotalsForArea(areaId);
+    const orderedIds = [
+      areaSelection?.materialItemId,
+      areaSelection?.fabricationItemId ?? selection.defaultFabricationItemId,
+      areaSelection?.edgeItemId,
+      areaSelection?.splashItemId,
+      areaSelection?.sinkItemId,
+      areaSelection?.faucetHoleItemId
+    ];
 
-    return { data: await this.quotePricingRepository.upsertLines(areaId, lines) };
+    return orderedIds.flatMap((itemId, sortOrder) => {
+      if (itemId === null || itemId === undefined) return [];
+      const item = itemsById.get(itemId);
+      if (item === undefined) return [];
+      if (!isPriceCategory(item.category)) return [];
+
+      const quantity = quantityForMeasurementBasis(totals, item.measurementBasis);
+      if (quantity <= 0) return [];
+
+      return [{
+        category: item.category,
+        label: item.name,
+        quantity,
+        unit: unitForChargeMethod(item.chargeMethod),
+        unitPriceCents: item.priceCents,
+        priceListItemId: item.id,
+        sortOrder
+      }];
+    });
   }
 
   async overridePricingLine(
@@ -61,7 +283,12 @@ export class QuotePricingService {
     lineId: string,
     input: OverrideGeneratedPriceLineInput
   ): Promise<GeneratedPriceLine> {
-    await this.ensureAreaExists(customerId, quoteId, areaId);
+    const { quote } = await this.ensureAreaExists(customerId, quoteId, areaId);
+
+    if (quote.status !== 'draft') {
+      throw new ConflictException({ code: 'INVALID_QUOTE_STATUS', message: 'Quote is not in draft status' });
+    }
+
     const line = await this.quotePricingRepository.updateOverride(areaId, lineId, input);
 
     if (line === null) {
@@ -89,5 +316,15 @@ export class QuotePricingService {
     }
 
     return { quote, area };
+  }
+
+  private async ensureQuoteExists(customerId: string, quoteId: string): Promise<Quote> {
+    const quote = await this.quotesRepository.findById(customerId, quoteId);
+
+    if (quote === null) {
+      throw new NotFoundException({ code: 'NOT_FOUND', message: 'Quote not found' });
+    }
+
+    return quote;
   }
 }

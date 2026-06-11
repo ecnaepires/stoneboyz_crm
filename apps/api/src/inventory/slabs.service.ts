@@ -153,6 +153,33 @@ export class SlabsService {
     }
   }
 
+  async promoteNegotiatingManyForQuote(quoteId: string, actorUserId: string, client: PoolClient): Promise<void> {
+    try {
+      const reservedSlabIds = await this.slabsRepository.promoteNegotiatingManyForQuote(quoteId, client);
+
+      for (const slabId of reservedSlabIds) {
+        this.eventBus.emit('slab.reserved', buildSlabReservedPayload(slabId, actorUserId, quoteId));
+      }
+    } catch (error) {
+      if (error instanceof InvalidSlabStatusError) {
+        throw new ConflictException({
+          code: 'SLAB_NOT_AVAILABLE',
+          message: 'Cannot approve quote yet. One or more inventory Slabs are no longer available. Pick another inventory Slab or use external material.'
+        });
+      }
+
+      throw error;
+    }
+  }
+
+  async releaseNegotiatingManyForQuote(quoteId: string, actorUserId: string, client: PoolClient): Promise<void> {
+    const releasedSlabIds = await this.slabsRepository.releaseNegotiatingManyForQuote(quoteId, client);
+
+    for (const slabId of releasedSlabIds) {
+      this.eventBus.emit('slab.released', buildSlabReservedPayload(slabId, actorUserId, quoteId));
+    }
+  }
+
   async reserveForProject(slabId: string, projectId: string, actorUserId: string, client: PoolClient): Promise<void> {
     const current = await this.slabsRepository.findById(slabId, client);
 
@@ -221,4 +248,3 @@ export class SlabsService {
     return new ConflictException({ code: message === 'Slab is already cut' ? 'SLAB_ALREADY_CUT' : 'INVALID_TRANSITION', message });
   }
 }
-

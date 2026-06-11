@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Select } from '@/components/ui/select';
 import { getApiClientWithAuth } from '@/lib/api';
 import { updateSlabAction } from '../../_actions';
+import { SlabValueFields } from '../../slab-value-fields';
 
 export default async function EditSlabPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -15,6 +16,8 @@ export default async function EditSlabPage({ params }: { params: Promise<{ id: s
   if (slab.status !== 'available' && slab.status !== 'remnant') {
     return <div className="text-red-600">Cannot edit slab with status: {slab.status}</div>;
   }
+  const sqFt = (slab.lengthIn * slab.widthIn) / 144;
+  const valuePerSqFt = sqFt > 0 ? slab.costCents / 100 / sqFt : 0;
 
   return (
     <div className="max-w-2xl">
@@ -37,10 +40,12 @@ export default async function EditSlabPage({ params }: { params: Promise<{ id: s
             <option value="B">B</option>
             <option value="C">C</option>
           </Select>
-          <input name="lengthIn" type="number" step="0.001" required defaultValue={slab.lengthIn} className="h-10 rounded-md border px-3 text-sm" />
-          <input name="widthIn" type="number" step="0.001" required defaultValue={slab.widthIn} className="h-10 rounded-md border px-3 text-sm" />
-          <input name="thicknessCm" type="number" step="0.1" required defaultValue={slab.thicknessCm} className="h-10 rounded-md border px-3 text-sm" />
-          <input name="cost" type="number" step="0.01" min="0" defaultValue={(slab.costCents / 100).toFixed(2)} className="h-10 rounded-md border px-3 text-sm" />
+          <SlabValueFields
+            defaultLengthIn={slab.lengthIn}
+            defaultWidthIn={slab.widthIn}
+            defaultThicknessCm={slab.thicknessCm}
+            defaultValuePerSqFt={Number(valuePerSqFt.toFixed(2))}
+          />
           <input name="lotNumber" defaultValue={slab.lotNumber ?? ''} className="h-10 rounded-md border px-3 text-sm" />
           <input name="bundleNumber" defaultValue={slab.bundleNumber ?? ''} className="h-10 rounded-md border px-3 text-sm" />
         </div>

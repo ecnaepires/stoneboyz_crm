@@ -8,6 +8,7 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { AppModule } from '../../apps/api/src/app.module.js';
 import { DATABASE_POOL } from '../../apps/api/src/database.provider.js';
 import { seedTestSession } from './helpers/auth.js';
+import { getDefaultJobTemplateId } from './helpers/job-templates.js';
 import { setTestAuthToken } from './helpers/test-auth.js';
 
 const SEEDED_CUSTOMER_ID = '11111111-1111-4111-8111-111111111111';
@@ -17,16 +18,7 @@ const MISSING_ID = '99999999-9999-4999-8999-999999999999';
 const resetDatabase = async (app: INestApplication): Promise<void> => {
   const pool = app.get<Pool>(DATABASE_POOL);
 
-  await pool.query('DROP TABLE IF EXISTS order_payments CASCADE;');
-  await pool.query('DROP TABLE IF EXISTS orders CASCADE;');
-  await pool.query('DROP TABLE IF EXISTS quote_line_items CASCADE;');
-  await pool.query('DROP TABLE IF EXISTS quote_areas CASCADE;');
-  await pool.query('DROP TABLE IF EXISTS quotes CASCADE;');
-  await pool.query('DROP TABLE IF EXISTS projects CASCADE;');
-  await pool.query('DROP TABLE IF EXISTS customer_notes CASCADE;');
-  await pool.query('DROP TABLE IF EXISTS customer_addresses CASCADE;');
-  await pool.query('DROP TABLE IF EXISTS customer_contacts CASCADE;');
-  await pool.query('DROP TABLE IF EXISTS customers CASCADE;');
+  await pool.query('DROP SCHEMA public CASCADE; CREATE SCHEMA public;');
 
   const migrationsDir = join(process.cwd(), 'db/migrations');
   const migrationFiles = (await readdir(migrationsDir))
@@ -51,11 +43,55 @@ const quotesUrl = (customerId = SEEDED_CUSTOMER_ID): string =>
 const ordersUrl = (customerId = SEEDED_CUSTOMER_ID): string =>
   `${baseUrl}/api/v1/customers/${customerId}/orders`;
 
-const createAndAcceptQuote = async (customerId = SEEDED_CUSTOMER_ID): Promise<string> => {
+const createProject = async (title = 'Deposit Pipeline Job'): Promise<Record<string, unknown>> => {
+  const jobTemplateId = await getDefaultJobTemplateId(baseUrl);
+  const response = await fetch(`${baseUrl}/api/v1/projects`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({
+      customerId: SEEDED_CUSTOMER_ID,
+      title,
+      jobTemplateId,
+      ownerUserId: ACTOR_USER_ID
+    })
+  });
+
+  expect(response.status).toBe(201);
+  return await response.json() as Record<string, unknown>;
+};
+
+const createPhase = async (projectId: string, name = 'Kitchen'): Promise<Record<string, unknown>> => {
+  const response = await fetch(`${baseUrl}/api/v1/customers/${SEEDED_CUSTOMER_ID}/projects/${projectId}/phases`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ actorUserId: ACTOR_USER_ID, name })
+  });
+
+  expect(response.status).toBe(201);
+  return await response.json() as Record<string, unknown>;
+};
+
+const createAndAcceptQuote = async (
+  customerId = SEEDED_CUSTOMER_ID,
+  options: { projectId?: string; phaseId?: string } = {}
+): Promise<string> => {
   const createRes = await fetch(quotesUrl(customerId), {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ actorUserId: ACTOR_USER_ID, title: 'Kitchen countertop' })
+    body: JSON.stringify({
+      actorUserId: ACTOR_USER_ID,
+      title: 'Kitchen countertop',
+      ...(options.projectId ? { projectId: options.projectId } : {}),
+      ...(options.phaseId ? { phaseId: options.phaseId } : {}),
+      lineItems: [
+        {
+          stoneType: 'Granite',
+          qty: 1,
+          qtyUnit: 'each',
+          unitPriceCents: 100000
+        }
+      ]
+    })
   });
   const quote = await createRes.json() as Record<string, unknown>;
   const quoteId = quote['id'] as string;
@@ -87,6 +123,18 @@ const convertToOrder = async (
   return { response, body: await response.json() as Record<string, unknown> };
 };
 
+const getProject = async (projectId: string): Promise<Record<string, unknown>> => {
+  const response = await fetch(`${baseUrl}/api/v1/projects/${projectId}`);
+  expect(response.status).toBe(200);
+  return await response.json() as Record<string, unknown>;
+};
+
+const getChecklist = async (projectId: string, phaseId: string): Promise<Record<string, unknown>> => {
+  const response = await fetch(`${baseUrl}/api/v1/customers/${SEEDED_CUSTOMER_ID}/projects/${projectId}/phases/${phaseId}/checklist`);
+  expect(response.status).toBe(200);
+  return await response.json() as Record<string, unknown>;
+};
+
 beforeAll(async () => {
   app = await NestFactory.create(AppModule, { logger: false });
   app.setGlobalPrefix('api/v1');
@@ -116,6 +164,10 @@ describe('POST /customers/:customerId/quotes/:quoteId/convert', () => {
     expect(body['quoteId']).toBe(quoteId);
     expect(body['paymentStatus']).toBe('unpaid');
     expect(body['totalPaidCents']).toBe(0);
+    expect(body['depositStatus']).toBe('not_requested');
+    expect(body['depositRequiredCents']).toBe(0);
+    expect(body['depositPaidCents']).toBe(0);
+    expect(body['depositBalanceCents']).toBe(0);
     expect(body['saleDate']).toBe('2026-05-14');
     expect(Array.isArray(body['payments'])).toBe(true);
   });
@@ -222,7 +274,13 @@ describe('POST /customers/:customerId/orders/:orderId/payments', () => {
     expect(response.status).toBe(201);
     expect(body['amountCents']).toBe(50000);
     expect(body['paymentMethod']).toBe('check');
+    expect(body['status']).toBe('recorded');
     expect(body['referenceNumber']).toBe('CHK-001');
+
+    const detailRes = await fetch(`${ordersUrl()}/${orderId}`);
+    const detail = await detailRes.json() as Record<string, unknown>;
+    expect(detail['totalPaidCents']).toBe(50000);
+    expect(detail['balanceDueCents']).toBe(50000);
   });
 
   it('rejects invalid payment method', async () => {
@@ -262,10 +320,116 @@ describe('POST /customers/:customerId/orders/:orderId/payments', () => {
 
     expect(response.status).toBe(400);
   });
+
+  it('rejects a payment greater than the balance due', async () => {
+    const quoteId = await createAndAcceptQuote();
+    const { body: order } = await convertToOrder(quoteId);
+    const orderId = order['id'] as string;
+
+    const response = await fetch(`${ordersUrl()}/${orderId}/payments`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        actorUserId: ACTOR_USER_ID,
+        paymentDate: '2026-05-14',
+        amountCents: 100001,
+        paymentMethod: 'cash'
+      })
+    });
+    const body = await response.json() as Record<string, unknown>;
+
+    expect(response.status).toBe(409);
+    expect(body['code']).toBe('PAYMENT_EXCEEDS_BALANCE');
+  });
+});
+
+describe('POST /customers/:customerId/orders/:orderId/deposit/request', () => {
+  it('requests a manual deposit and satisfies the job checklist when payment is recorded', async () => {
+    const project = await createProject();
+    const projectId = project['id'] as string;
+    const phase = await createPhase(projectId);
+    const phaseId = phase['id'] as string;
+    const quoteId = await createAndAcceptQuote(SEEDED_CUSTOMER_ID, { projectId, phaseId });
+    const { body: order } = await convertToOrder(quoteId);
+    const orderId = order['id'] as string;
+
+    const requestResponse = await fetch(`${ordersUrl()}/${orderId}/deposit/request`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        actorUserId: ACTOR_USER_ID,
+        depositRequiredCents: 30000
+      })
+    });
+    const requested = await requestResponse.json() as Record<string, unknown>;
+
+    expect(requestResponse.status).toBe(200);
+    expect(requested['depositRequiredCents']).toBe(30000);
+    expect(requested['depositPaidCents']).toBe(0);
+    expect(requested['depositBalanceCents']).toBe(30000);
+    expect(requested['depositStatus']).toBe('requested');
+    expect((await getProject(projectId))['pipelineStage']).toBe('deposit');
+    expect((await getChecklist(projectId, phaseId))['depositReceived']).toBe(false);
+
+    const addPaymentResponse = await fetch(`${ordersUrl()}/${orderId}/payments`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        actorUserId: ACTOR_USER_ID,
+        paymentDate: '2026-05-14',
+        amountCents: 30000,
+        paymentMethod: 'cash'
+      })
+    });
+    expect(addPaymentResponse.status).toBe(201);
+
+    const paidResponse = await fetch(`${ordersUrl()}/${orderId}`);
+    const paidOrder = await paidResponse.json() as Record<string, unknown>;
+    expect(paidOrder['depositPaidCents']).toBe(30000);
+    expect(paidOrder['depositBalanceCents']).toBe(0);
+    expect(paidOrder['depositStatus']).toBe('paid');
+    expect(paidOrder['totalPaidCents']).toBe(30000);
+    expect((await getChecklist(projectId, phaseId))['depositReceived']).toBe(true);
+
+    const payment = (paidOrder['payments'] as Array<Record<string, unknown>>)[0];
+    const voidResponse = await fetch(`${ordersUrl()}/${orderId}/payments/${String(payment?.['id'])}`, {
+      method: 'DELETE',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ actorUserId: ACTOR_USER_ID })
+    });
+    expect(voidResponse.status).toBe(200);
+
+    const voidedResponse = await fetch(`${ordersUrl()}/${orderId}`);
+    const voidedOrder = await voidedResponse.json() as Record<string, unknown>;
+    expect(voidedOrder['depositPaidCents']).toBe(0);
+    expect(voidedOrder['depositBalanceCents']).toBe(30000);
+    expect(voidedOrder['depositStatus']).toBe('requested');
+    expect(voidedOrder['totalPaidCents']).toBe(0);
+    expect((await getChecklist(projectId, phaseId))['depositReceived']).toBe(false);
+  });
+
+  it('rejects a deposit greater than the order total', async () => {
+    const quoteId = await createAndAcceptQuote();
+    const { body: order } = await convertToOrder(quoteId);
+    const orderId = order['id'] as string;
+
+    const response = await fetch(`${ordersUrl()}/${orderId}/deposit/request`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        actorUserId: ACTOR_USER_ID,
+        depositRequiredCents: 100001
+      })
+    });
+    const body = await response.json() as Record<string, unknown>;
+
+    expect(response.status).toBe(400);
+    expect(body['code']).toBe('DEPOSIT_EXCEEDS_ORDER_TOTAL');
+  });
 });
 
 describe('DELETE /customers/:customerId/orders/:orderId/payments/:paymentId', () => {
-  it('removes a payment', async () => {
+  it('voids a payment and removes it from totals without deleting history', async () => {
     const quoteId = await createAndAcceptQuote();
     const { body: order } = await convertToOrder(quoteId);
     const orderId = order['id'] as string;
@@ -284,16 +448,21 @@ describe('DELETE /customers/:customerId/orders/:orderId/payments/:paymentId', ()
     const paymentId = payment['id'] as string;
 
     const response = await fetch(`${ordersUrl()}/${orderId}/payments/${paymentId}`, {
-      method: 'DELETE',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ actorUserId: ACTOR_USER_ID })
+      method: 'DELETE'
     });
 
     expect(response.status).toBe(200);
+    const voidedPayment = await response.json() as Record<string, unknown>;
+    expect(voidedPayment['status']).toBe('void');
+    expect(voidedPayment['voidedByUserId']).toBe(ACTOR_USER_ID);
 
     const detailRes = await fetch(`${ordersUrl()}/${orderId}`);
     const detail = await detailRes.json() as Record<string, unknown>;
-    expect((detail['payments'] as unknown[]).length).toBe(0);
+    const payments = detail['payments'] as Array<Record<string, unknown>>;
+    expect(payments).toHaveLength(1);
+    expect(payments[0]?.['status']).toBe('void');
+    expect(detail['totalPaidCents']).toBe(0);
+    expect(detail['balanceDueCents']).toBe(100000);
   });
 
   it('returns 404 for missing payment', async () => {

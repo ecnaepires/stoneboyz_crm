@@ -45,6 +45,7 @@ export default async function AdminUsersPage() {
                     <option value="fabricator">Fabricator</option>
                     <option value="installer">Installer</option>
                     <option value="service_tech">Service Tech</option>
+                    <option value="inventory_manager">Inventory Manager</option>
                   </Select>
                   <Button type="submit" variant="outline">Save</Button>
                 </form>

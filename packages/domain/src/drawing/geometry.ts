@@ -1,13 +1,16 @@
 import type {
   ChainShapeLayout,
   ChainShapeSegment,
+  DrawingConstructionLineKind,
   DrawingChainShapeSegment,
   DrawingCornerKey,
   DrawingEdgeKey,
   DrawingCornerTreatment,
   DrawingDeletedLine,
+  DrawingLineDirection,
   DrawingReferenceLine,
   DrawingReferenceLineVisualArc,
+  DrawingReferenceLineVisualConnector,
   DrawingReferenceLineVisualSegment,
   DrawingShapeEdge,
   DrawingShapeRect,
@@ -477,6 +480,39 @@ export function chainShapeGeometry(shape: ChainShapeLayout) {
   };
 }
 
+function polygonAreaPx(points: ReadonlyArray<[number, number]>): number {
+  if (points.length < 3) return 0;
+  let twiceArea = 0;
+  for (let i = 0; i < points.length; i += 1) {
+    const [x1, y1] = points[i] as [number, number];
+    const [x2, y2] = points[(i + 1) % points.length] as [number, number];
+    twiceArea += x1 * y2 - x2 * y1;
+  }
+  return Math.abs(twiceArea) / 2;
+}
+
+export function chainShapeAreaSqIn(shape: ChainShapeLayout): number {
+  const first = shape.segments[0];
+  if (!first || first.lengthIn === 0) return 0;
+  const scale = first.w / first.lengthIn; // px per inch
+  if (scale === 0) return 0;
+
+  const { rects, outline } = chainShapeGeometry(shape);
+
+  // outline is a flat number[] of x,y pairs; convert to [number, number][] for Shoelace
+  const outlinePoints: Array<[number, number]> = [];
+  for (let i = 0; i + 1 < outline.length; i += 2) {
+    outlinePoints.push([outline[i] as number, outline[i + 1] as number]);
+  }
+
+  const areaPx =
+    outlinePoints.length >= 3
+      ? polygonAreaPx(outlinePoints)
+      : rects.reduce((total, rect) => total + rect.w * rect.h, 0);
+
+  return roundDrawingInches(areaPx / (scale * scale));
+}
+
 function edgeMidpoint(edge: DrawingShapeEdge) {
   return {
     x: (edge.from[0] + edge.to[0]) / 2,
@@ -783,6 +819,391 @@ export function visibleBoundaryEdges(params: {
     (edge) =>
       !deletedLines.some((line) => drawingShapeEdgeMatchesLine(edge, line)),
   );
+}
+
+export interface DrawingChainVisibleEdge {
+  edge: DrawingShapeEdge;
+  segmentIndex: number;
+  side: DrawingEdgeKey;
+}
+
+function chainSegmentSideForEdge(
+  segment: ChainShapeSegment,
+  edge: DrawingShapeEdge,
+): DrawingEdgeKey | null {
+  const midpoint = edgeMidpoint(edge);
+  const horizontal = drawingValuesNear(edge.from[1], edge.to[1]);
+
+  if (horizontal) {
+    const insideX =
+      midpoint.x >= segment.x - 0.001 &&
+      midpoint.x <= segment.x + segment.w + 0.001;
+    if (!insideX) return null;
+    if (drawingValuesNear(midpoint.y, segment.y)) return "top";
+    if (drawingValuesNear(midpoint.y, segment.y + segment.h)) return "bottom";
+    return null;
+  }
+
+  const insideY =
+    midpoint.y >= segment.y - 0.001 &&
+    midpoint.y <= segment.y + segment.h + 0.001;
+  if (!insideY) return null;
+  if (drawingValuesNear(midpoint.x, segment.x)) return "left";
+  if (drawingValuesNear(midpoint.x, segment.x + segment.w)) return "right";
+  return null;
+}
+
+function chainVisibleEdgeGroupKey(item: DrawingChainVisibleEdge) {
+  const horizontal = drawingValuesNear(item.edge.from[1], item.edge.to[1]);
+  const fixed = horizontal ? item.edge.from[1] : item.edge.from[0];
+  return `${item.segmentIndex}:${item.side}:${horizontal ? "h" : "v"}:${Number(
+    fixed.toFixed(4),
+  )}`;
+}
+
+function mergeChainVisibleEdgeGroup(
+  group: DrawingChainVisibleEdge[],
+): DrawingChainVisibleEdge[] {
+  const first = group[0];
+  if (!first) return [];
+  const horizontal = drawingValuesNear(first.edge.from[1], first.edge.to[1]);
+  const fixed = horizontal ? first.edge.from[1] : first.edge.from[0];
+  const spans = group
+    .map((item) => {
+      if (horizontal) {
+        return [
+          Math.min(item.edge.from[0], item.edge.to[0]),
+          Math.max(item.edge.from[0], item.edge.to[0]),
+        ] as [number, number];
+      }
+      return [
+        Math.min(item.edge.from[1], item.edge.to[1]),
+        Math.max(item.edge.from[1], item.edge.to[1]),
+      ] as [number, number];
+    })
+    .sort((left, right) => left[0] - right[0]);
+
+  const merged: DrawingChainVisibleEdge[] = [];
+  let current = spans[0];
+  if (!current) return [];
+
+  const pushCurrent = (span: [number, number]) => {
+    const edge: DrawingShapeEdge = horizontal
+      ? { from: [span[0], fixed], to: [span[1], fixed] }
+      : { from: [fixed, span[0]], to: [fixed, span[1]] };
+    merged.push({
+      edge,
+      segmentIndex: first.segmentIndex,
+      side: first.side,
+    });
+  };
+
+  for (const span of spans.slice(1)) {
+    if (span[0] <= current[1] + 0.001) {
+      current = [current[0], Math.max(current[1], span[1])];
+      continue;
+    }
+    pushCurrent(current);
+    current = span;
+  }
+  pushCurrent(current);
+
+  return merged;
+}
+
+export function chainVisibleEdges(params: {
+  shape: ChainShapeLayout;
+  deletedLines?: Array<{ from: [number, number]; to: [number, number] }>;
+}): DrawingChainVisibleEdge[] {
+  const deletedLines = params.deletedLines ?? [];
+  const rects = params.shape.segments.map((segment) => ({
+    x: segment.x,
+    y: segment.y,
+    w: segment.w,
+    h: segment.h,
+  }));
+  const groups = new Map<string, DrawingChainVisibleEdge[]>();
+
+  rectUnionBoundaryEdges(rects)
+    .filter(
+      (edge) =>
+        !deletedLines.some((line) => drawingShapeEdgeMatchesLine(edge, line)),
+    )
+    .forEach((edge) => {
+      for (let index = 0; index < params.shape.segments.length; index += 1) {
+        const segment = params.shape.segments[index];
+        if (!segment) continue;
+        const side = chainSegmentSideForEdge(segment, edge);
+        if (!side) continue;
+
+        const item: DrawingChainVisibleEdge = {
+          edge,
+          segmentIndex: index,
+          side,
+        };
+        const key = chainVisibleEdgeGroupKey(item);
+        groups.set(key, [...(groups.get(key) ?? []), item]);
+        return;
+      }
+    });
+
+  return Array.from(groups.values()).flatMap(mergeChainVisibleEdgeGroup);
+}
+
+function pointInsideRect(
+  point: [number, number],
+  rect: DrawingShapeRect,
+) {
+  return (
+    point[0] >= rect.x - 0.001 &&
+    point[0] <= rect.x + rect.w + 0.001 &&
+    point[1] >= rect.y - 0.001 &&
+    point[1] <= rect.y + rect.h + 0.001
+  );
+}
+
+function pointToRectDistanceSquared(
+  point: [number, number],
+  rect: DrawingShapeRect,
+) {
+  const nearestX = Math.max(rect.x, Math.min(point[0], rect.x + rect.w));
+  const nearestY = Math.max(rect.y, Math.min(point[1], rect.y + rect.h));
+  return (point[0] - nearestX) ** 2 + (point[1] - nearestY) ** 2;
+}
+
+function rectCenterDistanceSquared(
+  point: [number, number],
+  rect: DrawingShapeRect,
+) {
+  const centerX = rect.x + rect.w / 2;
+  const centerY = rect.y + rect.h / 2;
+  return (point[0] - centerX) ** 2 + (point[1] - centerY) ** 2;
+}
+
+export function centerlineForChainPoint(params: {
+  shape: ChainShapeLayout;
+  point: [number, number];
+}): DrawingShapeEdge | null {
+  const scored = params.shape.segments
+    .map((segment) => {
+      const rect = {
+        x: segment.x,
+        y: segment.y,
+        w: segment.w,
+        h: segment.h,
+      };
+      return {
+        segment,
+        score: pointInsideRect(params.point, rect)
+          ? rectCenterDistanceSquared(params.point, rect)
+          : pointToRectDistanceSquared(params.point, rect) + 1_000_000,
+      };
+    })
+    .sort((left, right) => left.score - right.score);
+  const selected = scored[0]?.segment;
+  if (!selected) return null;
+
+  if (selected.orientation === "horizontal") {
+    const centerX = selected.x + selected.w / 2;
+    return {
+      from: [centerX, selected.y],
+      to: [centerX, selected.y + selected.h],
+    };
+  }
+
+  const centerY = selected.y + selected.h / 2;
+  return {
+    from: [selected.x, centerY],
+    to: [selected.x + selected.w, centerY],
+  };
+}
+
+export type DrawingOffsetDirection = "left" | "right" | "up" | "down";
+
+export function drawingLineDirectionVector(
+  direction: DrawingLineDirection,
+): [number, number] {
+  if (direction === "right") return [1, 0];
+  if (direction === "downRight") return [Math.SQRT1_2, Math.SQRT1_2];
+  if (direction === "down") return [0, 1];
+  if (direction === "downLeft") return [-Math.SQRT1_2, Math.SQRT1_2];
+  if (direction === "left") return [-1, 0];
+  if (direction === "upLeft") return [-Math.SQRT1_2, -Math.SQRT1_2];
+  if (direction === "up") return [0, -1];
+  return [Math.SQRT1_2, -Math.SQRT1_2];
+}
+
+export function buildConstructionLineFromDirection(params: {
+  id: string;
+  pieceId: string;
+  kind: DrawingConstructionLineKind;
+  anchor: [number, number];
+  direction: DrawingLineDirection;
+  lengthIn: number;
+  scale: number;
+  color?: string;
+  dash?: boolean;
+}): DrawingReferenceLine | null {
+  const lengthPx = params.lengthIn * params.scale;
+  if (!Number.isFinite(lengthPx) || lengthPx <= 0) return null;
+
+  const [dx, dy] = drawingLineDirectionVector(params.direction);
+  return {
+    id: params.id,
+    pieceId: params.pieceId,
+    from: params.anchor,
+    to: [
+      roundDrawingInches(params.anchor[0] + dx * lengthPx),
+      roundDrawingInches(params.anchor[1] + dy * lengthPx),
+    ],
+    kind: params.kind,
+    color: params.color ?? "#6b7280",
+    dash: params.dash ?? false,
+  };
+}
+
+function normalizeLineVector(line: DrawingShapeEdge): [number, number] | null {
+  const dx = line.to[0] - line.from[0];
+  const dy = line.to[1] - line.from[1];
+  const length = Math.hypot(dx, dy);
+  if (length <= 0.001) return null;
+  return [dx / length, dy / length];
+}
+
+function lineIntersection(
+  source: DrawingShapeEdge,
+  target: DrawingShapeEdge,
+): [number, number] | null {
+  const sx = source.to[0] - source.from[0];
+  const sy = source.to[1] - source.from[1];
+  const tx = target.to[0] - target.from[0];
+  const ty = target.to[1] - target.from[1];
+  const denominator = sx * ty - sy * tx;
+  if (Math.abs(denominator) <= 0.001) return null;
+
+  const dx = target.from[0] - source.from[0];
+  const dy = target.from[1] - source.from[1];
+  const sourceT = (dx * ty - dy * tx) / denominator;
+  const targetT = (dx * sy - dy * sx) / denominator;
+  if (sourceT < -0.001 || targetT < -0.001 || targetT > 1.001) return null;
+
+  return [
+    roundDrawingInches(source.from[0] + sourceT * sx),
+    roundDrawingInches(source.from[1] + sourceT * sy),
+  ];
+}
+
+export function offsetConstructionLine(params: {
+  line: DrawingShapeEdge;
+  offsetIn: number;
+  side: "left" | "right";
+  scale: number;
+}): DrawingShapeEdge | null {
+  const distancePx = params.offsetIn * params.scale;
+  if (!Number.isFinite(distancePx) || distancePx <= 0) return null;
+
+  const unit = normalizeLineVector(params.line);
+  if (!unit) return null;
+
+  const [ux, uy] = unit;
+  const side = params.side === "left" ? 1 : -1;
+  const nx = -uy * distancePx * side;
+  const ny = ux * distancePx * side;
+
+  return {
+    from: [
+      roundDrawingInches(params.line.from[0] + nx),
+      roundDrawingInches(params.line.from[1] + ny),
+    ],
+    to: [
+      roundDrawingInches(params.line.to[0] + nx),
+      roundDrawingInches(params.line.to[1] + ny),
+    ],
+  };
+}
+
+export function extendConstructionLineToTarget(params: {
+  source: DrawingShapeEdge;
+  target: DrawingShapeEdge;
+}): DrawingShapeEdge | null {
+  const intersection = lineIntersection(params.source, params.target);
+  if (!intersection) return null;
+
+  return {
+    from: params.source.from,
+    to: intersection,
+  };
+}
+
+export function offsetCenterline(params: {
+  line: DrawingShapeEdge;
+  offsetIn: number;
+  direction: DrawingOffsetDirection;
+  scale: number;
+}): DrawingShapeEdge | null {
+  const distancePx = params.offsetIn * params.scale;
+  if (!Number.isFinite(distancePx) || distancePx <= 0) return null;
+
+  const verticalLine = drawingValuesNear(
+    params.line.from[0],
+    params.line.to[0],
+  );
+  const horizontalLine = drawingValuesNear(
+    params.line.from[1],
+    params.line.to[1],
+  );
+
+  if (verticalLine && !horizontalLine) {
+    if (params.direction !== "left" && params.direction !== "right") {
+      return null;
+    }
+    const deltaX = params.direction === "right" ? distancePx : -distancePx;
+    return {
+      from: [params.line.from[0] + deltaX, params.line.from[1]],
+      to: [params.line.to[0] + deltaX, params.line.to[1]],
+    };
+  }
+
+  if (horizontalLine && !verticalLine) {
+    if (params.direction !== "up" && params.direction !== "down") {
+      return null;
+    }
+    const deltaY = params.direction === "down" ? distancePx : -distancePx;
+    return {
+      from: [params.line.from[0], params.line.from[1] + deltaY],
+      to: [params.line.to[0], params.line.to[1] + deltaY],
+    };
+  }
+
+  return null;
+}
+
+export function buildOffsetCenterline(params: {
+  id: string;
+  pieceId: string;
+  sourceLine: DrawingShapeEdge;
+  offsetIn: number;
+  direction: DrawingOffsetDirection;
+  scale: number;
+  color?: string;
+}): DrawingReferenceLine | null {
+  const line = offsetCenterline({
+    line: params.sourceLine,
+    offsetIn: params.offsetIn,
+    direction: params.direction,
+    scale: params.scale,
+  });
+  if (!line) return null;
+
+  return {
+    id: params.id,
+    pieceId: params.pieceId,
+    from: line.from,
+    to: line.to,
+    kind: "centerline",
+    color: params.color ?? "#000000",
+    dash: true,
+  };
 }
 
 export interface DrawingBacksplashReferenceLine {
@@ -1247,12 +1668,13 @@ function drawingCornerPoint(
 }
 
 function drawingCornerAngles(corner: DrawingCornerKey) {
-  if (corner === "topLeft") return { startAngle: 0, endAngle: Math.PI / 2 };
-  if (corner === "topRight")
-    return { startAngle: Math.PI / 2, endAngle: Math.PI };
-  if (corner === "bottomRight")
+  if (corner === "topLeft")
     return { startAngle: Math.PI, endAngle: (3 * Math.PI) / 2 };
-  return { startAngle: (3 * Math.PI) / 2, endAngle: 2 * Math.PI };
+  if (corner === "topRight")
+    return { startAngle: (3 * Math.PI) / 2, endAngle: 2 * Math.PI };
+  if (corner === "bottomRight")
+    return { startAngle: 0, endAngle: Math.PI / 2 };
+  return { startAngle: Math.PI / 2, endAngle: Math.PI };
 }
 
 export function buildReferenceLineCornerVisuals(params: {
@@ -1278,9 +1700,10 @@ export function buildReferenceLineCornerVisuals(params: {
     }),
   );
   const arcs: DrawingReferenceLineVisualArc[] = [];
+  const connectors: DrawingReferenceLineVisualConnector[] = [];
 
   if (params.rects.length === 0) {
-    return { segments, arcs };
+    return { segments, arcs, connectors };
   }
 
   const bounds = drawingRectBounds(params.rects);
@@ -1288,7 +1711,9 @@ export function buildReferenceLineCornerVisuals(params: {
   const segmentById = new Map(segments.map((segment) => [segment.id, segment]));
 
   params.corners
-    .filter((corner) => corner.treatment === "radius")
+    .filter(
+      (corner) => corner.treatment === "radius" || corner.treatment === "clip",
+    )
     .forEach((corner) => {
       const [cornerX, cornerY] = drawingCornerPoint(bounds, corner.corner);
       const horizontal = wallLines
@@ -1332,49 +1757,64 @@ export function buildReferenceLineCornerVisuals(params: {
         return;
       }
 
-      const trimPx = Math.max((corner.valueIn ?? 0) * params.scale, 0);
-      const horizontalLength = drawingLineLength(horizontal);
-      const verticalLength = drawingLineLength(vertical);
-      const effectiveTrimPx = Math.min(
-        trimPx,
-        Math.max(horizontalLength - 0.001, 0),
-        Math.max(verticalLength - 0.001, 0),
+      const requestedSizePx = Math.max((corner.valueIn ?? 0) * params.scale, 0);
+      const requestedLegPx =
+        corner.treatment === "clip" ? requestedSizePx / 2 : requestedSizePx;
+      const virtualCorner: [number, number] = [verticalX, horizontalY];
+      const horizontalLineLengthFromCorner = Math.max(
+        drawingPointDistance(virtualCorner, horizontal.from),
+        drawingPointDistance(virtualCorner, horizontal.to),
       );
-      const offsetPx = Math.min(Math.abs(offsetX), Math.abs(offsetY));
-      const radiusPx = effectiveTrimPx + offsetPx;
-      if (radiusPx <= 0.001) return;
+      const verticalLineLengthFromCorner = Math.max(
+        drawingPointDistance(virtualCorner, vertical.from),
+        drawingPointDistance(virtualCorner, vertical.to),
+      );
+      const effectiveLegPx = Math.min(
+        requestedLegPx,
+        Math.max(horizontalLineLengthFromCorner - 0.001, 0),
+        Math.max(verticalLineLengthFromCorner - 0.001, 0),
+      );
+      if (effectiveLegPx <= 0.001) return;
 
       const horizontalSegment = segmentById.get(horizontal.id);
       const verticalSegment = segmentById.get(vertical.id);
       if (!horizontalSegment || !verticalSegment) return;
 
-      const horizontalNearIsFrom = drawingValuesNear(
-        horizontalSegment.from[0],
-        cornerX,
-      );
-      const verticalNearIsFrom = drawingValuesNear(
-        verticalSegment.from[1],
-        cornerY,
-      );
+      const horizontalNearIsFrom =
+        drawingPointDistance(horizontalSegment.from, virtualCorner) <=
+        drawingPointDistance(horizontalSegment.to, virtualCorner);
+      const verticalNearIsFrom =
+        drawingPointDistance(verticalSegment.from, virtualCorner) <=
+        drawingPointDistance(verticalSegment.to, virtualCorner);
+      const horizontalDirection =
+        corner.corner === "topLeft" || corner.corner === "bottomLeft" ? 1 : -1;
+      const verticalDirection =
+        corner.corner === "topLeft" || corner.corner === "topRight" ? 1 : -1;
+      const horizontalConnectorPoint: [number, number] = [
+        virtualCorner[0] + horizontalDirection * effectiveLegPx,
+        virtualCorner[1],
+      ];
+      const verticalConnectorPoint: [number, number] = [
+        virtualCorner[0],
+        virtualCorner[1] + verticalDirection * effectiveLegPx,
+      ];
 
-      if (effectiveTrimPx > 0) {
-        if (corner.corner === "topLeft" || corner.corner === "bottomLeft") {
-          if (horizontalNearIsFrom) horizontalSegment.from[0] += effectiveTrimPx;
-          else horizontalSegment.to[0] += effectiveTrimPx;
-        } else if (horizontalNearIsFrom) {
-          horizontalSegment.from[0] -= effectiveTrimPx;
-        } else {
-          horizontalSegment.to[0] -= effectiveTrimPx;
-        }
+      if (horizontalNearIsFrom) horizontalSegment.from = horizontalConnectorPoint;
+      else horizontalSegment.to = horizontalConnectorPoint;
 
-        if (corner.corner === "topLeft" || corner.corner === "topRight") {
-          if (verticalNearIsFrom) verticalSegment.from[1] += effectiveTrimPx;
-          else verticalSegment.to[1] += effectiveTrimPx;
-        } else if (verticalNearIsFrom) {
-          verticalSegment.from[1] -= effectiveTrimPx;
-        } else {
-          verticalSegment.to[1] -= effectiveTrimPx;
-        }
+      if (verticalNearIsFrom) verticalSegment.from = verticalConnectorPoint;
+      else verticalSegment.to = verticalConnectorPoint;
+
+      if (corner.treatment === "clip") {
+        connectors.push({
+          id: `${horizontal.id}:${vertical.id}:clip`,
+          pieceId: horizontal.pieceId,
+          color: horizontal.color,
+          from: horizontalConnectorPoint,
+          to: verticalConnectorPoint,
+          sourceLineIds: [horizontal.id, vertical.id],
+        });
+        return;
       }
 
       const { startAngle, endAngle } = drawingCornerAngles(corner.corner);
@@ -1382,15 +1822,18 @@ export function buildReferenceLineCornerVisuals(params: {
         id: `${horizontal.id}:${vertical.id}:radius`,
         pieceId: horizontal.pieceId,
         color: horizontal.color,
-        center: [cornerX + offsetX, cornerY + offsetY],
-        radius: radiusPx,
+        center: [
+          virtualCorner[0] + horizontalDirection * effectiveLegPx,
+          virtualCorner[1] + verticalDirection * effectiveLegPx,
+        ],
+        radius: effectiveLegPx,
         startAngle,
         endAngle,
         sourceLineIds: [horizontal.id, vertical.id],
       });
     });
 
-  return { segments, arcs };
+  return { segments, arcs, connectors };
 }
 
 export function applyOffsetToSegments(params: {

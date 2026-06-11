@@ -7,7 +7,7 @@ describe("validateSlabMeasurement", () => {
       validateSlabMeasurement({
         lengthIn: 120,
         widthIn: 26,
-        thicknessIn: 0.75,
+        thicknessIn: 3 / 2.54,
       }),
     ).toEqual({ ok: true });
   });
@@ -17,7 +17,7 @@ describe("validateSlabMeasurement", () => {
       validateSlabMeasurement({
         lengthIn: 0,
         widthIn: 26,
-        thicknessIn: 0.75,
+        thicknessIn: 3 / 2.54,
       }),
     ).toEqual({ ok: false, error: "dimensions must be positive" });
   });
@@ -27,7 +27,7 @@ describe("validateSlabMeasurement", () => {
       validateSlabMeasurement({
         lengthIn: 145,
         widthIn: 26,
-        thicknessIn: 0.75,
+        thicknessIn: 3 / 2.54,
       }),
     ).toEqual({ ok: false, error: "slab exceeds maximum dimensions" });
   });
@@ -41,7 +41,7 @@ describe("validateSlabMeasurement", () => {
       }),
     ).toEqual({
       ok: false,
-      error: "thickness must be 0.5in, 0.75in, or 1.25in",
+      error: "thickness must be 2cm or 3cm",
     });
   });
 
@@ -59,8 +59,8 @@ describe("validateSlabMeasurement", () => {
       validateSlabMeasurement({
         lengthIn: "120" as unknown as number,
         widthIn: 26,
-        thicknessIn: 0.75,
+        thicknessIn: 3 / 2.54,
       }),
-    ).toEqual({ ok: false, error: "dimensions must be numbers" });
+    ).toEqual({ ok: false, error: "dimensions must be finite numbers" });
   });
 });

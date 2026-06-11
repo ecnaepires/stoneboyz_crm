@@ -1,3 +1,5 @@
+import type { PolygonVertex } from '../drawing/polygon.js';
+
 export interface CanvasLShapeLayout {
   type: 'l';
   legX: number;
@@ -50,13 +52,26 @@ export interface CanvasChainShapeLayout {
   segments: CanvasChainShapeSegment[];
 }
 
-export type CanvasPieceShape = CanvasLShapeLayout | CanvasZShapeLayout | CanvasChainShapeLayout;
+// Canonical outline shape (ADR 0006): ordered vertices in inches. Added
+// alongside chain/l/z so new drawings can persist as true polygons (including
+// angled edges) while stored chain/l/z revisions keep loading via converters.
+export interface CanvasPolygonShapeLayout {
+  type: 'polygon';
+  vertices: PolygonVertex[];
+}
+
+export type CanvasPieceShape =
+  | CanvasLShapeLayout
+  | CanvasZShapeLayout
+  | CanvasChainShapeLayout
+  | CanvasPolygonShapeLayout;
 
 export interface CanvasPieceLayout {
   pieceId: string;
   x: number;
   y: number;
   rotation: number;
+  kind?: 'countertop' | 'backsplash' | undefined;
   groupId?: string | null | undefined;
   shape?: CanvasPieceShape | null | undefined;
 }
@@ -67,10 +82,12 @@ export interface CanvasSinkLayout {
   x: number;
   y: number;
   rotation: number;
+  quantity?: number | undefined;
+  faucetHoleCount?: number | undefined;
 }
 
 export type CanvasCornerKey = 'topLeft' | 'topRight' | 'bottomRight' | 'bottomLeft';
-export type CanvasCornerTreatment = 'none' | 'radius' | 'clip' | 'bumpOut' | 'notch';
+export type CanvasCornerTreatment = 'none' | 'radius' | 'clip';
 export type CanvasEdgeTreatment =
   | 'finished'
   | 'appliance'
@@ -92,7 +109,7 @@ export interface CanvasReferenceLineLayout {
   pieceId: string;
   from: [number, number];
   to: [number, number];
-  kind: 'cabinet' | 'wall' | 'centerline' | 'dimension';
+  kind: 'cabinet' | 'wall' | 'centerline' | 'dimension' | 'segment';
   color: string;
   dash?: boolean | undefined;
 }

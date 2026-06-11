@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Select } from '@/components/ui/select';
 import { createSlabAction } from '../_actions';
+import { SlabValueFields } from '../slab-value-fields';
 
 export default function NewSlabPage() {
   return (
@@ -25,10 +26,7 @@ export default function NewSlabPage() {
             <option value="B">B</option>
             <option value="C">C</option>
           </Select>
-          <input name="lengthIn" type="number" step="0.001" required placeholder="Length (in)" className="h-10 rounded-md border px-3 text-sm" />
-          <input name="widthIn" type="number" step="0.001" required placeholder="Width (in)" className="h-10 rounded-md border px-3 text-sm" />
-          <input name="thicknessCm" type="number" step="0.1" required placeholder="Thickness (cm)" className="h-10 rounded-md border px-3 text-sm" />
-          <input name="cost" type="number" step="0.01" min="0" defaultValue="0" placeholder="Cost ($)" className="h-10 rounded-md border px-3 text-sm" />
+          <SlabValueFields />
           <input name="lotNumber" placeholder="Lot Number" className="h-10 rounded-md border px-3 text-sm" />
           <input name="bundleNumber" placeholder="Bundle Number" className="h-10 rounded-md border px-3 text-sm" />
         </div>

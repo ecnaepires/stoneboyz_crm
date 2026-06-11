@@ -18,14 +18,7 @@ const MISSING_ID = '99999999-9999-4999-8999-999999999999';
 const resetDatabase = async (app: INestApplication): Promise<void> => {
   const pool = app.get<Pool>(DATABASE_POOL);
 
-  await pool.query('DROP TABLE IF EXISTS scheduled_events CASCADE;');
-  await pool.query('DROP TABLE IF EXISTS quote_line_items CASCADE;');
-  await pool.query('DROP TABLE IF EXISTS quotes CASCADE;');
-  await pool.query('DROP TABLE IF EXISTS projects CASCADE;');
-  await pool.query('DROP TABLE IF EXISTS customer_notes CASCADE;');
-  await pool.query('DROP TABLE IF EXISTS customer_addresses CASCADE;');
-  await pool.query('DROP TABLE IF EXISTS customer_contacts CASCADE;');
-  await pool.query('DROP TABLE IF EXISTS customers CASCADE;');
+  await pool.query('DROP SCHEMA public CASCADE; CREATE SCHEMA public;');
 
   const migrationsDir = join(process.cwd(), 'db/migrations');
   const migrationFiles = (await readdir(migrationsDir))
@@ -60,7 +53,6 @@ const createEvent = async (
       title: 'Measure kitchen countertops',
       scheduledAt: '2026-06-01T14:00:00.000Z',
       durationMinutes: 90,
-      assigneeUserIds: [ASSIGNEE_USER_ID],
       address: '123 Main St',
       notes: 'Bring laser measure',
       ...body
@@ -98,6 +90,8 @@ describe('scheduled events', () => {
 
   beforeEach(async () => {
     await resetDatabase(app);
+    const _token = await seedTestSession(app.get(DATABASE_POOL));
+    setTestAuthToken(_token);
   });
 
   afterAll(async () => {
@@ -116,7 +110,7 @@ describe('scheduled events', () => {
       title: 'Measure kitchen countertops',
       scheduledAt: '2026-06-01T14:00:00.000Z',
       durationMinutes: 90,
-      assigneeUserIds: [ASSIGNEE_USER_ID],
+      assigneeIds: [],
       status: 'scheduled',
       archivedAt: null,
       archivedByUserId: null

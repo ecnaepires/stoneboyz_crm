@@ -124,4 +124,28 @@ describe('quote measurement calculators', () => {
     expect(() => calculateLinearFeet(-1)).toThrow('lengthIn must be a positive number');
     expect(() => roundInches(-1)).toThrow('value must be a non-negative number');
   });
+
+  it('bills a piece by its exact area when areaSqIn is supplied', () => {
+    const viaArea: QuoteMeasurementAreaInput = {
+      name: 'A',
+      pieces: [{ lengthIn: 0, widthIn: 0, areaSqIn: 2500 }]
+    };
+    const viaDims: QuoteMeasurementAreaInput = {
+      name: 'A',
+      pieces: [{ lengthIn: 100, widthIn: 25 }]
+    };
+
+    // a rectangle billed via areaSqIn (100*25 = 2500) matches the same rectangle
+    // billed via lengthIn * widthIn — the two paths agree (ADR 0006).
+    expect(calculateMeasurementAreaTotals(viaArea).countertopSqFt).toBe(
+      calculateMeasurementAreaTotals(viaDims).countertopSqFt
+    );
+    expect(calculateMeasurementAreaTotals(viaArea).countertopSqFt).toBe(17.361);
+  });
+
+  it('rejects a non-positive areaSqIn', () => {
+    expect(() =>
+      calculateMeasurementAreaTotals({ name: 'A', pieces: [{ lengthIn: 0, widthIn: 0, areaSqIn: 0 }] })
+    ).toThrow('areaSqIn must be a positive number');
+  });
 });

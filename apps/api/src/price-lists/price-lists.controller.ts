@@ -39,7 +39,7 @@ export class PriceListsController {
   }
 
   @Post()
-  @Roles('admin')
+  @Roles('admin', 'salesperson')
   async create(@Body() body: unknown, @CurrentUser() actorUserId: string) {
     const parsedBody = createPriceListSchema.safeParse(body);
     if (!parsedBody.success) throw badRequest(formatZodError(parsedBody.error));
@@ -52,7 +52,7 @@ export class PriceListsController {
   }
 
   @Patch(':priceListId')
-  @Roles('admin')
+  @Roles('admin', 'salesperson')
   async update(@Param('priceListId') priceListId: string, @Body() body: unknown, @CurrentUser() actorUserId: string) {
     const parsedBody = updatePriceListSchema.safeParse(body);
     if (!parsedBody.success) throw badRequest(formatZodError(parsedBody.error));
@@ -67,7 +67,7 @@ export class PriceListsController {
   }
 
   @Post(':priceListId/archive')
-  @Roles('admin')
+  @Roles('admin', 'salesperson')
   async archive(@Param('priceListId') priceListId: string, @Body() body: unknown, @CurrentUser() actorUserId: string) {
     const parsedBody = priceListActorSchema.safeParse(body);
     if (!parsedBody.success) throw badRequest(formatZodError(parsedBody.error));

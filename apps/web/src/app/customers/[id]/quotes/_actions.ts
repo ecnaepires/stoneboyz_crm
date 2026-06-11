@@ -82,6 +82,18 @@ const unwrapApiData = (value: unknown) => {
   return value;
 };
 
+const apiErrorMessage = (error: unknown, fallback: string) => {
+  if (error && typeof error === "object") {
+    const directMessage = (error as { message?: unknown }).message;
+    if (typeof directMessage === "string") return directMessage;
+
+    const nestedMessage = (error as { error?: { message?: unknown } }).error?.message;
+    if (typeof nestedMessage === "string") return nestedMessage;
+  }
+
+  return fallback;
+};
+
 type PricingMutationClient = {
   POST: (
     path: string,
@@ -182,6 +194,7 @@ export async function sendQuoteAction(customerId: string, quoteId: string) {
   }
 
   revalidatePath(`/customers/${customerId}/quotes/${quoteId}`);
+  revalidatePath(`/customers/${customerId}/quotes/${quoteId}/drawing`);
 }
 
 export async function sendQuoteEmailAction(
@@ -369,6 +382,7 @@ export async function updateAreaAction(
   }
 
   revalidatePath(`/customers/${customerId}/quotes/${quoteId}`);
+  revalidatePath(`/customers/${customerId}/quotes/${quoteId}/drawing`);
   return { ok: true as const, data: undefined };
 }
 
@@ -392,6 +406,7 @@ export async function deleteAreaAction(
   }
 
   revalidatePath(`/customers/${customerId}/quotes/${quoteId}`);
+  revalidatePath(`/customers/${customerId}/quotes/${quoteId}/drawing`);
 }
 
 export async function generatePricingAction(
@@ -414,6 +429,162 @@ export async function generatePricingAction(
   }
 
   revalidatePath(`/customers/${customerId}/quotes/${quoteId}`);
+}
+
+export async function generateAllPricingAction(
+  customerId: string,
+  quoteId: string,
+  areaIds: string[],
+) {
+  const client =
+    (await getApiClientWithAuth()) as unknown as PricingMutationClient;
+  const uniqueAreaIds = Array.from(new Set(areaIds));
+
+  const results = await Promise.all(
+    uniqueAreaIds.map(async (areaId) => {
+      const { error } = await client.POST(
+        "/customers/{customerId}/quotes/{quoteId}/areas/{areaId}/pricing/generate",
+        {
+          params: { path: { customerId, quoteId, areaId } },
+        },
+      );
+      return { areaId, error };
+    }),
+  );
+  const failedAreaIds = results
+    .filter((result) => result.error)
+    .map((result) => result.areaId);
+
+  if (failedAreaIds.length > 0) {
+    throw new Error(`Failed to generate final price for area(s): ${failedAreaIds.join(", ")}`);
+  }
+
+  revalidatePath(`/customers/${customerId}/quotes/${quoteId}`);
+}
+
+export async function savePricingSelectionsAction(
+  customerId: string,
+  quoteId: string,
+  formData: FormData,
+) {
+  const client =
+    (await getApiClientWithAuth()) as unknown as PricingMutationClient;
+  const areas = new Map<
+    string,
+    {
+      areaId: string;
+      materialItemId: string | null;
+      edgeItemId: string | null;
+      splashItemId: string | null;
+      fabricationItemId: string | null;
+    }
+  >();
+
+  for (const [key, value] of formData.entries()) {
+    if (!key.startsWith("area:") || typeof value !== "string") continue;
+
+    const [, areaId, field] = key.split(":");
+    if (
+      !areaId ||
+      !field ||
+      ![
+        "materialItemId",
+        "edgeItemId",
+        "splashItemId",
+        "fabricationItemId",
+      ].includes(field)
+    ) {
+      continue;
+    }
+
+    const current = areas.get(areaId) ?? {
+      areaId,
+      materialItemId: null,
+      edgeItemId: null,
+      splashItemId: null,
+      fabricationItemId: null,
+    };
+    current[
+      field as
+        | "materialItemId"
+        | "edgeItemId"
+        | "splashItemId"
+        | "fabricationItemId"
+    ] = value.trim() ? value : null;
+    areas.set(areaId, current);
+  }
+
+  const { error } = await client.PATCH(
+    "/customers/{customerId}/quotes/{quoteId}/pricing-selections",
+    {
+      params: { path: { customerId, quoteId } },
+      body: {
+        defaultFabricationItemId: toOptionalNullableString(
+          formData.get("defaultFabricationItemId"),
+        ),
+        sinkItemId: toOptionalNullableString(formData.get("sinkItemId")),
+        faucetHoleItemId: toOptionalNullableString(
+          formData.get("faucetHoleItemId"),
+        ),
+        areas: Array.from(areas.values()),
+      },
+    },
+  );
+
+  if (error) {
+    throw new Error("Failed to save pricing selections");
+  }
+
+  revalidatePath(`/customers/${customerId}/quotes/${quoteId}`);
+}
+
+type AreaPricingPicks = {
+  materialItemId: string | null;
+  materialSource: "inventory" | "external";
+  materialSlabId: string | null;
+  externalMaterialNote: string | null;
+  edgeItemId: string | null;
+  fabricationItemId: string | null;
+  splashItemId: string | null;
+  sinkItemId: string | null;
+  faucetHoleItemId: string | null;
+};
+
+export async function saveAreaPricingAction(
+  customerId: string,
+  quoteId: string,
+  areaId: string,
+  picks: AreaPricingPicks,
+) {
+  const client =
+    (await getApiClientWithAuth()) as unknown as PricingMutationClient;
+
+  const saveResult = await client.PATCH(
+    "/customers/{customerId}/quotes/{quoteId}/pricing-selections",
+    {
+      params: { path: { customerId, quoteId } },
+      body: { areas: [{ areaId, ...picks }] },
+    },
+  );
+  if (saveResult.error) {
+    return {
+      ok: false as const,
+      error: apiErrorMessage(saveResult.error, "Failed to save pricing selections"),
+    };
+  }
+
+  const generateResult = await client.POST(
+    "/customers/{customerId}/quotes/{quoteId}/areas/{areaId}/pricing/generate",
+    {
+      params: { path: { customerId, quoteId, areaId } },
+    },
+  );
+  if (generateResult.error) {
+    return { ok: false as const, error: "Failed to generate pricing" };
+  }
+
+  revalidatePath(`/customers/${customerId}/quotes/${quoteId}`);
+  return { ok: true as const };
 }
 
 export async function overridePricingLineAction(
@@ -557,7 +728,8 @@ export async function createCounterPieceForCanvasAction(
         lengthIn: Number(formData.get("lengthIn")),
         widthIn: Number(formData.get("widthIn")),
         quantity: Number(formData.get("quantity") || 1),
-        kind: (formData.get("kind") as "countertop" | "backsplash") || "countertop",
+        kind:
+          (formData.get("kind") as "countertop" | "backsplash") || "countertop",
       },
     },
   );

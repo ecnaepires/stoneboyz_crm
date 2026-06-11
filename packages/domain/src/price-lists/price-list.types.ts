@@ -1,6 +1,14 @@
-import type { PRICE_LIST_STATUS_VALUES } from './price-list.constants.js';
+import type {
+  PRICE_LIST_CHARGE_METHOD_VALUES,
+  PRICE_LIST_ITEM_GROUP_VALUES,
+  PRICE_LIST_MEASUREMENT_BASIS_VALUES,
+  PRICE_LIST_STATUS_VALUES
+} from './price-list.constants.js';
 
 export type PriceListStatus = typeof PRICE_LIST_STATUS_VALUES[number];
+export type PriceListItemGroup = typeof PRICE_LIST_ITEM_GROUP_VALUES[number];
+export type PriceListChargeMethod = typeof PRICE_LIST_CHARGE_METHOD_VALUES[number];
+export type PriceListMeasurementBasis = typeof PRICE_LIST_MEASUREMENT_BASIS_VALUES[number];
 
 export interface PriceList {
   id: string;
@@ -22,10 +30,14 @@ export interface PriceList {
 export interface PriceListItem {
   id: string;
   priceListId: string;
+  catalogItemId: string | null;
+  itemGroup: PriceListItemGroup;
   category: string;
   itemType: string;
   name: string;
   description: string | null;
+  chargeMethod: PriceListChargeMethod;
+  measurementBasis: PriceListMeasurementBasis;
   unit: string;
   priceCents: number;
   sortOrder: number;
@@ -77,10 +89,14 @@ export interface ListPriceListsInput {
 
 export interface CreatePriceListItemInput {
   actorUserId: string;
+  catalogItemId?: string | undefined;
+  itemGroup?: PriceListItemGroup | undefined;
   category: string;
   itemType: string;
   name: string;
   description?: string | undefined;
+  chargeMethod?: PriceListChargeMethod | undefined;
+  measurementBasis?: PriceListMeasurementBasis | undefined;
   unit: string;
   priceCents: number;
   sortOrder?: number | undefined;
@@ -92,10 +108,14 @@ export interface CreatePriceListItemInput {
 
 export interface UpdatePriceListItemInput {
   actorUserId: string;
+  catalogItemId?: string | null | undefined;
+  itemGroup?: PriceListItemGroup | undefined;
   category?: string | undefined;
   itemType?: string | undefined;
   name?: string | undefined;
   description?: string | null | undefined;
+  chargeMethod?: PriceListChargeMethod | undefined;
+  measurementBasis?: PriceListMeasurementBasis | undefined;
   unit?: string | undefined;
   priceCents?: number | undefined;
   sortOrder?: number | undefined;

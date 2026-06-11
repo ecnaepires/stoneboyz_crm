@@ -8,6 +8,7 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { AppModule } from '../../apps/api/src/app.module.js';
 import { DATABASE_POOL } from '../../apps/api/src/database.provider.js';
 import { seedTestSession } from './helpers/auth.js';
+import { getDefaultJobTemplateId } from './helpers/job-templates.js';
 import { setTestAuthToken } from './helpers/test-auth.js';
 
 const SEEDED_CUSTOMER_ID = '11111111-1111-4111-8111-111111111111';
@@ -16,11 +17,7 @@ const ACTOR_USER_ID = '22222222-2222-4222-8222-222222222222';
 const resetDatabase = async (): Promise<void> => {
   const pool = app.get<Pool>(DATABASE_POOL);
 
-  await pool.query('DROP TABLE IF EXISTS customer_notes CASCADE;');
-  await pool.query('DROP TABLE IF EXISTS customer_addresses CASCADE;');
-  await pool.query('DROP TABLE IF EXISTS customer_contacts CASCADE;');
-  await pool.query('DROP TABLE IF EXISTS projects CASCADE;');
-  await pool.query('DROP TABLE IF EXISTS customers CASCADE;');
+  await pool.query('DROP SCHEMA public CASCADE; CREATE SCHEMA public;');
 
   const migrationsDir = join(process.cwd(), 'db/migrations');
   const migrationFiles = (await readdir(migrationsDir))
@@ -48,6 +45,7 @@ const createProject = async (
   status: 'draft' | 'active' | 'completed' = 'draft',
   customerId = SEEDED_CUSTOMER_ID
 ): Promise<Record<string, unknown>> => {
+  const jobTemplateId = await getDefaultJobTemplateId(baseUrl);
   const response = await fetch(`${baseUrl}/api/v1/projects`, {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
@@ -55,6 +53,7 @@ const createProject = async (
       actorUserId: ACTOR_USER_ID,
       customerId,
       title,
+      jobTemplateId,
       description: `${title} description`,
       status,
       ownerUserId: ACTOR_USER_ID
@@ -80,6 +79,8 @@ describe('project API', () => {
 
   beforeEach(async () => {
     await resetDatabase();
+    const _token = await seedTestSession(app.get(DATABASE_POOL));
+    setTestAuthToken(_token);
   });
 
   afterAll(async () => {
@@ -105,6 +106,7 @@ describe('project API', () => {
         actorUserId: ACTOR_USER_ID,
         customerId: SEEDED_CUSTOMER_ID,
         title: 'Kitchen Install',
+        jobTemplateId: await getDefaultJobTemplateId(baseUrl),
         ownerUserId: ACTOR_USER_ID
       })
     });
@@ -113,6 +115,7 @@ describe('project API', () => {
     expect(response.status).toBe(201);
     expect(body).toMatchObject({
       customerId: SEEDED_CUSTOMER_ID,
+      jobTemplateId: expect.any(String),
       title: 'Kitchen Install',
       description: null,
       status: 'draft',
@@ -121,6 +124,164 @@ describe('project API', () => {
     });
     expect(body.id).toEqual(expect.any(String));
     expect(body.createdAt).toEqual(expect.any(String));
+  });
+
+  it('creates not scheduled job activities from the selected job template', async () => {
+    const project = await createProject('Template Activity Job');
+
+    const response = await fetch(
+      `${baseUrl}/api/v1/customers/${SEEDED_CUSTOMER_ID}/projects/${String(project.id)}/activities`
+    );
+    const body = await response.json() as Array<Record<string, unknown>>;
+
+    expect(response.status).toBe(200);
+    expect(body.map((activity) => activity.title)).toEqual([
+      'Template',
+      'Deposit',
+      'Material',
+      'Cut',
+      'Fabrication',
+      'Install',
+      'Invoice',
+      'Repair'
+    ]);
+    expect(body.every((activity) => activity.status === 'not_scheduled')).toBe(true);
+    expect(body.every((activity) => activity.scheduledEventId === null)).toBe(true);
+    expect(body[0]).toMatchObject({
+      customerId: SEEDED_CUSTOMER_ID,
+      projectId: project.id,
+      jobTemplateId: project.jobTemplateId,
+      sortOrder: 1,
+      durationMinutes: 90
+    });
+  });
+
+  it('schedules a job activity and links it to a scheduled event', async () => {
+    const project = await createProject('Scheduled Activity Job');
+    const activitiesResponse = await fetch(
+      `${baseUrl}/api/v1/customers/${SEEDED_CUSTOMER_ID}/projects/${String(project.id)}/activities`
+    );
+    const activities = await activitiesResponse.json() as Array<Record<string, unknown>>;
+    const templateActivity = activities[0] as Record<string, unknown>;
+    const scheduledAt = new Date(Date.now() + 3_600_000).toISOString();
+
+    const scheduleResponse = await fetch(
+      `${baseUrl}/api/v1/customers/${SEEDED_CUSTOMER_ID}/projects/${String(project.id)}/activities/${String(templateActivity.id)}/schedule`,
+      {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          scheduledAt,
+          durationMinutes: 75,
+          assigneeIds: []
+        })
+      }
+    );
+    const scheduledActivity = await scheduleResponse.json() as Record<string, unknown>;
+
+    expect(scheduleResponse.status).toBe(200);
+    expect(scheduledActivity).toMatchObject({
+      id: templateActivity.id,
+      status: 'scheduled',
+      durationMinutes: 75
+    });
+    expect(scheduledActivity.scheduledEventId).toEqual(expect.any(String));
+
+    const eventsResponse = await fetch(
+      `${baseUrl}/api/v1/customers/${SEEDED_CUSTOMER_ID}/events?projectId=${String(project.id)}`
+    );
+    const eventsBody = await eventsResponse.json() as { data: Array<Record<string, unknown>> };
+
+    expect(eventsResponse.status).toBe(200);
+    // Scheduling the anchor autoschedules every follower, so all 8 template
+    // activities now have events.
+    expect(eventsBody.data).toHaveLength(8);
+    const anchorEvent = eventsBody.data.find((event) => event.id === scheduledActivity.scheduledEventId);
+    expect(anchorEvent).toMatchObject({
+      id: scheduledActivity.scheduledEventId,
+      projectId: project.id,
+      appointmentType: 'template',
+      title: 'Template',
+      durationMinutes: 75,
+      status: 'scheduled',
+      assigneeIds: []
+    });
+  });
+
+  it('reschedules a job activity and syncs status from scheduled event transitions', async () => {
+    const project = await createProject('Rescheduled Activity Job');
+    const activitiesResponse = await fetch(
+      `${baseUrl}/api/v1/customers/${SEEDED_CUSTOMER_ID}/projects/${String(project.id)}/activities`
+    );
+    const activities = await activitiesResponse.json() as Array<Record<string, unknown>>;
+    const activity = activities[0] as Record<string, unknown>;
+    const scheduledAt = new Date(Date.now() + 3_600_000).toISOString();
+
+    const scheduleResponse = await fetch(
+      `${baseUrl}/api/v1/customers/${SEEDED_CUSTOMER_ID}/projects/${String(project.id)}/activities/${String(activity.id)}/schedule`,
+      {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          scheduledAt,
+          durationMinutes: 75,
+          assigneeIds: []
+        })
+      }
+    );
+    const scheduledActivity = await scheduleResponse.json() as Record<string, unknown>;
+    const rescheduledAt = new Date(Date.now() + 7_200_000).toISOString();
+
+    const rescheduleResponse = await fetch(
+      `${baseUrl}/api/v1/customers/${SEEDED_CUSTOMER_ID}/projects/${String(project.id)}/activities/${String(activity.id)}/schedule`,
+      {
+        method: 'PATCH',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          scheduledAt: rescheduledAt,
+          durationMinutes: 105,
+          assigneeIds: []
+        })
+      }
+    );
+    const rescheduledActivity = await rescheduleResponse.json() as Record<string, unknown>;
+
+    expect(rescheduleResponse.status).toBe(200);
+    expect(rescheduledActivity).toMatchObject({
+      id: activity.id,
+      status: 'scheduled',
+      durationMinutes: 105,
+      scheduledEventId: scheduledActivity.scheduledEventId
+    });
+
+    const eventResponse = await fetch(`${baseUrl}/api/v1/customers/${SEEDED_CUSTOMER_ID}/events/${String(scheduledActivity.scheduledEventId)}`);
+    const event = await eventResponse.json() as Record<string, unknown>;
+    expect(event).toMatchObject({
+      scheduledAt: rescheduledAt,
+      durationMinutes: 105
+    });
+
+    for (const [action, expectedStatus] of [
+      ['confirm', 'confirmed'],
+      ['start', 'in_progress'],
+      ['finish', 'completed']
+    ] as const) {
+      const transitionResponse = await fetch(
+        `${baseUrl}/api/v1/customers/${SEEDED_CUSTOMER_ID}/events/${String(scheduledActivity.scheduledEventId)}/${action}`,
+        {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({})
+        }
+      );
+      expect(transitionResponse.status).toBe(200);
+
+      const syncedActivitiesResponse = await fetch(
+        `${baseUrl}/api/v1/customers/${SEEDED_CUSTOMER_ID}/projects/${String(project.id)}/activities`
+      );
+      const syncedActivities = await syncedActivitiesResponse.json() as Array<Record<string, unknown>>;
+      expect(syncedActivities[0]?.status).toBe(expectedStatus);
+    }
   });
 
   it('gets a project by id', async () => {
@@ -157,6 +318,47 @@ describe('project API', () => {
       title: 'After Update',
       description: 'Updated scope'
     });
+  });
+
+  it('updates job address separately from the customer address', async () => {
+    const project = await createProject('Job Address Split');
+
+    const addressesBefore = await (
+      await fetch(`${baseUrl}/api/v1/customers/${SEEDED_CUSTOMER_ID}/addresses`)
+    ).json();
+
+    const response = await fetch(`${baseUrl}/api/v1/projects/${project.id}`, {
+      method: 'PATCH',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        actorUserId: ACTOR_USER_ID,
+        jobAddress: {
+          line1: '742 Granite Way',
+          city: 'Springfield',
+          region: 'MO',
+          postalCode: '65801',
+          country: 'US'
+        }
+      })
+    });
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(body.jobAddress).toMatchObject({
+      line1: '742 Granite Way',
+      city: 'Springfield',
+      region: 'MO',
+      postalCode: '65801',
+      country: 'US'
+    });
+
+    const fetched = await (await fetch(`${baseUrl}/api/v1/projects/${project.id}`)).json();
+    expect(fetched.jobAddress).toMatchObject({ line1: '742 Granite Way', city: 'Springfield' });
+
+    const addressesAfter = await (
+      await fetch(`${baseUrl}/api/v1/customers/${SEEDED_CUSTOMER_ID}/addresses`)
+    ).json();
+    expect(addressesAfter).toEqual(addressesBefore);
   });
 
   it('filters projects by customerId', async () => {
@@ -305,13 +507,14 @@ describe('project API', () => {
         actorUserId: ACTOR_USER_ID,
         customerId: '99999999-9999-4999-8999-999999999999',
         title: 'Missing Customer Project',
+        jobTemplateId: await getDefaultJobTemplateId(baseUrl),
         ownerUserId: ACTOR_USER_ID
       })
     });
     const body = await response.json();
 
     expect(response.status).toBe(404);
-    expect(body).toMatchObject({ code: 'NOT_FOUND', message: 'Customer not found' });
+    expect(body).toMatchObject({ code: 'NOT_FOUND', message: 'Customer or Job Template not found' });
   });
 
   it('returns validation error for empty update body', async () => {

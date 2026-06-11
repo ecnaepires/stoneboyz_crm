@@ -35,6 +35,29 @@ const canvasPieceShapeSchema = z.discriminatedUnion("type", [
       )
       .min(2),
   }),
+  // Canonical outline shape (ADR 0006): ordered vertices in inches. Geometric
+  // validity (closed, positive area, no self-intersection) is enforced by
+  // polygonValidate in saveDrawingRevisionSchema, not here.
+  z.object({
+    type: z.literal("polygon"),
+    vertices: z
+      .array(z.object({ id: z.string().min(1).optional(), x: z.number(), y: z.number() }))
+      .min(3)
+      .transform((vertices) => {
+        const usedIds = new Set<string>();
+        return vertices.map((vertex, index) => {
+          const baseId = vertex.id ?? `legacy-v${index}`;
+          let id = baseId;
+          let suffix = 1;
+          while (usedIds.has(id)) {
+            id = `${baseId}-${suffix}`;
+            suffix += 1;
+          }
+          usedIds.add(id);
+          return { id, x: vertex.x, y: vertex.y };
+        });
+      }),
+  }),
 ]);
 
 const canvasPieceLayoutSchema = z.object({
@@ -42,6 +65,7 @@ const canvasPieceLayoutSchema = z.object({
   x: z.number(),
   y: z.number(),
   rotation: z.number().default(0),
+  kind: z.enum(["countertop", "backsplash"]).default("countertop"),
   groupId: z.string().uuid().nullable().optional(),
   shape: canvasPieceShapeSchema.nullable().optional(),
 });
@@ -52,12 +76,20 @@ const canvasSinkLayoutSchema = z.object({
   x: z.number(),
   y: z.number(),
   rotation: z.number().default(0),
+  quantity: z.number().int().positive().default(1),
+  faucetHoleCount: z.number().int().min(0).default(0),
 });
 
 const canvasCornerLayoutSchema = z.object({
   pieceId: z.string().uuid(),
   corner: z.enum(["topLeft", "topRight", "bottomRight", "bottomLeft"]),
-  treatment: z.enum(["none", "radius", "clip", "bumpOut", "notch"]),
+  // Notch and Bump-Out are no longer corner treatments (ADR 0006); they are
+  // drawn into the piece outline as geometry. Legacy revisions that stored them
+  // on a corner coerce to "none" on load so old drawings still open.
+  treatment: z.preprocess(
+    (value) => (value === "bumpOut" || value === "notch" ? "none" : value),
+    z.enum(["none", "radius", "clip"]),
+  ),
   valueIn: z.number().positive().nullable().default(null),
 });
 
@@ -91,7 +123,7 @@ const canvasReferenceLineLayoutSchema = z.object({
   pieceId: z.string().uuid(),
   from: z.tuple([z.number(), z.number()]),
   to: z.tuple([z.number(), z.number()]),
-  kind: z.enum(["cabinet", "wall", "centerline", "dimension"]).default("cabinet"),
+  kind: z.enum(["cabinet", "wall", "centerline", "dimension", "segment"]).default("cabinet"),
   color: z.string().trim().max(32).default("#6b7280"),
   dash: z.boolean().optional(),
 });

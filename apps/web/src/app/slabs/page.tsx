@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { Image as ImageIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { getApiClientWithAuth } from '@/lib/api';
@@ -35,6 +36,7 @@ export default async function SlabsPage() {
       <Table>
         <TableHeader>
           <TableRow>
+            <TableHead>Photo</TableHead>
             <TableHead>Stone Type</TableHead>
             <TableHead>Finish</TableHead>
             <TableHead>Grade</TableHead>
@@ -48,10 +50,26 @@ export default async function SlabsPage() {
         <TableBody>
           {slabs.map((slab) => (
             <TableRow key={slab.id}>
+              <TableCell>
+                {slab.imageUrls[0] ? (
+                  <Link href={`/slabs/${slab.id}`} aria-label={`Open ${slab.stoneType}`}>
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={slab.imageUrls[0]}
+                      alt={`${slab.stoneType} slab`}
+                      className="h-12 w-12 rounded border object-cover"
+                    />
+                  </Link>
+                ) : (
+                  <div className="flex h-12 w-12 items-center justify-center rounded border bg-muted text-muted-foreground">
+                    <ImageIcon className="h-5 w-5" aria-hidden="true" />
+                  </div>
+                )}
+              </TableCell>
               <TableCell><Link href={`/slabs/${slab.id}`} className="font-medium text-primary hover:underline">{slab.stoneType}</Link></TableCell>
               <TableCell className="capitalize">{slab.finish}</TableCell>
               <TableCell>{slab.qualityGrade}</TableCell>
-              <TableCell>{slab.lengthIn.toFixed(3)} x {slab.widthIn.toFixed(3)}</TableCell>
+              <TableCell>{slab.lengthIn} x {slab.widthIn}</TableCell>
               <TableCell>{squareFeet(slab.lengthIn, slab.widthIn)}</TableCell>
               <TableCell>
                 <span className={`inline-flex rounded-full px-2 py-1 text-xs font-medium capitalize ${statusClasses[slab.status]}`}>

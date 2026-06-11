@@ -1,22 +1,36 @@
 import { Inject, Injectable } from '@nestjs/common';
 import {
-  calculateMeasurementAreaTotals,
-  type CounterPieceInput,
+  measurementTotalsFromLayout,
+  type CanvasChainShapeLayout,
+  type CanvasLayout,
   type CreateQuoteAreaInput,
-  type EdgeSegmentInput,
   type QuoteArea,
   type QuoteMeasurementAreaTotals,
-  type SinkCutoutInput,
   type UpdateQuoteAreaInput
 } from '@stoneboyz/domain';
 import type { Pool } from 'pg';
 import { DATABASE_POOL } from '../database.provider.js';
 import { mapQuoteAreaRow, type QuoteAreaRow } from './quote-area.mapper.js';
-import type { CounterPieceRow, EdgeSegmentRow, SinkCutoutRow } from './quote-measurements.mapper.js';
 
-const AREA_SELECT = `
-  qa.*,
-  COALESCE(SUM(FLOOR(qli.qty * (qli.unit_price_cents + qli.labor_price_cents))), 0)::integer AS subtotal_cents
+const areaSubtotalSelect = (areaAlias: string): string => `
+  COALESCE(
+    (
+      SELECT SUM(COALESCE(gpl.override_price_cents, gpl.line_total_cents))
+      FROM generated_price_lines gpl
+      WHERE gpl.quote_area_id = ${areaAlias}.id
+    ),
+    (
+      SELECT SUM(FLOOR(qli.qty * (qli.unit_price_cents + qli.labor_price_cents)))
+      FROM quote_line_items qli
+      WHERE qli.quote_area_id = ${areaAlias}.id
+    ),
+    0
+  )::integer AS subtotal_cents
+`;
+
+const AREA_SELECT = (areaAlias: string): string => `
+  ${areaAlias}.*,
+  ${areaSubtotalSelect(areaAlias)}
 `;
 
 const UPDATE_COLUMNS: Record<string, string> = {
@@ -28,6 +42,87 @@ const UPDATE_COLUMNS: Record<string, string> = {
   notes: 'notes'
 };
 
+type CounterPieceMeasurementRow = {
+  quote_area_id: string;
+  id: string;
+  length_in: number | string;
+  width_in: number | string;
+  kind: string;
+};
+
+const RECTANGLE_SHAPE_SCALE = 3;
+
+const rectangleChainShape = (lengthIn: number, widthIn: number): CanvasChainShapeLayout => {
+  const halfLengthIn = lengthIn / 2;
+
+  return {
+    type: 'chain',
+    segments: [
+      {
+        x: 0,
+        y: 0,
+        w: halfLengthIn * RECTANGLE_SHAPE_SCALE,
+        h: widthIn * RECTANGLE_SHAPE_SCALE,
+        lengthIn: halfLengthIn,
+        widthIn,
+        orientation: 'horizontal'
+      },
+      {
+        x: halfLengthIn * RECTANGLE_SHAPE_SCALE,
+        y: 0,
+        w: halfLengthIn * RECTANGLE_SHAPE_SCALE,
+        h: widthIn * RECTANGLE_SHAPE_SCALE,
+        lengthIn: halfLengthIn,
+        widthIn,
+        orientation: 'horizontal'
+      }
+    ]
+  };
+};
+
+const layoutWithCounterPieceDimensions = (
+  layout: CanvasLayout,
+  piecesById: Map<string, CounterPieceMeasurementRow>
+): CanvasLayout => ({
+  ...layout,
+  pieces: layout.pieces.map((piece) => {
+    const counterPiece = piecesById.get(piece.pieceId);
+    if (counterPiece === undefined) {
+      return piece;
+    }
+
+    return {
+      ...piece,
+      kind: piece.kind ?? (counterPiece.kind === 'backsplash' ? 'backsplash' : 'countertop'),
+      shape: piece.shape ?? rectangleChainShape(Number(counterPiece.length_in), Number(counterPiece.width_in))
+    };
+  })
+});
+
+const parseCanvasLayout = (value: CanvasLayout | string): CanvasLayout | null => {
+  const parsed = (() => {
+    if (typeof value !== 'string') {
+      return value;
+    }
+
+    try {
+      return JSON.parse(value) as unknown;
+    } catch {
+      return null;
+    }
+  })();
+
+  if (
+    typeof parsed !== 'object' ||
+    parsed === null ||
+    !Array.isArray((parsed as { pieces?: unknown }).pieces)
+  ) {
+    return null;
+  }
+
+  return parsed as CanvasLayout;
+};
+
 @Injectable()
 export class QuoteAreasRepository {
   constructor(@Inject(DATABASE_POOL) private readonly pool: Pool) {}
@@ -35,11 +130,9 @@ export class QuoteAreasRepository {
   async listByQuoteId(quoteId: string): Promise<QuoteArea[]> {
     const result = await this.pool.query<QuoteAreaRow>(
       `
-        SELECT ${AREA_SELECT}
+        SELECT ${AREA_SELECT('qa')}
         FROM quote_areas qa
-        LEFT JOIN quote_line_items qli ON qli.quote_area_id = qa.id
         WHERE qa.quote_id = $1
-        GROUP BY qa.id
         ORDER BY qa.sort_order ASC, qa.created_at ASC
       `,
       [quoteId]
@@ -53,11 +146,9 @@ export class QuoteAreasRepository {
   async findById(quoteId: string, areaId: string): Promise<QuoteArea | null> {
     const result = await this.pool.query<QuoteAreaRow>(
       `
-        SELECT ${AREA_SELECT}
+        SELECT ${AREA_SELECT('qa')}
         FROM quote_areas qa
-        LEFT JOIN quote_line_items qli ON qli.quote_area_id = qa.id
         WHERE qa.quote_id = $1 AND qa.id = $2
-        GROUP BY qa.id
       `,
       [quoteId, areaId]
     );
@@ -122,10 +213,8 @@ export class QuoteAreasRepository {
           WHERE quote_id = ${quotePlaceholder} AND id = ${areaPlaceholder}
           RETURNING *
         )
-        SELECT u.*, COALESCE(SUM(FLOOR(qli.qty * (qli.unit_price_cents + qli.labor_price_cents))), 0)::integer AS subtotal_cents
+        SELECT u.*, ${areaSubtotalSelect('u')}
         FROM updated u
-        LEFT JOIN quote_line_items qli ON qli.quote_area_id = u.id
-        GROUP BY u.id, u.quote_id, u.sort_order, u.name, u.material, u.color, u.edge_profile, u.notes, u.created_at, u.updated_at
       `,
       values
     );
@@ -166,109 +255,60 @@ export class QuoteAreasRepository {
   }
 
   async pricingMeasurementTotalsForArea(areaId: string): Promise<QuoteMeasurementAreaTotals> {
-    const result = await this.pool.query<{
-      piece_count: string;
-      countertop_sq_ft: string;
-      backsplash_sq_ft: string;
-      combined_sq_ft: string;
-      finished_edge_lin_ft: string;
-      splash_sq_ft: string;
-      sink_cutout_count: string;
-      faucet_hole_count: string;
-    }>(
-      `
-        SELECT
-          COALESCE((SELECT SUM(quantity) FROM counter_pieces WHERE quote_area_id = $1), 0) AS piece_count,
-          COALESCE((SELECT SUM(length_in * width_in * quantity) / 144 FROM counter_pieces WHERE quote_area_id = $1 AND kind <> 'backsplash'), 0) AS countertop_sq_ft,
-          COALESCE((SELECT SUM(length_in * width_in * quantity) / 144 FROM counter_pieces WHERE quote_area_id = $1 AND kind = 'backsplash'), 0) AS backsplash_sq_ft,
-          COALESCE((SELECT SUM(length_in * width_in * quantity) / 144 FROM counter_pieces WHERE quote_area_id = $1), 0) AS combined_sq_ft,
-          COALESCE((SELECT SUM(length_in) / 12 FROM edge_segments WHERE quote_area_id = $1 AND treatment = 'finished'), 0) AS finished_edge_lin_ft,
-          COALESCE((SELECT SUM(length_in * splash_height_in) / 144 FROM edge_segments WHERE quote_area_id = $1 AND splash_height_in IS NOT NULL), 0) AS splash_sq_ft,
-          COALESCE((SELECT SUM(quantity) FROM sink_cutouts WHERE quote_area_id = $1), 0) AS sink_cutout_count,
-          COALESCE((SELECT SUM(quantity * faucet_hole_count) FROM sink_cutouts WHERE quote_area_id = $1), 0) AS faucet_hole_count
-      `,
-      [areaId]
+    // Pricing reads the same layout-derived totals as the quote summary, so the
+    // drawing stays the single source of truth (ADR 0003). No duplicated SQL.
+    const totals = await this.measurementTotalsForAreas([{ id: areaId } as QuoteAreaRow]);
+    return (
+      totals.get(areaId) ?? {
+        pieceCount: 0,
+        countertopSqFt: 0,
+        backsplashSqFt: 0,
+        combinedSqFt: 0,
+        finishedEdgeLinFt: 0,
+        splashSqFt: 0,
+        sinkCutoutCount: 0,
+        faucetHoleCount: 0
+      }
     );
-    const row = result.rows[0];
-
-    return {
-      pieceCount: Number(row?.piece_count ?? 0),
-      countertopSqFt: Number(row?.countertop_sq_ft ?? 0),
-      backsplashSqFt: Number(row?.backsplash_sq_ft ?? 0),
-      combinedSqFt: Number(row?.combined_sq_ft ?? 0),
-      finishedEdgeLinFt: Number(row?.finished_edge_lin_ft ?? 0),
-      splashSqFt: Number(row?.splash_sq_ft ?? 0),
-      sinkCutoutCount: Number(row?.sink_cutout_count ?? 0),
-      faucetHoleCount: Number(row?.faucet_hole_count ?? 0)
-    };
   }
 
   private async measurementTotalsForAreas(rows: QuoteAreaRow[]): Promise<Map<string, QuoteMeasurementAreaTotals>> {
-    const areaIds = rows.map((row) => row.id);
     const totals = new Map<string, QuoteMeasurementAreaTotals>();
-
+    const areaIds = rows.map((row) => row.id);
     if (areaIds.length === 0) {
       return totals;
     }
 
-    const [piecesResult, edgesResult, sinksResult] = await Promise.all([
-      this.pool.query<CounterPieceRow>('SELECT * FROM counter_pieces WHERE quote_area_id = ANY($1::uuid[])', [areaIds]),
-      this.pool.query<EdgeSegmentRow>('SELECT * FROM edge_segments WHERE quote_area_id = ANY($1::uuid[])', [areaIds]),
-      this.pool.query<SinkCutoutRow>('SELECT * FROM sink_cutouts WHERE quote_area_id = ANY($1::uuid[])', [areaIds])
-    ]);
+    const layouts = await this.pool.query<{ quote_area_id: string; layout: CanvasLayout | string }>(
+      `SELECT DISTINCT ON (quote_area_id) quote_area_id, layout
+         FROM drawing_revisions
+        WHERE quote_area_id = ANY($1::uuid[])
+        ORDER BY quote_area_id, revision_number DESC`,
+      [areaIds]
+    );
+    const counterPieces = await this.pool.query<CounterPieceMeasurementRow>(
+      `SELECT quote_area_id, id, length_in, width_in, kind
+         FROM counter_pieces
+        WHERE quote_area_id = ANY($1::uuid[])`,
+      [areaIds]
+    );
+    const counterPiecesByArea = new Map<string, Map<string, CounterPieceMeasurementRow>>();
+    for (const piece of counterPieces.rows) {
+      const areaPieces = counterPiecesByArea.get(piece.quote_area_id) ?? new Map<string, CounterPieceMeasurementRow>();
+      areaPieces.set(piece.id, piece);
+      counterPiecesByArea.set(piece.quote_area_id, areaPieces);
+    }
 
-    for (const row of rows) {
-      const pieces: CounterPieceInput[] = piecesResult.rows
-        .filter((piece) => piece.quote_area_id === row.id)
-        .map((piece) => {
-          const input: CounterPieceInput = {
-            lengthIn: Number(piece.length_in),
-            widthIn: Number(piece.width_in),
-            quantity: piece.quantity,
-            kind: piece.kind === "backsplash" ? "backsplash" : "countertop"
-          };
+    for (const row of layouts.rows) {
+      const layout = parseCanvasLayout(row.layout);
+      if (layout === null) {
+        continue;
+      }
 
-          if (piece.name !== null) {
-            input.name = piece.name;
-          }
-
-          return input;
-        });
-      const edges: EdgeSegmentInput[] = edgesResult.rows
-        .filter((edge) => edge.quote_area_id === row.id)
-        .map((edge) => {
-          const input: EdgeSegmentInput = {
-            lengthIn: Number(edge.length_in),
-            treatment: edge.treatment
-          };
-
-          if (edge.splash_height_in !== null) {
-            input.splashHeightIn = Number(edge.splash_height_in);
-          }
-
-          return input;
-        });
-      const sinks: SinkCutoutInput[] = sinksResult.rows
-        .filter((sink) => sink.quote_area_id === row.id)
-        .map((sink) => {
-          const input: SinkCutoutInput = {
-            quantity: sink.quantity,
-            sinkType: sink.sink_type,
-            shape: sink.shape,
-            cutoutLengthIn: Number(sink.cutout_length_in),
-            cutoutWidthIn: Number(sink.cutout_width_in),
-            faucetHoleCount: sink.faucet_hole_count,
-            centerline: sink.centerline
-          };
-
-          if (sink.model !== null) {
-            input.model = sink.model;
-          }
-
-          return input;
-        });
-
-      totals.set(row.id, calculateMeasurementAreaTotals({ name: row.name, pieces, edges, sinks }));
+      totals.set(
+        row.quote_area_id,
+        measurementTotalsFromLayout(layoutWithCounterPieceDimensions(layout, counterPiecesByArea.get(row.quote_area_id) ?? new Map()))
+      );
     }
 
     return totals;

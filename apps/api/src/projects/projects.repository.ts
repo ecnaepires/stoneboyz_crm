@@ -1,22 +1,23 @@
-import { Inject, Injectable } from '@nestjs/common';
+import { Inject, Injectable } from "@nestjs/common";
 import type {
   ArchiveProjectInput,
   CreateProjectInput,
   ListProjectsInput,
+  JobTemplateActivitySpec,
   PipelineStage,
   Project,
   ProjectStatus,
   ProjectSortBy,
   SortDirection,
-  UpdateProjectInput
-} from '@stoneboyz/domain';
-import type { Pool, PoolClient } from 'pg';
-import { DATABASE_POOL } from '../database.provider.js';
-import { mapProjectRow, type ProjectRow } from './project.mapper.js';
+  UpdateProjectInput,
+} from "@stoneboyz/domain";
+import type { Pool, PoolClient } from "pg";
+import { DATABASE_POOL } from "../database.provider.js";
+import { mapProjectRow, type ProjectRow } from "./project.mapper.js";
 
 type NormalizedListProjectsInput = Omit<
   ListProjectsInput,
-  'limit' | 'sortBy' | 'sortDirection'
+  "limit" | "sortBy" | "sortDirection"
 > & {
   limit: number;
   sortBy: ProjectSortBy;
@@ -30,55 +31,58 @@ interface ProjectCursor {
 }
 
 const SORT_COLUMNS: Record<ProjectSortBy, string> = {
-  title: 'title',
-  createdAt: 'created_at',
-  updatedAt: 'updated_at',
-  status: 'status'
+  title: "title",
+  createdAt: "created_at",
+  updatedAt: "updated_at",
+  status: "status",
 };
 
 const UPDATE_COLUMNS = {
-  customerId: 'customer_id',
-  title: 'title',
-  description: 'description',
-  status: 'status',
-  ownerUserId: 'owner_user_id'
-} satisfies Record<Exclude<keyof UpdateProjectInput, 'actorUserId' | 'jobAddress'>, string>;
+  customerId: "customer_id",
+  title: "title",
+  description: "description",
+  status: "status",
+  ownerUserId: "owner_user_id",
+} satisfies Record<
+  Exclude<keyof UpdateProjectInput, "actorUserId" | "jobAddress">,
+  string
+>;
 
 const JOB_ADDRESS_COLUMNS = {
-  line1: 'job_address_line1',
-  line2: 'job_address_line2',
-  city: 'job_city',
-  region: 'job_region',
-  postalCode: 'job_postal_code',
-  country: 'job_country',
-  contactName: 'job_contact_name',
-  phone: 'job_phone',
-  email: 'job_email'
-} satisfies Record<keyof NonNullable<CreateProjectInput['jobAddress']>, string>;
+  line1: "job_address_line1",
+  line2: "job_address_line2",
+  city: "job_city",
+  region: "job_region",
+  postalCode: "job_postal_code",
+  country: "job_country",
+  contactName: "job_contact_name",
+  phone: "job_phone",
+  email: "job_email",
+} satisfies Record<keyof NonNullable<CreateProjectInput["jobAddress"]>, string>;
 
 export class InvalidProjectCursorError extends Error {
   constructor() {
-    super('Invalid project cursor');
+    super("Invalid project cursor");
   }
 }
 
 const encodeCursor = (cursor: ProjectCursor): string => {
-  return Buffer.from(JSON.stringify(cursor), 'utf8').toString('base64url');
+  return Buffer.from(JSON.stringify(cursor), "utf8").toString("base64url");
 };
 
 const decodeCursor = (cursor: string): ProjectCursor => {
   try {
     const parsed = JSON.parse(
-      Buffer.from(cursor, 'base64url').toString('utf8')
+      Buffer.from(cursor, "base64url").toString("utf8"),
     ) as Partial<ProjectCursor>;
 
     if (
-      typeof parsed.id !== 'string' ||
-      typeof parsed.sortValue !== 'string' ||
-      (parsed.sortBy !== 'title' &&
-        parsed.sortBy !== 'createdAt' &&
-        parsed.sortBy !== 'updatedAt' &&
-        parsed.sortBy !== 'status')
+      typeof parsed.id !== "string" ||
+      typeof parsed.sortValue !== "string" ||
+      (parsed.sortBy !== "title" &&
+        parsed.sortBy !== "createdAt" &&
+        parsed.sortBy !== "updatedAt" &&
+        parsed.sortBy !== "status")
     ) {
       throw new InvalidProjectCursorError();
     }
@@ -86,7 +90,7 @@ const decodeCursor = (cursor: string): ProjectCursor => {
     return {
       id: parsed.id,
       sortBy: parsed.sortBy,
-      sortValue: parsed.sortValue
+      sortValue: parsed.sortValue,
     };
   } catch (error) {
     if (error instanceof InvalidProjectCursorError) {
@@ -97,21 +101,25 @@ const decodeCursor = (cursor: string): ProjectCursor => {
   }
 };
 
-const getCursorSortValue = (
-  row: ProjectRow,
-  sortBy: ProjectSortBy
-): string => {
+const getCursorSortValue = (row: ProjectRow, sortBy: ProjectSortBy): string => {
   switch (sortBy) {
-    case 'createdAt':
+    case "createdAt":
       return row.created_at.toISOString();
-    case 'updatedAt':
+    case "updatedAt":
       return row.updated_at.toISOString();
-    case 'title':
+    case "title":
       return row.title;
-    case 'status':
+    case "status":
       return row.status;
   }
 };
+
+const templateActivityKey = (spec: JobTemplateActivitySpec): string =>
+  `${spec.sortOrder}:${spec.title
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "")}`;
 
 @Injectable()
 export class ProjectsRepository {
@@ -124,7 +132,7 @@ export class ProjectsRepository {
   }> {
     const values: unknown[] = [];
     const where: string[] = [
-      input.includeArchived ? 'archived_at IS NOT NULL' : 'archived_at IS NULL'
+      input.includeArchived ? "archived_at IS NOT NULL" : "archived_at IS NULL",
     ];
 
     const addValue = (value: unknown): string => {
@@ -159,13 +167,13 @@ export class ProjectsRepository {
         throw new InvalidProjectCursorError();
       }
 
-      if (input.sortDirection === 'asc') {
+      if (input.sortDirection === "asc") {
         where.push(
-          `(${sortColumn} > ${addValue(cursor.sortValue)} OR (${sortColumn} = ${addValue(cursor.sortValue)} AND id > ${addValue(cursor.id)}))`
+          `(${sortColumn} > ${addValue(cursor.sortValue)} OR (${sortColumn} = ${addValue(cursor.sortValue)} AND id > ${addValue(cursor.id)}))`,
         );
       } else {
         where.push(
-          `(${sortColumn} < ${addValue(cursor.sortValue)} OR (${sortColumn} = ${addValue(cursor.sortValue)} AND id > ${addValue(cursor.id)}))`
+          `(${sortColumn} < ${addValue(cursor.sortValue)} OR (${sortColumn} = ${addValue(cursor.sortValue)} AND id > ${addValue(cursor.id)}))`,
         );
       }
     }
@@ -176,11 +184,11 @@ export class ProjectsRepository {
       `
         SELECT *
         FROM projects
-        WHERE ${where.join(' AND ')}
+        WHERE ${where.join(" AND ")}
         ORDER BY ${sortColumn} ${sortDirection}, id ASC
         LIMIT ${limitValue}
       `,
-      values
+      values,
     );
 
     const rows = result.rows.slice(0, input.limit);
@@ -193,9 +201,9 @@ export class ProjectsRepository {
           ? encodeCursor({
               id: rows.at(-1)!.id,
               sortBy: input.sortBy,
-              sortValue: getCursorSortValue(rows.at(-1)!, input.sortBy)
+              sortValue: getCursorSortValue(rows.at(-1)!, input.sortBy),
             })
-          : null
+          : null,
     };
   }
 
@@ -203,19 +211,22 @@ export class ProjectsRepository {
     const client = await this.pool.connect();
 
     try {
-      await client.query('BEGIN');
+      await client.query("BEGIN");
       const project = await this.createWithClient(client, input);
-      await client.query('COMMIT');
+      await client.query("COMMIT");
       return project;
     } catch (error) {
-      await client.query('ROLLBACK');
+      await client.query("ROLLBACK");
       throw error;
     } finally {
       client.release();
     }
   }
 
-  async createWithClient(client: PoolClient, input: CreateProjectInput): Promise<Project> {
+  async createWithClient(
+    client: PoolClient,
+    input: CreateProjectInput,
+  ): Promise<Project> {
     const jobNumber = await this.nextJobNumber(client);
     const jobAddress = await this.resolveJobAddress(client, input);
 
@@ -226,6 +237,7 @@ export class ProjectsRepository {
           job_number,
           title,
           description,
+          job_template_id,
           status,
           owner_user_id,
           job_address_line1,
@@ -238,7 +250,7 @@ export class ProjectsRepository {
           job_phone,
           job_email
         )
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
         RETURNING *
       `,
       [
@@ -246,7 +258,8 @@ export class ProjectsRepository {
         jobNumber,
         input.title,
         input.description ?? null,
-        input.status ?? 'draft',
+        input.jobTemplateId,
+        input.status ?? "draft",
         input.ownerUserId,
         jobAddress?.line1 ?? null,
         jobAddress?.line2 ?? null,
@@ -256,11 +269,14 @@ export class ProjectsRepository {
         jobAddress?.country ?? null,
         jobAddress?.contactName ?? null,
         jobAddress?.phone ?? null,
-        jobAddress?.email ?? null
-      ]
+        jobAddress?.email ?? null,
+      ],
     );
 
-    return mapProjectRow(result.rows[0] as ProjectRow);
+    const project = mapProjectRow(result.rows[0] as ProjectRow);
+    await this.createJobActivitiesFromTemplate(client, project);
+
+    return project;
   }
 
   async findById(projectId: string): Promise<Project | null> {
@@ -270,7 +286,7 @@ export class ProjectsRepository {
         FROM projects
         WHERE id = $1 AND archived_at IS NULL
       `,
-      [projectId]
+      [projectId],
     );
 
     const row = result.rows[0];
@@ -285,7 +301,7 @@ export class ProjectsRepository {
         FROM projects
         WHERE id = $1
       `,
-      [projectId]
+      [projectId],
     );
 
     const row = result.rows[0];
@@ -293,7 +309,10 @@ export class ProjectsRepository {
     return row === undefined ? null : mapProjectRow(row);
   }
 
-  async update(projectId: string, input: UpdateProjectInput): Promise<Project | null> {
+  async update(
+    projectId: string,
+    input: UpdateProjectInput,
+  ): Promise<Project | null> {
     const values: unknown[] = [];
     const assignments: string[] = [];
 
@@ -310,25 +329,31 @@ export class ProjectsRepository {
       }
     }
 
-    if (Object.hasOwn(input, 'jobAddress')) {
-      for (const [fieldName, columnName] of Object.entries(JOB_ADDRESS_COLUMNS)) {
-        const typedFieldName = fieldName as keyof NonNullable<UpdateProjectInput['jobAddress']>;
-        assignments.push(`${columnName} = ${addValue(input.jobAddress?.[typedFieldName] ?? null)}`);
+    if (Object.hasOwn(input, "jobAddress")) {
+      for (const [fieldName, columnName] of Object.entries(
+        JOB_ADDRESS_COLUMNS,
+      )) {
+        const typedFieldName = fieldName as keyof NonNullable<
+          UpdateProjectInput["jobAddress"]
+        >;
+        assignments.push(
+          `${columnName} = ${addValue(input.jobAddress?.[typedFieldName] ?? null)}`,
+        );
       }
     }
 
-    assignments.push('updated_at = now()');
+    assignments.push("updated_at = now()");
 
     const idPlaceholder = addValue(projectId);
 
     const result = await this.pool.query<ProjectRow>(
       `
         UPDATE projects
-        SET ${assignments.join(', ')}
+        SET ${assignments.join(", ")}
         WHERE id = ${idPlaceholder} AND archived_at IS NULL
         RETURNING *
       `,
-      values
+      values,
     );
 
     const row = result.rows[0];
@@ -338,7 +363,7 @@ export class ProjectsRepository {
 
   async updateStage(
     projectId: string,
-    params: { stage: PipelineStage; status: ProjectStatus }
+    params: { stage: PipelineStage; status: ProjectStatus },
   ): Promise<Project | null> {
     const result = await this.pool.query<ProjectRow>(
       `
@@ -347,7 +372,7 @@ export class ProjectsRepository {
         WHERE id = $3 AND archived_at IS NULL
         RETURNING *
       `,
-      [params.stage, params.status, projectId]
+      [params.stage, params.status, projectId],
     );
 
     const row = result.rows[0];
@@ -357,7 +382,7 @@ export class ProjectsRepository {
 
   async archive(
     projectId: string,
-    _input: ArchiveProjectInput
+    _input: ArchiveProjectInput,
   ): Promise<Project | null> {
     const result = await this.pool.query<ProjectRow>(
       `
@@ -366,7 +391,7 @@ export class ProjectsRepository {
         WHERE id = $1 AND archived_at IS NULL
         RETURNING *
       `,
-      [projectId]
+      [projectId],
     );
 
     const row = result.rows[0];
@@ -375,27 +400,27 @@ export class ProjectsRepository {
   }
 
   private async nextJobNumber(client: PoolClient): Promise<string> {
-    const prefix = 'SBZ-';
+    const prefix = "SBZ-";
 
-    await client.query('SELECT pg_advisory_xact_lock(hashtext($1))', [prefix]);
+    await client.query("SELECT pg_advisory_xact_lock(hashtext($1))", [prefix]);
 
     const result = await client.query<{ next_number: number }>(
       `
         SELECT COALESCE(MAX(SUBSTRING(job_number FROM 5)::integer), 0) + 1 AS next_number
         FROM projects
         WHERE job_number ~ '^SBZ-[0-9]+$'
-      `
+      `,
     );
 
     const nextNumber = result.rows[0]?.next_number ?? 1;
 
-    return `${prefix}${String(nextNumber).padStart(3, '0')}`;
+    return `${prefix}${String(nextNumber).padStart(3, "0")}`;
   }
 
   private async resolveJobAddress(
     client: PoolClient,
-    input: CreateProjectInput
-  ): Promise<CreateProjectInput['jobAddress'] | null> {
+    input: CreateProjectInput,
+  ): Promise<CreateProjectInput["jobAddress"] | null> {
     if (input.jobAddress !== undefined) {
       return input.jobAddress;
     }
@@ -419,14 +444,14 @@ export class ProjectsRepository {
         ORDER BY created_at ASC, id ASC
         LIMIT 1
       `,
-      [input.customerId]
+      [input.customerId],
     );
 
     const row = result.rows[0];
 
     return row === undefined
       ? null
-        : {
+      : {
           line1: row.line1,
           line2: row.line2,
           city: row.city,
@@ -435,7 +460,62 @@ export class ProjectsRepository {
           country: row.country,
           contactName: null,
           phone: null,
-          email: null
+          email: null,
         };
+  }
+
+  private async createJobActivitiesFromTemplate(
+    client: PoolClient,
+    project: Project,
+  ): Promise<void> {
+    if (project.jobTemplateId === null) {
+      return;
+    }
+
+    const templateResult = await client.query<{
+      activity_specs: JobTemplateActivitySpec[];
+    }>(
+      `
+        SELECT activity_specs
+        FROM job_templates
+        WHERE id = $1
+      `,
+      [project.jobTemplateId],
+    );
+
+    const activitySpecs = templateResult.rows[0]?.activity_specs ?? [];
+
+    for (const spec of [...activitySpecs].sort((left, right) => left.sortOrder - right.sortOrder)) {
+      await client.query(
+        `
+          INSERT INTO job_activities (
+            customer_id,
+            project_id,
+            job_template_id,
+            template_activity_key,
+            title,
+            activity_type,
+            appointment_type,
+            template_kind,
+            status,
+            sort_order,
+            duration_minutes
+          )
+          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'not_scheduled', $9, $10)
+        `,
+        [
+          project.customerId,
+          project.id,
+          project.jobTemplateId,
+          templateActivityKey(spec),
+          spec.title,
+          spec.eventType,
+          spec.appointmentType,
+          spec.templateKind,
+          spec.sortOrder,
+          spec.durationMinutes,
+        ],
+      );
+    }
   }
 }

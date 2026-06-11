@@ -45,9 +45,9 @@ export default async function SlabDetailPage({ params }: { params: Promise<{ id:
           <div><dt className="text-muted-foreground">Status</dt><dd><span className={`inline-flex rounded-full px-2 py-1 text-xs font-medium capitalize ${statusClasses[slab.status]}`}>{slab.status}</span></dd></div>
           <div><dt className="text-muted-foreground">Finish</dt><dd className="capitalize">{slab.finish}</dd></div>
           <div><dt className="text-muted-foreground">Grade</dt><dd>{slab.qualityGrade}</dd></div>
-          <div><dt className="text-muted-foreground">Length</dt><dd>{slab.lengthIn.toFixed(3)} in</dd></div>
-          <div><dt className="text-muted-foreground">Width</dt><dd>{slab.widthIn.toFixed(3)} in</dd></div>
-          <div><dt className="text-muted-foreground">Thickness</dt><dd>{slab.thicknessCm.toFixed(1)} cm</dd></div>
+          <div><dt className="text-muted-foreground">Length</dt><dd>{slab.lengthIn} in</dd></div>
+          <div><dt className="text-muted-foreground">Width</dt><dd>{slab.widthIn} in</dd></div>
+          <div><dt className="text-muted-foreground">Thickness</dt><dd>{slab.thicknessCm} cm</dd></div>
           <div><dt className="text-muted-foreground">Sq Ft</dt><dd>{((slab.lengthIn * slab.widthIn) / 144).toFixed(2)}</dd></div>
           <div><dt className="text-muted-foreground">Cost</dt><dd>{dollars(slab.costCents)}</dd></div>
           <div><dt className="text-muted-foreground">Warehouse Location</dt><dd>{slab.warehouseLocation ?? 'None'}</dd></div>
@@ -87,7 +87,7 @@ export default async function SlabDetailPage({ params }: { params: Promise<{ id:
         ) : (
           <p className="mb-4 text-sm text-muted-foreground">No photos yet.</p>
         )}
-        <form action={uploadWithId} encType="multipart/form-data" className="flex items-center gap-3">
+        <form action={uploadWithId} className="flex items-center gap-3">
           <input
             type="file"
             name="image"

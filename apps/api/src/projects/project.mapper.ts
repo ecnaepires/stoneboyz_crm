@@ -1,4 +1,4 @@
-import type { Project } from '@stoneboyz/domain';
+import type { Project } from "@stoneboyz/domain";
 
 export interface ProjectRow {
   id: string;
@@ -15,8 +15,9 @@ export interface ProjectRow {
   job_contact_name: string | null;
   job_phone: string | null;
   job_email: string | null;
-  status: Project['status'];
-  pipeline_stage: Project['pipelineStage'];
+  job_template_id: string | null;
+  status: Project["status"];
+  pipeline_stage: Project["pipelineStage"];
   stage_entered_at: Date;
   owner_user_id: string;
   archived_at: Date | null;
@@ -26,7 +27,7 @@ export interface ProjectRow {
 
 const toIso = (value: Date): string => value.toISOString();
 
-const mapJobAddress = (row: ProjectRow): Project['jobAddress'] => {
+const mapJobAddress = (row: ProjectRow): Project["jobAddress"] => {
   const jobAddress = {
     line1: row.job_address_line1,
     line2: row.job_address_line2,
@@ -36,10 +37,12 @@ const mapJobAddress = (row: ProjectRow): Project['jobAddress'] => {
     country: row.job_country,
     contactName: row.job_contact_name,
     phone: row.job_phone,
-    email: row.job_email
+    email: row.job_email,
   };
 
-  return Object.values(jobAddress).every((value) => value === null) ? null : jobAddress;
+  return Object.values(jobAddress).every((value) => value === null)
+    ? null
+    : jobAddress;
 };
 
 export const mapProjectRow = (row: ProjectRow): Project => ({
@@ -49,11 +52,12 @@ export const mapProjectRow = (row: ProjectRow): Project => ({
   title: row.title,
   description: row.description,
   jobAddress: mapJobAddress(row),
+  jobTemplateId: row.job_template_id,
   status: row.status,
   pipelineStage: row.pipeline_stage,
   stageEnteredAt: toIso(row.stage_entered_at),
   ownerUserId: row.owner_user_id,
   archivedAt: row.archived_at === null ? null : toIso(row.archived_at),
   createdAt: toIso(row.created_at),
-  updatedAt: toIso(row.updated_at)
+  updatedAt: toIso(row.updated_at),
 });

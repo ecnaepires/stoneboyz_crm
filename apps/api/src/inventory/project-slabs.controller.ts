@@ -2,6 +2,7 @@ import { BadRequestException, Body, Controller, Delete, Get, HttpCode, Param, Po
 import { attachProjectSlabSchema, cutSlabSchema, transitionQuoteSchema } from '@stoneboyz/domain';
 import { z } from 'zod';
 import { CurrentUser } from '../auth/current-user.decorator.js';
+import { Roles } from '../auth/roles.decorator.js';
 import { ProjectSlabsService } from './project-slabs.service.js';
 
 const idSchema = z.string().uuid();
@@ -27,6 +28,7 @@ export class ProjectSlabsController {
   }
 
   @Post()
+  @Roles('admin', 'inventory_manager')
   async attach(@Param('customerId') customerId: string, @Param('projectId') projectId: string, @Body() body: unknown, @CurrentUser() actorUserId: string) {
     const ids = this.parseIds(customerId, projectId);
     const parsedBody = attachProjectSlabSchema.safeParse(body);
@@ -40,6 +42,7 @@ export class ProjectSlabsController {
 
   @Delete(':slabId')
   @HttpCode(200)
+  @Roles('admin', 'inventory_manager')
   async detach(
     @Param('customerId') customerId: string,
     @Param('projectId') projectId: string,
@@ -59,6 +62,7 @@ export class ProjectSlabsController {
 
   @Post(':slabId/cut')
   @HttpCode(200)
+  @Roles('admin', 'inventory_manager', 'cutter')
   async cut(
     @Param('customerId') customerId: string,
     @Param('projectId') projectId: string,

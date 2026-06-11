@@ -10,3 +10,9 @@ coverage/
 .turbo/
 .env.test
 output/moraware-recordings/.superpowers/
+.superpowers/
+.worktrees/
+.playwright-mcp/
+graphify-out/
+apps/api/uploads/slabs/
+*.tsbuildinfo

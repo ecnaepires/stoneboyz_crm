@@ -23,6 +23,15 @@ export class ProjectPipelineListener {
 
   @OnEvent('scheduled_event.completed')
   async handleScheduledEventCompleted(envelope: EventEnvelope<ScheduledEventEventData>): Promise<void> {
+    await this.advanceFromScheduledEvent(envelope);
+  }
+
+  @OnEvent('scheduled_event.created')
+  async handleScheduledEventCreated(envelope: EventEnvelope<ScheduledEventEventData>): Promise<void> {
+    await this.advanceFromScheduledEvent(envelope);
+  }
+
+  private async advanceFromScheduledEvent(envelope: EventEnvelope<ScheduledEventEventData>): Promise<void> {
     try {
       const { scheduledEventId, actorUserId } = envelope.data;
 

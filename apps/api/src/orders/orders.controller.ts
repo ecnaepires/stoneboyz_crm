@@ -1,5 +1,5 @@
 import { BadRequestException, Body, Controller, Delete, Get, HttpCode, Param, Post, Query } from '@nestjs/common';
-import { addOrderPaymentSchema, listOrdersSchema, removeOrderPaymentSchema } from '@stoneboyz/domain';
+import { addOrderPaymentSchema, archiveOrderSchema, listOrdersSchema, requestOrderDepositSchema, voidOrderPaymentSchema } from '@stoneboyz/domain';
 import { z } from 'zod';
 import { CurrentUser } from '../auth/current-user.decorator.js';
 import { OrdersService } from './orders.service.js';
@@ -88,9 +88,27 @@ export class OrdersController {
     return this.ordersService.addPayment(parsedCustomerId, parsedOrderId, { ...parsedBody.data, actorUserId });
   }
 
+  @Post(':orderId/deposit/request')
+  @HttpCode(200)
+  async requestDeposit(
+    @Param('customerId') customerId: string,
+    @Param('orderId') orderId: string,
+    @Body() body: unknown,
+    @CurrentUser() actorUserId: string
+  ) {
+    const { parsedCustomerId, parsedOrderId } = parseCustomerOrderIds(customerId, orderId);
+    const parsedBody = requestOrderDepositSchema.safeParse(body);
+
+    if (!parsedBody.success) {
+      throw badRequest(formatZodError(parsedBody.error));
+    }
+
+    return this.ordersService.requestDeposit(parsedCustomerId, parsedOrderId, { ...parsedBody.data, actorUserId });
+  }
+
   @Delete(':orderId/payments/:paymentId')
   @HttpCode(200)
-  async removePayment(
+  async voidPayment(
     @Param('customerId') customerId: string,
     @Param('orderId') orderId: string,
     @Param('paymentId') paymentId: string,
@@ -104,13 +122,17 @@ export class OrdersController {
       throw badRequest({ paymentId: ['Invalid UUID'] });
     }
 
-    const parsedBody = removeOrderPaymentSchema.safeParse(body);
+    const normalizedBody = body === null || body === undefined || body === '' ? {} : body;
+    const parsedBody = voidOrderPaymentSchema.safeParse(normalizedBody);
 
     if (!parsedBody.success) {
       throw badRequest(formatZodError(parsedBody.error));
     }
 
-    return this.ordersService.removePayment(parsedCustomerId, parsedOrderId, parsedPaymentId.data, actorUserId);
+    return this.ordersService.voidPayment(parsedCustomerId, parsedOrderId, parsedPaymentId.data, {
+      ...parsedBody.data,
+      actorUserId
+    });
   }
 
   @Post(':orderId/archive')
@@ -122,7 +144,7 @@ export class OrdersController {
     @CurrentUser() actorUserId: string
   ) {
     const { parsedCustomerId, parsedOrderId } = parseCustomerOrderIds(customerId, orderId);
-    const parsedBody = removeOrderPaymentSchema.safeParse(body);
+    const parsedBody = archiveOrderSchema.safeParse(body);
 
     if (!parsedBody.success) {
       throw badRequest(formatZodError(parsedBody.error));

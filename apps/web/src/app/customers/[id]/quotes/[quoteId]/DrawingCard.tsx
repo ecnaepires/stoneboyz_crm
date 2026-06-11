@@ -1,50 +1,30 @@
 import { getApiClientWithAuth } from '@/lib/api';
-import { DrawingCanvasInner } from './DrawingCanvasInner';
 import type { DrawingPiece, DrawingSink, CanvasLayout, DrawingRevisionSummary } from './DrawingCanvasInner';
 import type { QuoteAreaWithMeasurementTotals } from './MeasurementsCard';
+import { DrawingWorkspaceShell } from './DrawingWorkspaceShell';
+import type { DrawingWorkspaceAreaData } from './DrawingWorkspaceShell';
 
 interface DrawingCardProps {
   customerId: string;
   quoteId: string;
   areas: QuoteAreaWithMeasurementTotals[];
   isDraft: boolean;
-  hasPriceList: boolean;
 }
 
 type MeasurementClient = {
   GET: <T>(path: string, options: { params: { path: Record<string, string> } }) => Promise<{ data?: { data: T[] }; error?: unknown }>;
 };
 
-type PricingLine = {
-  id: string;
-  quoteAreaId: string;
-  category: 'material' | 'fabrication' | 'finished_edge' | 'splash' | 'sink_cutout' | 'sink_item' | 'faucet_hole';
-  label: string;
-  quantity: number;
-  unit: string;
-  unitPriceCents: number;
-  lineTotalCents: number;
-  priceListItemId: string | null;
-  sortOrder: number;
-  overridePriceCents: number | null;
-  overrideReason: string | null;
-  overrideByUserId: string | null;
-  overrideAt: string | null;
-  createdAt: string;
-  updatedAt: string;
-};
-
 type DrawingClient = {
   GET: <T>(path: string, options: { params: { path: Record<string, string> } }) => Promise<{ data?: { data: T }; error?: unknown }>;
 };
 
-async function getAreaDrawingData(customerId: string, quoteId: string, areaId: string, hasPriceList: boolean) {
+async function getAreaDrawingData(customerId: string, quoteId: string, areaId: string) {
   const rawClient = await getApiClientWithAuth();
   const client = rawClient as unknown as MeasurementClient;
   const drawingClient = rawClient as unknown as DrawingClient;
-  const pricingClient = rawClient as unknown as MeasurementClient;
 
-  const [piecesRes, sinksRes, drawingRes, revisionsRes, pricingRes] = await Promise.all([
+  const [piecesRes, sinksRes, drawingRes, revisionsRes] = await Promise.all([
     client.GET<DrawingPiece>('/customers/{customerId}/quotes/{quoteId}/areas/{areaId}/pieces', {
       params: { path: { customerId, quoteId, areaId } },
     }),
@@ -63,21 +43,15 @@ async function getAreaDrawingData(customerId: string, quoteId: string, areaId: s
         params: { path: { customerId, quoteId, areaId } },
       }
     ),
-    hasPriceList
-      ? pricingClient.GET<PricingLine>('/customers/{customerId}/quotes/{quoteId}/areas/{areaId}/pricing', {
-          params: { path: { customerId, quoteId, areaId } },
-        })
-      : Promise.resolve({ data: { data: [] as PricingLine[] } }),
   ]);
 
   const pieces = (piecesRes.data?.data ?? []) as DrawingPiece[];
   const sinks = (sinksRes.data?.data ?? []) as DrawingSink[];
   const latestRevision = drawingRes.data?.data ?? null;
   const revisions = revisionsRes.data?.data ?? [];
-  const pricingLines = pricingRes.data?.data ?? [];
   const initialLayout = latestRevision?.layout ?? null;
 
-  return { pieces, sinks, initialLayout, latestRevision, revisions, pricingLines };
+  return { pieces, sinks, initialLayout, latestRevision, revisions };
 }
 
 export async function DrawingCard({
@@ -85,58 +59,20 @@ export async function DrawingCard({
   quoteId,
   areas,
   isDraft,
-  hasPriceList,
 }: DrawingCardProps) {
-  const dataByArea = new Map(
-    await Promise.all(
-      areas.map(async (area) => [area.id, await getAreaDrawingData(customerId, quoteId, area.id, hasPriceList)] as const)
-    )
+  const workspaceAreas: DrawingWorkspaceAreaData[] = await Promise.all(
+    areas.map(async (area) => ({
+      area,
+      ...(await getAreaDrawingData(customerId, quoteId, area.id)),
+    }))
   );
 
-  const body = areas.length === 0 ? (
-    <p className="text-sm text-muted-foreground">Add an area before using the drawing canvas.</p>
-  ) : (
-    <div className="flex min-h-0 flex-1 flex-col">
-      {areas.map((area) => {
-        const data = dataByArea.get(area.id) ?? {
-          pieces: [],
-          sinks: [],
-          initialLayout: null,
-          latestRevision: null,
-          revisions: [],
-          pricingLines: [],
-        };
-
-        return (
-          <section
-            key={area.id}
-            className="flex min-h-0 flex-1 flex-col"
-          >
-            <h3 className="sr-only">{area.name}</h3>
-            {isDraft || data.pieces.length > 0 ? (
-              <DrawingCanvasInner
-                customerId={customerId}
-                quoteId={quoteId}
-                areaId={area.id}
-                area={area}
-                pieces={data.pieces}
-                sinks={data.sinks}
-                initialLayout={data.initialLayout}
-                latestRevision={data.latestRevision}
-                revisions={data.revisions}
-                pricingLines={data.pricingLines}
-                hasPriceList={hasPriceList}
-                isDraft={isDraft}
-                fullscreen
-              />
-            ) : (
-              <p className="text-sm text-muted-foreground">No counter pieces have been drawn for this area.</p>
-            )}
-          </section>
-        );
-      })}
-    </div>
+  return (
+    <DrawingWorkspaceShell
+      customerId={customerId}
+      quoteId={quoteId}
+      areas={workspaceAreas}
+      isDraft={isDraft}
+    />
   );
-
-  return <div className="flex min-h-0 flex-1 flex-col">{body}</div>;
 }

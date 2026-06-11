@@ -10,7 +10,7 @@ export const EDGE_TREATMENT_VALUES = [
 ] as const;
 export type EdgeTreatment = typeof EDGE_TREATMENT_VALUES[number];
 
-export const CORNER_TREATMENT_VALUES = ['none', 'radius', 'clip', 'bump_out', 'notch'] as const;
+export const CORNER_TREATMENT_VALUES = ['none', 'radius', 'clip'] as const;
 export type CornerTreatment = typeof CORNER_TREATMENT_VALUES[number];
 
 export const SINK_TYPE_VALUES = ['undermount', 'drop_in', 'farm'] as const;
@@ -36,6 +36,11 @@ export interface CounterPieceInput {
   widthIn: number;
   quantity?: number | undefined;
   kind?: "countertop" | "backsplash" | undefined;
+  // Exact outline area in square inches. When present it is the source of truth
+  // for square footage (ADR 0006); lengthIn/widthIn are then ignored for area.
+  // Drawing-derived pieces supply this from the piece polygon; manually entered
+  // rectangles leave it undefined and fall back to lengthIn * widthIn.
+  areaSqIn?: number | undefined;
 }
 
 export interface CounterPiece {

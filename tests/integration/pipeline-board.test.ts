@@ -9,6 +9,7 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { AppModule } from '../../apps/api/src/app.module.js';
 import { DATABASE_POOL } from '../../apps/api/src/database.provider.js';
 import { seedTestSession, TEST_ACTOR_USER_ID } from './helpers/auth.js';
+import { getDefaultJobTemplateId } from './helpers/job-templates.js';
 import { setTestAuthToken } from './helpers/test-auth.js';
 
 const SEEDED_CUSTOMER_ID = '11111111-1111-4111-8111-111111111111';
@@ -32,8 +33,7 @@ interface Card {
 const resetDatabase = async (app: INestApplication): Promise<void> => {
   const pool = app.get<Pool>(DATABASE_POOL);
 
-  await pool.query('DROP SCHEMA public CASCADE;');
-  await pool.query('CREATE SCHEMA public;');
+  await pool.query('DROP SCHEMA public CASCADE; CREATE SCHEMA public;');
 
   const migrationsDir = join(process.cwd(), 'db/migrations');
   const migrationFiles = (await readdir(migrationsDir))
@@ -54,10 +54,11 @@ let baseUrl: string;
 let pool: Pool;
 
 const createProject = async (title = 'Pipeline Project'): Promise<Card['id']> => {
+  const jobTemplateId = await getDefaultJobTemplateId(baseUrl);
   const response = await fetch(`${baseUrl}/api/v1/projects`, {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ customerId: SEEDED_CUSTOMER_ID, title, ownerUserId: TEST_ACTOR_USER_ID })
+    body: JSON.stringify({ customerId: SEEDED_CUSTOMER_ID, title, jobTemplateId, ownerUserId: TEST_ACTOR_USER_ID })
   });
   expect(response.status).toBe(201);
   const body = (await response.json()) as { id: string };
@@ -134,9 +135,9 @@ const insertEvent = async (params: {
   status: string;
 }): Promise<void> => {
   await pool.query(
-    `INSERT INTO scheduled_events (customer_id, project_id, event_type, appointment_type, title, scheduled_at, assignee_user_ids, status)
-     VALUES ($1, $2, 'appointment', $3, 'Appt', $4, ARRAY[$5]::uuid[], $6)`,
-    [SEEDED_CUSTOMER_ID, params.projectId, params.appointmentType, params.scheduledAt, TEST_ACTOR_USER_ID, params.status]
+    `INSERT INTO scheduled_events (customer_id, project_id, event_type, appointment_type, title, scheduled_at, status)
+     VALUES ($1, $2, 'appointment', $3, 'Appt', $4, $5)`,
+    [SEEDED_CUSTOMER_ID, params.projectId, params.appointmentType, params.scheduledAt, params.status]
   );
 };
 

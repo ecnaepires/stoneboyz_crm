@@ -1,5 +1,6 @@
 'use server';
 
+import type { CustomerKind, CustomerSource, CustomerStatus, CustomerType } from '@stoneboyz/domain';
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { getApiClientWithAuth } from '@/lib/api';
@@ -25,15 +26,15 @@ export async function createCustomerAction(formData: FormData) {
 
   const body = {
     ownerUserId,
-    customerKind: customerKind as 'company' | 'person',
+    customerKind: customerKind as CustomerKind,
     name,
-    status: status as 'lead' | 'qualified' | 'active' | 'inactive' | 'churned',
-    type: type as 'prospect' | 'customer' | 'partner' | 'vendor',
+    status: status as CustomerStatus,
+    type: type as CustomerType,
     ...(companyName ? { companyName } : {}),
     ...(firstName ? { firstName } : {}),
     ...(lastName ? { lastName } : {}),
     ...(industry ? { industry } : {}),
-    ...(source ? { source } : {}),
+    ...(source ? { source: source as CustomerSource } : {}),
     ...(taxId ? { taxId } : {}),
   };
 
@@ -106,15 +107,15 @@ export async function updateCustomerAction(customerId: string, formData: FormDat
   const { error } = await client.PATCH('/customers/{customerId}', {
     params: { path: { customerId } },
     body: {
-      customerKind: customerKind as 'company' | 'person',
+      customerKind: customerKind as CustomerKind,
       name,
-      status: status as 'lead' | 'qualified' | 'active' | 'inactive' | 'churned',
-      type: type as 'prospect' | 'customer' | 'partner' | 'vendor',
+      status: status as CustomerStatus,
+      type: type as CustomerType,
       ...(companyName ? { companyName } : {}),
       ...(firstName ? { firstName } : {}),
       ...(lastName ? { lastName } : {}),
       ...(industry ? { industry } : {}),
-      ...(source ? { source } : {}),
+      ...(source ? { source: source as CustomerSource } : {}),
       ...(taxId ? { taxId } : {}),
     },
   });
