@@ -1,6 +1,7 @@
 # ADR 0007 — Polygon Edge and Corner Treatments Key by Stable Vertex Identity
 
-**Status:** Accepted
+**Status:** Accepted — Rule 2 superseded for layout schema v2 by ADR 0011; all
+other rules stand
 **Date:** 2026-06-08
 **Deciders:** Owner
 **Builds on:** ADR 0006 (piece outline is the single source of truth), ADR 0002 (geometry core)

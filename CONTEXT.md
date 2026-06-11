@@ -256,7 +256,7 @@ The exact outline area of a piece — the union of its drawn shape. For an L or 
 
 ## Corner Treatment
 
-A finishing note applied to a single countertop corner. Only two exist: Radius (rounded) and Clip (chamfer). A Corner Treatment is a fabrication annotation and never changes square footage or finished-edge linear footage — it records how the corner is finished, not a change to the piece outline. Notch and Bump-Out are not Corner Treatments: they are real changes to the piece outline and are drawn into the shape itself, where they are measured like any other outline geometry.
+A finishing treatment applied to a single countertop corner: Radius (rounded, outward or inward/cove) or Clip (chamfer). As of drawing v2 (ADR 0010), a Corner Treatment is an outline property on the corner's vertex — the kernel expands it into the true finished boundary, so it changes square footage and edge length exactly (a 2" outward radius removes 4 − π ≈ 0.86 sq in). The drawing the customer signs and the shape cut-fit consumes are the same shape. Billable-area policy (round-up, minimums) is separate and remains shop-configurable. Notch and Bump-Out are not Corner Treatments: they are drawn into the outline directly and measured like any other outline geometry. (In the legacy v1 drawing, corner treatments remain annotations that change no measurements, until cut-over.)
 
 ## Splash (edge treatment)
 

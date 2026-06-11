@@ -32,8 +32,9 @@ Core project rules:
 - Use inches for all linear countertop measurements.
 - Use square inches for internal area calculations.
 - Convert to square feet for reporting and pricing.
-- Keep `gross_area`, `net_finished_area`, and `billable_area` separate.
-- Do not automatically subtract radius corners, chamfers, notches, or cutouts from billable area unless shop settings enable that behavior.
+- Keep `gross_area`, `net_finished_area`, and `billable_area` separate as concepts.
+- In drawing v2, corner treatments (radius/chamfer, in/out), notches, and bump-outs are real outline geometry and are measured exactly (ADR 0010). Sink/faucet/pole cutouts are counted as units and never subtracted from area.
+- Billable-area adjustments (round-up, minimums, gross-vs-net election) come only from shop settings; until the shop-settings spec exists, billed = measured.
 - Treat example dimensions as examples only, not hardcoded rules.
 - Use exact geometry for drawing, layout, cutting, and validation.
 - Use configurable shop rules for billing and pricing behavior.

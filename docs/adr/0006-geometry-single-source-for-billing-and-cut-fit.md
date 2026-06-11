@@ -1,6 +1,7 @@
 # ADR 0006 — Piece Outline Is the Single Source of Truth for Billing and Cut-Fit
 
-**Status:** Accepted
+**Status:** Accepted — Rule 4 superseded by ADR 0010 for drawing v2; Rule 1's
+corner-treatment sentence amended by ADR 0010
 **Date:** 2026-06-06
 **Deciders:** Owner
 **Builds on:** ADR 0002 (drawing geometry core redesign)
