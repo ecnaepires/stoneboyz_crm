@@ -65,6 +65,7 @@ import { JobTemplatesModule } from "./job-templates/job-templates.module.js";
 import { PhasesModule } from "./phases/phases.module.js";
 import { TagsModule } from "./tags/tags.module.js";
 import { CalendarViewsModule } from "./calendar-views/calendar-views.module.js";
+import { ShopSettingsModule } from "./shop-settings/shop-settings.module.js";
 
 @Module({
   imports: [
@@ -88,6 +89,7 @@ import { CalendarViewsModule } from "./calendar-views/calendar-views.module.js";
     QuoteNotesModule,
     ReportsModule,
     ScheduledEventsModule,
+    ShopSettingsModule,
     TagsModule,
     UsersModule,
   ],
