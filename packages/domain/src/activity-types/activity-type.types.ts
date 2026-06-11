@@ -5,6 +5,7 @@ export interface Shop {
   id: string;
   slug: string;
   name: string;
+  workDays: number[];
   createdAt: string;
   updatedAt: string;
 }

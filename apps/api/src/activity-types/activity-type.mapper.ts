@@ -4,6 +4,7 @@ export interface ShopRow {
   id: string;
   slug: string;
   name: string;
+  work_days: number[];
   created_at: Date;
   updated_at: Date;
 }
@@ -32,6 +33,7 @@ export const mapShopRow = (row: ShopRow): Shop => ({
   id: row.id,
   slug: row.slug,
   name: row.name,
+  workDays: row.work_days,
   createdAt: toIso(row.created_at),
   updatedAt: toIso(row.updated_at),
 });
