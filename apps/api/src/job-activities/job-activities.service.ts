@@ -1,6 +1,8 @@
 import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { addBusinessDays, DEFAULT_AUTOSCHEDULE_HOUR_UTC } from '@stoneboyz/domain';
-import type { JobActivity, ScheduleJobActivityInput } from '@stoneboyz/domain';
+import type { JobActivity, ScheduleJobActivityInput, ShopCalendar } from '@stoneboyz/domain';
+import { ShopsRepository } from '../activity-types/shops.repository.js';
+import { ShopSettingsRepository } from '../shop-settings/shop-settings.repository.js';
 import { ScheduledEventsService } from '../scheduling/scheduled-events.service.js';
 import { JobActivitiesRepository } from './job-activities.repository.js';
 
@@ -8,8 +10,22 @@ import { JobActivitiesRepository } from './job-activities.repository.js';
 export class JobActivitiesService {
   constructor(
     private readonly jobActivitiesRepository: JobActivitiesRepository,
-    private readonly scheduledEventsService: ScheduledEventsService
+    private readonly scheduledEventsService: ScheduledEventsService,
+    private readonly shopsRepository: ShopsRepository,
+    private readonly shopSettingsRepository: ShopSettingsRepository
   ) {}
+
+  private async currentCalendar(from: Date): Promise<ShopCalendar> {
+    const shop = await this.shopsRepository.currentShop();
+    const to = new Date(from.getTime());
+    to.setUTCFullYear(to.getUTCFullYear() + 2);
+    const holidays = await this.shopSettingsRepository.listHolidayDates(
+      shop.id,
+      from.toISOString().slice(0, 10),
+      to.toISOString().slice(0, 10)
+    );
+    return { workDays: shop.workDays, holidays };
+  }
 
   async list(customerId: string, projectId: string): Promise<JobActivity[]> {
     const exists = await this.jobActivitiesRepository.projectExists(customerId, projectId);
@@ -94,10 +110,11 @@ export class JobActivitiesService {
       )
       .sort((left, right) => left.sortOrder - right.sortOrder);
 
+    const calendar = await this.currentCalendar(new Date(anchorScheduledAt));
     let previousAt = new Date(anchorScheduledAt);
     for (const follower of followers) {
       const offsetDays = follower.autoscheduleOffsetAmount ?? 1;
-      const scheduledAt = addBusinessDays(previousAt, offsetDays);
+      const scheduledAt = addBusinessDays(previousAt, offsetDays, calendar);
       scheduledAt.setUTCHours(DEFAULT_AUTOSCHEDULE_HOUR_UTC, 0, 0, 0);
 
       if (follower.autoscheduleEligible) {
@@ -188,10 +205,11 @@ export class JobActivitiesService {
       .filter((candidate) => candidate.sortOrder > rescheduled.sortOrder)
       .sort((left, right) => left.sortOrder - right.sortOrder);
 
+    const calendar = await this.currentCalendar(new Date(rescheduledAt));
     let previousAt = new Date(rescheduledAt);
     for (const follower of followers) {
       const offsetDays = follower.autoscheduleOffsetAmount ?? 1;
-      const scheduledAt = addBusinessDays(previousAt, offsetDays);
+      const scheduledAt = addBusinessDays(previousAt, offsetDays, calendar);
       scheduledAt.setUTCHours(DEFAULT_AUTOSCHEDULE_HOUR_UTC, 0, 0, 0);
 
       const movable =
