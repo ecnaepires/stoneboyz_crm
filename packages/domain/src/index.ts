@@ -1,3 +1,4 @@
+export * from './activity-types/index.js';
 export * from './customers/index.js';
 export type {
   ChainShapeLayout,
@@ -100,3 +101,4 @@ export * from './quotes/index.js';
 export * from './scheduling/index.js';
 export * from './assignees/index.js';
 export * from './validators/slab-measurement.js';
+export * as drawingV2 from './drawing/v2/index.js';
