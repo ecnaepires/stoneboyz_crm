@@ -1,5 +1,6 @@
 import { Inject, Injectable } from '@nestjs/common';
 import {
+  drawingV2,
   measurementTotalsFromLayout,
   type CanvasChainShapeLayout,
   type CanvasLayout,
@@ -305,6 +306,23 @@ export class QuoteAreasRepository {
     }
 
     for (const row of layouts.rows) {
+      // Parse raw value to inspect schemaVersion before v1 parsing
+      const rawLayout = typeof row.layout === 'string' ? (() => {
+        try { return JSON.parse(row.layout) as unknown; } catch { return null; }
+      })() : row.layout as unknown;
+
+      if (rawLayout && typeof rawLayout === 'object' && (rawLayout as { schemaVersion?: number }).schemaVersion === 2) {
+        const parsed = drawingV2.layoutV2Schema.safeParse(rawLayout);
+        totals.set(
+          row.quote_area_id,
+          parsed.success
+            ? drawingV2.quoteAreaTotalsFromLayoutV2(parsed.data)
+            : { pieceCount: 0, countertopSqFt: 0, backsplashSqFt: 0, combinedSqFt: 0, finishedEdgeLinFt: 0, splashSqFt: 0, sinkCutoutCount: 0, faucetHoleCount: 0 }
+        );
+        continue;
+      }
+
+      // Existing v1 path unchanged
       const layout = parseCanvasLayout(row.layout);
       if (layout === null) {
         continue;

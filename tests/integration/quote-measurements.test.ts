@@ -385,20 +385,29 @@ describe('Quote measurement golden acceptance scenario', () => {
   it('measures normal rectangular drawing pieces saved without a complex shape', async () => {
     const { quoteId, areaId } = await createQuoteWithArea({ name: 'Kitchen' });
 
-    const pieceRes = await fetch(measurementsUrl(quoteId, areaId, 'pieces'), {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ name: 'Sink run', lengthIn: 96, widthIn: 25.5, quantity: 1 })
-    });
-    const piece = await pieceRes.json() as Record<string, unknown>;
-    expect(pieceRes.status).toBe(201);
-
+    // v2 layout: 96×25.5 inch countertop rectangle
     const saved = await saveDrawing(quoteId, areaId, {
-      pieces: [
-        { pieceId: piece['id'], x: 0, y: 0, rotation: 0, shape: null }
-      ],
-      edges: [],
-      sinks: []
+      schemaVersion: 2,
+      pieces: [{
+        pieceId: PIECE_A,
+        kind: 'countertop',
+        label: 'Sink run',
+        positionIn: { x: 0, y: 0 },
+        rotationDeg: 0,
+        outline: {
+          vertices: [
+            { vertexId: 'a', xIn: 0, yIn: 0 },
+            { vertexId: 'b', xIn: 96, yIn: 0 },
+            { vertexId: 'c', xIn: 96, yIn: 25.5 },
+            { vertexId: 'd', xIn: 0, yIn: 25.5 }
+          ]
+        },
+        edges: [],
+        cutouts: []
+      }],
+      sinks: [],
+      annotations: [],
+      legend: []
     });
     expect(saved.status).toBe(201);
 
@@ -410,25 +419,67 @@ describe('Quote measurement golden acceptance scenario', () => {
     expect(response.status).toBe(200);
     expect(kitchen?.['measurementTotals']).toMatchObject({
       pieceCount: 1,
-      countertopSqFt: 17,
-      combinedSqFt: 17
+      countertopSqFt: expect.closeTo(96 * 25.5 / 144, 2),  // 17.00
+      combinedSqFt: expect.closeTo(96 * 25.5 / 144, 2)
     });
   });
 
   it('returns the expected Kitchen measurement totals on quote detail', async () => {
     const { quoteId, areaId } = await createQuoteWithArea({ name: 'Kitchen' });
 
+    // v2 layout: two countertop pieces (100×25.5 and 72×36), one finished edge on PIECE_A top,
+    // one sink with one faucet hole
     const layout = {
+      schemaVersion: 2,
       pieces: [
-        { pieceId: PIECE_A, x: 0, y: 0, rotation: 0, kind: 'countertop', shape: twoSegRect(100, 25.5) },
-        { pieceId: PIECE_B, x: 0, y: 0, rotation: 0, kind: 'countertop', shape: twoSegRect(72, 36) }
-      ],
-      edges: [
-        { pieceId: PIECE_A, edge: 'top', treatment: 'finished' }
+        {
+          pieceId: PIECE_A,
+          kind: 'countertop',
+          label: 'Counter A',
+          positionIn: { x: 0, y: 0 },
+          rotationDeg: 0,
+          outline: {
+            vertices: [
+              { vertexId: 'a1', xIn: 0, yIn: 0 },
+              { vertexId: 'a2', xIn: 100, yIn: 0 },
+              { vertexId: 'a3', xIn: 100, yIn: 25.5 },
+              { vertexId: 'a4', xIn: 0, yIn: 25.5 }
+            ]
+          },
+          edges: [{ startVertexId: 'a1', paintColor: '#0000ff' }],
+          cutouts: []
+        },
+        {
+          pieceId: PIECE_B,
+          kind: 'countertop',
+          label: 'Counter B',
+          positionIn: { x: 0, y: 100 },
+          rotationDeg: 0,
+          outline: {
+            vertices: [
+              { vertexId: 'b1', xIn: 0, yIn: 0 },
+              { vertexId: 'b2', xIn: 72, yIn: 0 },
+              { vertexId: 'b3', xIn: 72, yIn: 36 },
+              { vertexId: 'b4', xIn: 0, yIn: 36 }
+            ]
+          },
+          edges: [],
+          cutouts: []
+        }
       ],
       sinks: [
-        { sinkId: SINK_A, pieceId: PIECE_A, x: 0, y: 0, rotation: 0, quantity: 1, faucetHoleCount: 1 }
-      ]
+        {
+          sinkId: SINK_A,
+          pieceId: PIECE_A,
+          type: 'sink',
+          centerIn: { x: 50, y: 12 },
+          rotationDeg: 0,
+          showCenterline: 'left',
+          faucetHoles: [{ id: 'fh1', dxIn: 0, diameterIn: 1.375 }]
+        }
+      ],
+      annotations: [],
+      legend: [{ color: '#0000ff', label: 'Finished', countsAsEdge: true }]
     };
     const saved = await saveDrawing(quoteId, areaId, layout);
     expect(saved.status).toBe(201);
@@ -442,13 +493,59 @@ describe('Quote measurement golden acceptance scenario', () => {
     expect(kitchen?.['name']).toBe('Kitchen');
     expect(kitchen?.['measurementTotals']).toEqual({
       pieceCount: 2,
-      countertopSqFt: 35.708,      // (100*25.5 + 72*36) / 144
+      countertopSqFt: 35.71,       // (100*25.5 + 72*36) / 144 = 35.708 → round2 = 35.71
       backsplashSqFt: 0,
-      combinedSqFt: 35.708,
-      finishedEdgeLinFt: 8.333,    // PIECE_A 'top' finished, bbox X extent = 100in / 12
+      combinedSqFt: 35.71,
+      finishedEdgeLinFt: 8.33,     // edge a1→a2 = 100in / 12 = 8.333 → round2 = 8.33
       splashSqFt: 0,
       sinkCutoutCount: 1,
       faucetHoleCount: 1
+    });
+  });
+
+  it('computes area totals from a saved v2 layout', async () => {
+    const { quoteId, areaId } = await createQuoteWithArea({ name: 'Kitchen' });
+
+    const layout = {
+      schemaVersion: 2,
+      pieces: [{
+        pieceId: PIECE_A,
+        kind: 'countertop',
+        label: 'Counter 1',
+        positionIn: { x: 0, y: 0 },
+        rotationDeg: 0,
+        outline: {
+          vertices: [
+            { vertexId: 'a', xIn: 0, yIn: 0 },
+            { vertexId: 'b', xIn: 110, yIn: 0 },
+            { vertexId: 'c', xIn: 110, yIn: 25.5 },
+            { vertexId: 'd', xIn: 0, yIn: 25.5 }
+          ]
+        },
+        edges: [{ startVertexId: 'a', paintColor: '#0000ff' }],
+        cutouts: []
+      }],
+      sinks: [],
+      annotations: [],
+      legend: [{ color: '#0000ff', label: 'Edge', countsAsEdge: true }]
+    };
+
+    const saved = await saveDrawing(quoteId, areaId, layout);
+    expect(saved.status).toBe(201);
+
+    const response = await fetch(`${quotesUrl()}/${quoteId}`);
+    const body = await response.json() as Record<string, unknown>;
+    const areas = body['areas'] as Array<Record<string, unknown>>;
+    const kitchen = areas.find((area) => area['id'] === areaId);
+
+    expect(response.status).toBe(200);
+    expect(kitchen?.['measurementTotals']).toMatchObject({
+      pieceCount: 1,
+      countertopSqFt: expect.closeTo(2805 / 144, 2),  // 110 * 25.5 / 144 ≈ 19.48
+      backsplashSqFt: 0,
+      finishedEdgeLinFt: expect.closeTo(110 / 12, 2),  // ≈ 9.17
+      sinkCutoutCount: 0,
+      faucetHoleCount: 0
     });
   });
 });
