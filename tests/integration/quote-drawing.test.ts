@@ -82,7 +82,7 @@ const sendQuote = async (quoteId: string): Promise<void> => {
   });
 };
 
-const minimalLayout = { layout: { pieces: [], sinks: [], corners: [], edges: [] } };
+const minimalLayout = { layout: { schemaVersion: 2, pieces: [], sinks: [], annotations: [], legend: [] } };
 
 beforeAll(async () => {
   app = await NestFactory.create(AppModule, { logger: false });
@@ -128,13 +128,11 @@ describe('Quote drawing save and load', () => {
     expect(saved['quoteAreaId']).toBe(areaId);
     expect(saved['revisionNumber']).toBe(1);
     expect(saved['layout']).toEqual({
+      schemaVersion: 2,
       pieces: [],
       sinks: [],
-      corners: [],
-      edges: [],
-      paintedEdges: [],
-      deletedLines: [],
-      referenceLines: []
+      annotations: [],
+      legend: []
     });
     expect(saved['notes']).toBeNull();
     expect(saved['id']).toEqual(expect.any(String));
@@ -190,23 +188,41 @@ describe('Quote drawing save and load', () => {
     const pieceId = '33333333-3333-4333-8333-333333333333';
     const sinkId = '44444444-4444-4444-8444-444444444444';
 
+    const piece = {
+      pieceId,
+      kind: 'countertop',
+      label: 'Counter 1',
+      positionIn: { x: 100, y: 200 },
+      rotationDeg: 90,
+      outline: {
+        vertices: [
+          { vertexId: 'a', xIn: 0, yIn: 0 },
+          { vertexId: 'b', xIn: 110, yIn: 0 },
+          { vertexId: 'c', xIn: 110, yIn: 25.5 },
+          { vertexId: 'd', xIn: 0, yIn: 25.5 }
+        ]
+      },
+      edges: [{ startVertexId: 'a', paintColor: '#ef4444' }],
+      cutouts: []
+    };
+
+    const sink = {
+      sinkId,
+      pieceId,
+      type: 'sink',
+      centerIn: { x: 55, y: 12 },
+      rotationDeg: 0,
+      showCenterline: 'left',
+      faucetHoles: []
+    };
+
     const layout = {
       layout: {
-        pieces: [{ pieceId, x: 100, y: 200, rotation: 90 }],
-        sinks: [{ sinkId, pieceId, x: 50, y: 75, rotation: 0 }],
-        corners: [{ pieceId, corner: 'topLeft', treatment: 'radius', valueIn: 3 }],
-        edges: [{ pieceId, edge: 'top', treatment: 'splash', splashHeightIn: 4, label: 'S4', color: '#ef4444' }],
-        referenceLines: [
-          {
-            id: 'centerline-1',
-            pieceId,
-            from: [60, 0],
-            to: [60, 25.5],
-            kind: 'centerline',
-            color: '#000000',
-            dash: true
-          }
-        ]
+        schemaVersion: 2,
+        pieces: [piece],
+        sinks: [sink],
+        annotations: [],
+        legend: []
       }
     };
 
@@ -222,34 +238,11 @@ describe('Quote drawing save and load', () => {
 
     expect(saveRes.status).toBe(201);
     expect(pieces[0]?.['pieceId']).toBe(pieceId);
-    expect(pieces[0]?.['x']).toBe(100);
-    expect(pieces[0]?.['rotation']).toBe(90);
+    expect(pieces[0]?.['positionIn']).toEqual({ x: 100, y: 200 });
+    expect(pieces[0]?.['rotationDeg']).toBe(90);
     expect(sinks[0]?.['sinkId']).toBe(sinkId);
     expect(sinks[0]?.['pieceId']).toBe(pieceId);
-    expect(sinks[0]?.['y']).toBe(75);
-    expect((savedLayout['corners'] as Array<Record<string, unknown>>)[0]).toEqual({
-      pieceId,
-      corner: 'topLeft',
-      treatment: 'radius',
-      valueIn: 3
-    });
-    expect((savedLayout['edges'] as Array<Record<string, unknown>>)[0]).toEqual({
-      pieceId,
-      edge: 'top',
-      treatment: 'splash',
-      splashHeightIn: 4,
-      label: 'S4',
-      color: '#ef4444'
-    });
-    expect((savedLayout['referenceLines'] as Array<Record<string, unknown>>)[0]).toEqual({
-      id: 'centerline-1',
-      pieceId,
-      from: [60, 0],
-      to: [60, 25.5],
-      kind: 'centerline',
-      color: '#000000',
-      dash: true
-    });
+    expect(sinks[0]?.['centerIn']).toEqual({ x: 55, y: 12 });
   });
 });
 
@@ -294,8 +287,11 @@ describe('Quote drawing validation', () => {
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({
         layout: {
-          pieces: [{ pieceId: 'not-a-uuid', x: 0, y: 0 }],
-          sinks: []
+          schemaVersion: 2,
+          pieces: [{ pieceId: 'not-a-uuid', kind: 'countertop', label: 'X', positionIn: { x: 0, y: 0 }, rotationDeg: 0, outline: { vertices: [{ vertexId: 'a', xIn: 0, yIn: 0 }, { vertexId: 'b', xIn: 100, yIn: 0 }, { vertexId: 'c', xIn: 100, yIn: 25 }] }, edges: [], cutouts: [] }],
+          sinks: [],
+          annotations: [],
+          legend: []
         }
       })
     });
@@ -348,23 +344,33 @@ describe('Quote drawing revisions', () => {
 
   it('reverts by creating a new latest revision from an earlier revision', async () => {
     const { quoteId, areaId } = await createQuoteWithArea();
+    const piece1 = {
+      pieceId: '33333333-3333-4333-8333-333333333333',
+      kind: 'countertop',
+      label: 'Counter 1',
+      positionIn: { x: 10, y: 20 },
+      rotationDeg: 0,
+      outline: { vertices: [{ vertexId: 'a', xIn: 0, yIn: 0 }, { vertexId: 'b', xIn: 110, yIn: 0 }, { vertexId: 'c', xIn: 110, yIn: 25.5 }, { vertexId: 'd', xIn: 0, yIn: 25.5 }] },
+      edges: [],
+      cutouts: []
+    };
+    const piece2 = { ...piece1, positionIn: { x: 100, y: 200 }, rotationDeg: 90 as const };
     const firstLayout = {
       layout: {
-        pieces: [{ pieceId: '33333333-3333-4333-8333-333333333333', x: 10, y: 20, rotation: 0, kind: 'countertop' }],
+        schemaVersion: 2,
+        pieces: [piece1],
         sinks: [],
-        corners: [],
-        edges: [],
-        paintedEdges: [],
-        deletedLines: [],
-        referenceLines: []
+        annotations: [],
+        legend: []
       }
     };
     const secondLayout = {
       layout: {
-        pieces: [{ pieceId: '33333333-3333-4333-8333-333333333333', x: 100, y: 200, rotation: 90 }],
+        schemaVersion: 2,
+        pieces: [piece2],
         sinks: [],
-        corners: [],
-        edges: []
+        annotations: [],
+        legend: []
       }
     };
 
@@ -389,12 +395,16 @@ describe('Quote drawing revisions', () => {
 
     expect(revertRes.status).toBe(201);
     expect(reverted['revisionNumber']).toBe(3);
-    expect(reverted['layout']).toEqual(firstLayout.layout);
+    const revertedLayout = reverted['layout'] as Record<string, unknown>;
+    expect(revertedLayout['schemaVersion']).toBe(2);
+    expect((revertedLayout['pieces'] as Array<Record<string, unknown>>)[0]?.['positionIn']).toEqual({ x: 10, y: 20 });
     expect(reverted['notes']).toBe('Reverted to revision 1');
 
     const latestRes = await fetch(drawingUrl(quoteId, areaId));
     const latest = await latestRes.json() as Record<string, unknown>;
-    expect((latest['data'] as Record<string, unknown>)['layout']).toEqual(firstLayout.layout);
+    const latestLayout = (latest['data'] as Record<string, unknown>)['layout'] as Record<string, unknown>;
+    expect(latestLayout['schemaVersion']).toBe(2);
+    expect((latestLayout['pieces'] as Array<Record<string, unknown>>)[0]?.['positionIn']).toEqual({ x: 10, y: 20 });
   });
 });
 
@@ -425,6 +435,58 @@ describe('Quote drawing non-draft conflict', () => {
 
     expect(res.status).toBe(409);
     expect(body['code']).toBe('INVALID_QUOTE_STATUS');
+  });
+});
+
+describe('Quote drawing v2 schema enforcement', () => {
+  it("saves a schemaVersion 2 layout", async () => {
+    const { quoteId, areaId } = await createQuoteWithArea();
+    const layout = {
+      schemaVersion: 2,
+      pieces: [
+        {
+          pieceId: "33333333-3333-4333-8333-333333333333",
+          kind: "countertop",
+          label: "Counter 1",
+          positionIn: { x: 0, y: 0 },
+          rotationDeg: 0,
+          outline: {
+            vertices: [
+              { vertexId: "a", xIn: 0, yIn: 0 },
+              { vertexId: "b", xIn: 110, yIn: 0 },
+              { vertexId: "c", xIn: 110, yIn: 25.5 },
+              { vertexId: "d", xIn: 0, yIn: 25.5 },
+            ],
+          },
+          edges: [],
+          cutouts: [],
+        },
+      ],
+      sinks: [],
+      annotations: [],
+      legend: [],
+    };
+    const res = await fetch(drawingUrl(quoteId, areaId), {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ layout, notes: "field check" }),
+    });
+    const body = await res.json() as Record<string, unknown>;
+    expect(res.status).toBe(201);
+    const data = body as Record<string, unknown>;
+    expect(data["notes"]).toBe("field check");
+  });
+
+  it("rejects a legacy v1 layout body with 400", async () => {
+    const { quoteId, areaId } = await createQuoteWithArea();
+    const res = await fetch(drawingUrl(quoteId, areaId), {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ layout: { pieces: [], sinks: [] } }),
+    });
+    const body = await res.json() as Record<string, unknown>;
+    expect(res.status).toBe(400);
+    expect((body as Record<string, unknown>)["code"]).toBe("VALIDATION_ERROR");
   });
 });
 

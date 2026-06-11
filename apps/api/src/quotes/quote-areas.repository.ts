@@ -120,6 +120,11 @@ const parseCanvasLayout = (value: CanvasLayout | string): CanvasLayout | null =>
     return null;
   }
 
+  // v2 layouts (schemaVersion: 2) use a different structure — skip for legacy totals
+  if ((parsed as { schemaVersion?: unknown }).schemaVersion === 2) {
+    return null;
+  }
+
   return parsed as CanvasLayout;
 };
 

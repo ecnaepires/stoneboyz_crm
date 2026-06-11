@@ -1300,6 +1300,59 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/shop-settings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get current shop work days */
+        get: operations["getShopSettings"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Update work days (admin) */
+        patch: operations["patchShopSettings"];
+        trace?: never;
+    };
+    "/shop-settings/holidays": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List shop holidays */
+        get: operations["listHolidays"];
+        put?: never;
+        /** Create a holiday (admin) */
+        post: operations["createHoliday"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/shop-settings/holidays/{holidayId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Delete a holiday (admin) */
+        delete: operations["deleteHoliday"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/activity-types": {
         parameters: {
             query?: never;
@@ -2366,13 +2419,35 @@ export interface components {
             /** Format: uuid */
             quoteAreaId: string;
             revisionNumber: number;
-            layout: components["schemas"]["CanvasLayout"];
+            layout: {
+                [key: string]: unknown;
+            };
             /** Format: date-time */
             createdAt: string;
             createdByUserId: string | null;
         };
+        /** @description Drawing layout schema v2 — one closed clockwise outline polygon per piece, inches. Full validation happens server-side via the domain layoutV2Schema. */
+        LayoutV2: {
+            /** @enum {integer} */
+            schemaVersion: 2;
+            pieces: {
+                [key: string]: unknown;
+            }[];
+            sinks: {
+                [key: string]: unknown;
+            }[];
+            annotations: {
+                [key: string]: unknown;
+            }[];
+            legend: {
+                [key: string]: unknown;
+            }[];
+        } & {
+            [key: string]: unknown;
+        };
         SaveDrawingRevisionBody: {
-            layout: components["schemas"]["CanvasLayout"];
+            layout: components["schemas"]["LayoutV2"];
+            notes?: string | null;
         };
         CounterPiece: {
             /** Format: uuid */
@@ -2675,6 +2750,34 @@ export interface components {
         };
         ActivityTypesResponse: {
             data: components["schemas"]["ActivityType"][];
+        };
+        ShopSettings: {
+            workDays: number[];
+        };
+        ShopSettingsResponse: {
+            data: components["schemas"]["ShopSettings"];
+        };
+        PatchWorkDaysRequest: {
+            workDays: number[];
+        };
+        ShopHoliday: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            shopId: string;
+            /** Format: date */
+            holidayDate: string;
+            name: string;
+            /** Format: date-time */
+            createdAt: string;
+        };
+        ShopHolidaysResponse: {
+            data: components["schemas"]["ShopHoliday"][];
+        };
+        CreateHolidayRequest: {
+            /** Format: date */
+            holidayDate: string;
+            name: string;
         };
         CreateActivityTypeRequest: {
             name: string;
@@ -7613,6 +7716,180 @@ export interface operations {
                 };
             };
             /** @description Calendar view not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getShopSettings: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Shop settings returned. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ShopSettingsResponse"];
+                };
+            };
+        };
+    };
+    patchShopSettings: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PatchWorkDaysRequest"];
+            };
+        };
+        responses: {
+            /** @description Work days updated. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ShopSettingsResponse"];
+                };
+            };
+            /** @description Validation error. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Admin role required. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    listHolidays: {
+        parameters: {
+            query?: {
+                from?: string;
+                to?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Holidays returned. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ShopHolidaysResponse"];
+                };
+            };
+        };
+    };
+    createHoliday: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateHolidayRequest"];
+            };
+        };
+        responses: {
+            /** @description Holiday created. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ShopHoliday"];
+                };
+            };
+            /** @description Validation error. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Admin role required. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Duplicate holiday date. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    deleteHoliday: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                holidayId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Holiday deleted. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Admin role required. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Holiday not found. */
             404: {
                 headers: {
                     [name: string]: unknown;

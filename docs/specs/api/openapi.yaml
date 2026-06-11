@@ -2090,7 +2090,8 @@ components:
         revisionNumber:
           type: integer
         layout:
-          $ref: "#/components/schemas/CanvasLayout"
+          type: object
+          additionalProperties: true
         createdAt:
           type: string
           format: date-time
@@ -2098,12 +2099,46 @@ components:
           type: string
           nullable: true
 
+    LayoutV2:
+      type: object
+      description: Drawing layout schema v2 — one closed clockwise outline polygon per piece, inches. Full validation happens server-side via the domain layoutV2Schema.
+      required: [schemaVersion, pieces, sinks, annotations, legend]
+      additionalProperties: true
+      properties:
+        schemaVersion:
+          type: integer
+          enum: [2]
+        pieces:
+          type: array
+          items:
+            type: object
+            additionalProperties: true
+        sinks:
+          type: array
+          items:
+            type: object
+            additionalProperties: true
+        annotations:
+          type: array
+          items:
+            type: object
+            additionalProperties: true
+        legend:
+          type: array
+          items:
+            type: object
+            additionalProperties: true
+
     SaveDrawingRevisionBody:
       type: object
       required: [layout]
       properties:
         layout:
-          $ref: "#/components/schemas/CanvasLayout"
+          $ref: "#/components/schemas/LayoutV2"
+        notes:
+          type: string
+          maxLength: 500
+          nullable: true
 
     CounterPiece:
       type: object
@@ -2817,6 +2852,77 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/ActivityType"
+
+    ShopSettings:
+      type: object
+      required: [workDays]
+      properties:
+        workDays:
+          type: array
+          items:
+            type: integer
+            minimum: 0
+            maximum: 6
+          minItems: 1
+
+    ShopSettingsResponse:
+      type: object
+      required: [data]
+      properties:
+        data:
+          $ref: "#/components/schemas/ShopSettings"
+
+    PatchWorkDaysRequest:
+      type: object
+      required: [workDays]
+      properties:
+        workDays:
+          type: array
+          items:
+            type: integer
+            minimum: 0
+            maximum: 6
+          minItems: 1
+
+    ShopHoliday:
+      type: object
+      required: [id, shopId, holidayDate, name, createdAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        shopId:
+          type: string
+          format: uuid
+        holidayDate:
+          type: string
+          format: date
+        name:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+
+    ShopHolidaysResponse:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/ShopHoliday"
+
+    CreateHolidayRequest:
+      type: object
+      required: [holidayDate, name]
+      properties:
+        holidayDate:
+          type: string
+          format: date
+          pattern: "^\\d{4}-\\d{2}-\\d{2}$"
+        name:
+          type: string
+          minLength: 1
 
     CreateActivityTypeRequest:
       type: object
@@ -7387,6 +7493,132 @@ paths:
                 $ref: "#/components/schemas/CalendarView"
         "404":
           description: Calendar view not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /shop-settings:
+    get:
+      operationId: getShopSettings
+      summary: Get current shop work days
+      responses:
+        "200":
+          description: Shop settings returned.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ShopSettingsResponse"
+    patch:
+      operationId: patchShopSettings
+      summary: Update work days (admin)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PatchWorkDaysRequest"
+      responses:
+        "200":
+          description: Work days updated.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ShopSettingsResponse"
+        "400":
+          description: Validation error.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: Admin role required.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /shop-settings/holidays:
+    get:
+      operationId: listHolidays
+      summary: List shop holidays
+      parameters:
+        - name: from
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date
+        - name: to
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date
+      responses:
+        "200":
+          description: Holidays returned.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ShopHolidaysResponse"
+    post:
+      operationId: createHoliday
+      summary: Create a holiday (admin)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateHolidayRequest"
+      responses:
+        "201":
+          description: Holiday created.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ShopHoliday"
+        "400":
+          description: Validation error.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: Admin role required.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: Duplicate holiday date.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /shop-settings/holidays/{holidayId}:
+    delete:
+      operationId: deleteHoliday
+      summary: Delete a holiday (admin)
+      parameters:
+        - name: holidayId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "204":
+          description: Holiday deleted.
+        "403":
+          description: Admin role required.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Holiday not found.
           content:
             application/json:
               schema:

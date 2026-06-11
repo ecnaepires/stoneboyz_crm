@@ -1,5 +1,5 @@
 import { BadRequestException, Body, Controller, Get, HttpCode, Param, Post } from '@nestjs/common';
-import { saveDrawingRevisionSchema } from '@stoneboyz/domain';
+import { saveDrawingRevisionV2Schema } from '@stoneboyz/domain';
 import { z } from 'zod';
 import { CurrentUser } from '../auth/current-user.decorator.js';
 import { QuoteDrawingService } from './quote-drawing.service.js';
@@ -59,7 +59,7 @@ export class QuoteDrawingController {
     @CurrentUser() actorUserId: string
   ) {
     const { parsedCustomerId, parsedQuoteId, parsedAreaId } = parseIds(customerId, quoteId, areaId);
-    const parsedBody = saveDrawingRevisionSchema.safeParse(body);
+    const parsedBody = saveDrawingRevisionV2Schema.safeParse(body);
 
     if (!parsedBody.success) {
       throw badRequest(Object.fromEntries(
@@ -69,7 +69,7 @@ export class QuoteDrawingController {
 
     return this.quoteDrawingService.saveRevision(parsedCustomerId, parsedQuoteId, parsedAreaId, {
       actorUserId,
-      layout: parsedBody.data.layout,
+      layout: parsedBody.data.layout as never,
       notes: parsedBody.data.notes ?? null
     });
   }

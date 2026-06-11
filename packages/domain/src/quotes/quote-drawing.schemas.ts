@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { layoutV2Schema } from "../drawing/v2/layout.js";
 
 const canvasPieceShapeSchema = z.discriminatedUnion("type", [
   z.object({
@@ -147,5 +148,10 @@ export const canvasLayoutSchema = z.object({
 
 export const saveDrawingRevisionSchema = z.object({
   layout: canvasLayoutSchema,
+  notes: z.string().trim().max(500).nullable().optional(),
+});
+
+export const saveDrawingRevisionV2Schema = z.object({
+  layout: layoutV2Schema,
   notes: z.string().trim().max(500).nullable().optional(),
 });
