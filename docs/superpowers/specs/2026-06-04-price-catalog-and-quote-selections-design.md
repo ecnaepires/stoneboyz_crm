@@ -91,7 +91,7 @@ Admin Item can include:
 
 - name
 - group or custom category
-- charge method: square foot, linear foot, each, or flat price
+- charge method: square foot, linear foot, or each. Flat price is future work until the Admin Item charge-method enum supports `flat_price`.
 - measurement basis when relevant
 - price
 - quote visibility

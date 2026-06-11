@@ -65,7 +65,7 @@ Each is a focused unit with one job, themed via tokens:
 
 - `ThemeToggle` — toggles `class="dark"` on `<html>`, persists choice.
 - `AppShell` (restyle) — sidebar (logo, nav, active state), topbar (search, New Quote, avatar).
-- `StatCard` — label, big number, optional `$` subtotal, delta chip, sparkline.
+- `StatCard` — label, big number, optional `$` subtotal.
 - `RevenueChart` — dual-line area chart from `revenueSeries`.
 - `PipelineDonut` — status breakdown from `pipeline`.
 - `RecentQuotesTable` — initials, title, quote#, customer, status pill, value, date.
@@ -87,7 +87,7 @@ Each is a focused unit with one job, themed via tokens:
 ## Testing
 
 - API: integration tests for the new `DashboardStats` fields (revenue series shape,
-  pipeline counts, quote value, deltas) — new feature = new test (repo rule #6).
+  pipeline counts, quote value) — new feature = new test (repo rule #6).
 - Web: render dashboard with mocked client data incl. empty states.
 
 ## Sequencing (respects repo rules: spec-first, generated client)

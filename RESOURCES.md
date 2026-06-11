@@ -5,7 +5,7 @@
 - [Price List Builder Design](./docs/superpowers/specs/2026-06-03-price-list-builder-design.md)
   Source of truth for the feature we are building.
 - [Domain Glossary](./CONTEXT.md)
-  Project language for CRM concepts such as Price List, Price List Group, Price List Item, Charge Method, and Measurement Basis.
+  Project language for CRM concepts such as Price List, Price Group, Price Item, Charge Method, and Measurement Basis.
 - [Domain price-list types](./packages/domain/src/price-lists/price-list.types.ts)
   Current TypeScript shape for Price Lists and Price List Items.
 - [Price list dashboard page](./apps/web/src/app/price-lists/[id]/page.tsx)

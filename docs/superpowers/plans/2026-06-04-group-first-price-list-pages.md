@@ -10,7 +10,7 @@
 
 ---
 
-### Task 1: Add Group Routing Config Test
+## Task 1: Add Group Routing Config Test
 
 **Files:**
 - Create: `apps/web/src/app/price-lists/pricing-groups.test.ts`

@@ -10,7 +10,7 @@
 
 ---
 
-### Task 1: Add Admin Item API Coverage
+## Task 1: Add Admin Item API Coverage
 
 **Files:**
 - Modify: `tests/integration/price-lists.test.ts`

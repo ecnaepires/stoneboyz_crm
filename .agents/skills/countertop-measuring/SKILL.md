@@ -5,6 +5,8 @@ description: Use this skill when working on countertop or stone fabrication soft
 
 # Countertop Measuring Skill
 
+Canonical copy: `.agents/skills/countertop-measuring/SKILL.md`. The Claude-facing copy should remain a thin pointer to this file.
+
 ## Purpose
 
 This skill teaches how to measure countertop shapes and features the way a countertop or stone fabrication company would think about them when templating, laying out, pricing, and cutting countertop pieces.

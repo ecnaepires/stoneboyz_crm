@@ -1,5 +1,13 @@
 # Glossary
 
+## Shop
+
+A countertop company using the product as its own isolated tenant. Stone Boyz is the first Shop, not the only one: the product is built to be sold to other fabrication shops, most of them migrating from Moraware. Every company-level setting — work days, holidays, views, colors, activity types — belongs to one Shop.
+
+## Activity Type
+
+A Shop-defined kind of Job Activity, such as Template, Fabrication, Install, or Tearout. Activity Types are catalog data owned by each Shop, not a fixed system list: each type carries its own name, color, optional Pipeline Stage mapping, square-footage participation, autoscheduling behavior, and default duration. New Shops start from a seeded standard set.
+
 ## Pipeline Stage
 
 A job's current position in the CRM workflow. Scheduling a stage appointment places the job in the matching Pipeline Stage when that move is forward.
@@ -7,6 +15,82 @@ A job's current position in the CRM workflow. Scheduling a stage appointment pla
 ## Scheduled Appointment
 
 A calendar item tied to customer work, optionally tied to a job. Deposit, Template, Material, Fabrication, Install, and Invoice appointments are stage appointments; Repair, Other, and Cut appointments are side-work and do not define a Pipeline Stage.
+
+## Job Activity
+
+A planned step inside a Job, such as Phone Call, Email, Template, Fabrication, Install, or Invoice. A Job Activity may be Not Scheduled, Scheduled, Confirmed, In Progress, Completed, or Cancelled. When it has a date, time, and duration, it appears on the calendar as a Scheduled Appointment.
+
+## Autoscheduling
+
+The workflow that schedules later Job Activities from a scheduled anchor Job Activity using the Job's copied template offsets. Autoscheduling moves forward through the Job Activity order and does not change manually overridden Job Activities without user confirmation. Autoscheduling only lands work on Work Days and skips Holidays; manual placement may use any day.
+
+## Work Day
+
+A day of the week the company schedules work on, set once in company calendar settings. Non-work days appear grayed on the schedule but remain open to manual placement — Autoscheduling alone is restricted to Work Days.
+
+## Holiday
+
+A dated company-wide day off kept in a settings list. Autoscheduling skips Holidays the same way it skips non-work days.
+
+## Activity Square Footage
+
+The square footage a Scheduled Appointment contributes to capacity planning, read live at display time rather than stored on the appointment. It resolves from the Job's best available source: the accepted quote's square footage when one exists, otherwise the active draft quote's drawing-derived square footage shown as an estimate, otherwise zero. Because it is read live, a Template day's estimate self-corrects once templating updates the quote.
+
+## Day Subtotal
+
+The capacity rollup shown in a schedule day header: the total scheduled hours for that day plus Activity Square Footage broken down by activity type. A Day Subtotal counts exactly the activities the Calendar View displays — filtered-out activities never contribute. Template subtotals are estimates by nature since templating produces the final measurements; all later activity types subtotal accepted-quote numbers. Whether subtotals appear is a per-view on/off setting.
+
+## Run Order
+
+The vertical position of a Scheduled Appointment within its day on the schedule. Run Order is dispatch information, not a display artifact: the dispatcher places appointments top-to-bottom to communicate the day's work sequence, the position persists exactly where dropped, and every User sees the same order. Run Order is fully manual for timed and untimed appointments alike — the day never re-sorts itself behind the dispatcher's back. Appointments scheduled from outside the calendar insert by time among the day's timed appointments; untimed arrivals, including autoscheduled follower activities, land at the bottom of the day.
+
+## Schedule Glyphs
+
+The at-a-glance markers shown next to scheduled dates: a sun for a morning (AM) sched time, a moon for an afternoon or evening (PM) sched time, and short status abbreviations such as (conf), (tent), and (InProg). They let staff read a whole schedule without opening any activity.
+
+## Calendar View
+
+A saved, named schedule configuration that controls the calendar display type, filters, visible activity fields, and coloring.
+
+## Job List View
+
+A saved view that shows Jobs as rows with one date column per activity type, so a row reads the whole job story left to right. Each cell shows the activity's date with Schedule Glyphs, or a no-date marker that is itself the office's to-do signal; clicking a cell opens the activity editor in place. The Job List View is the office's main working grid; the shop works from the Calendar View.
+
+## My View
+
+A Calendar View private to one User.
+
+## Shared View
+
+A Calendar View visible to every User.
+
+## Display Field
+
+One piece of job or activity information shown inside an activity box on the schedule.
+
+## Color Activities By
+
+The field whose value determines each activity box's color on the schedule.
+
+## Assignee
+
+A person, team, crew, department, truck, equipment item, machine, or outside contractor responsible for a Job Activity. An Assignee is not necessarily a login User, though one Assignee may be linked to one User when the same person also logs into the CRM.
+
+## Account
+
+The person or business that owns one or more Jobs and is responsible for approvals, communication, or payment. An Account is not a login User. An Account may be a homeowner, contractor, builder, designer, or repeat customer with Jobs at different Job Addresses.
+
+## Account Address
+
+The main address for an Account, such as a homeowner address or a contractor's office address.
+
+## Job Address
+
+The physical site address for one specific Job. A Job Address starts from the Account Address by default when the Job is created, but it belongs to the Job and may diverge from the Account Address.
+
+## Job Template
+
+A reusable job pattern selected when a Job is created. A Job Template defines which standard Activities, Forms, and File Sections the Job starts with so common work does not need to be rebuilt by hand for every Job. A Job remembers which Job Template it came from, but its own Activities, Forms, and File Sections are the Job's working records after creation.
 
 ## Job
 
@@ -75,7 +159,7 @@ A planning view that places a Job's pieces onto its reserved Slabs and Remnants 
 
 ## Area (Sheet)
 
-A named, ordered drawing surface within a quote, presented to the user as a Sheet — like a tab at the bottom of a spreadsheet. Each A holds its own separate drawing and its own pieces; pieces on one Sheet are isolated from another. The user divides work into Sheets manually, typically one room or location per Sheet ("Kitchen", "Master Bath", "Outdoor Kitchen"), and renames each Sheet freely. A Sheet carries a single material, color, and edge profile; when a room mixes materials, the user creates a second Sheet rather than mixing materials on one. "Sheet" is the user-facing word; "Area" is the same concept in the data model.
+A named, ordered drawing surface within a quote, presented to the user as a Sheet — like a tab at the bottom of a spreadsheet. Each Sheet holds its own separate drawing and its own pieces; pieces on one Sheet are isolated from another. The user divides work into Sheets manually, typically one room or location per Sheet ("Kitchen", "Master Bath", "Outdoor Kitchen"), and renames each Sheet freely. A Sheet carries a single material, color, and edge profile; when a room mixes materials, the user creates a second Sheet rather than mixing materials on one. "Sheet" is the user-facing word; "Area" is the same concept in the data model.
 
 Each Sheet reports its own measurement rollup: counter square footage, backsplash square footage, the two combined, finished-edge linear footage, splash square footage, sink count, and faucet-hole count. The quote-wide total is the sum of all its Sheets.
 

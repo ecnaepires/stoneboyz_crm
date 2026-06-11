@@ -81,7 +81,7 @@ describe('canvasLayoutSchema piece kind', () => {
     expect(parsed.pieces[0]?.kind).toBe('countertop');
   });
 });
-```
+```bash
 
 - [ ] **Step 2: Run test to verify it fails**
 

@@ -1,82 +1,99 @@
 ## Agent Handoff
 
 ### Goal
-Two changes this session:
-1. Fix a bug where drawing on the quote canvas showed square footage in the Drawing
-   Workspace header but `0` on the quote Measurements page.
-2. Replace the multi-step "Generate Pricing" flow (Save Setup + per-area Generate +
-   Generate Final Price) with a beginner-friendly **area accordion**: open one area,
-   pick everything, press **Save area** to save selections and generate that area's
-   frozen price lines in one click. As part of this, Sink and Faucet Hole pricing
-   moved from quote-level to **per-area**.
+Pick up the previous handoff and execute the remaining slices of
+`docs/superpowers/plans/2026-06-09-core-scheduling-loop.md` (Tasks 3-6:
+assignee resources, web assignee swap, autoschedule engine, calendar →
+activity editor). Tasks 1-2 were already committed by the prior session.
 
 ### What changed
+Three commits this session (all gates green before each):
 
-**Bug fix — canvas sqft vs quote page 0:**
-- The canvas computed live measurements by synthesizing a piece `shape` from an
-  in-memory `pieces` dimension array, but `saveDrawingAction` persisted only the raw
-  `layout` (shape-less). The server recomputes from the saved layout and got `0`.
-- Fixed by making `withPieceKinds` (the single transform every save goes through) also
-  bake the measurement `shape` via `drawingLayoutWithRectangleMeasurementShapes`. The
-  live display now uses the same `withPieceKinds(layout)`, so what you see is what is
-  saved. No money math changed.
-
-**Pricing — area accordion + per-area sink/faucet:**
-- DB migration `059` adds `sink_item_id` + `faucet_hole_item_id` to
-  `quote_area_pricing_selections`. Legacy quote-level columns left in place, now unused.
-- Domain types/schemas: per-area selection gains `sinkItemId` / `faucetHoleItemId`.
-- API: selections repository reads/writes the two new per-area columns; generation reads
-  sink/faucet from the **area** selection instead of the quote-level selection.
-- OpenAPI updated; `@stoneboyz/api-client` regenerated + built.
-- New `saveAreaPricingAction` (PATCH this area's selection, then POST generate for it).
-- New `PricingAccordion` client component; `PricingCard` rewritten to load data and feed
-  it. Removed the duplicate "Generate Final Price" button from `MeasurementsCard`.
+1. **`64cdd4c` — job activities scheduling backbone with assignee resources.**
+   Mostly committed pre-existing working-tree work after validating it:
+   migrations 062/063 (job templates on projects, `job_activities`) and 064
+   (`assignees` + `scheduled_event_assignees`, seed person-assignee per user,
+   DROP `scheduled_events.assignee_user_ids` with NO backfill — ADR 0008),
+   domain + API modules, and the activity editor page. New this session: the
+   complete web swap `assigneeUserIds` → `assigneeIds` (Task 4) — shared
+   `AssigneeSelect` component with multi-line "+ Add Assignee" quick-create
+   (`apps/web/src/components/assignee-select.tsx` +
+   `apps/web/src/app/_actions/assignees.ts`), wired into the schedule
+   calendar, event new/detail pages, job detail, and the activity editor.
+   The old "blank = assign yourself" fallback is gone: blank now means zero
+   assignees (user IDs are no longer valid assignee IDs).
+2. **`3413b0f` — autoschedule engine (Task 5).** Scheduling a job's first
+   activity chains every later `not_scheduled` activity at its business-day
+   offset (Mon-Fri, default 1) after the previous link, 08:00 UTC placeholder
+   times, `autoschedule_state='autoscheduled'` (anchor stays null). Manual
+   reschedule flips that activity to `manual_override` (never auto-moved
+   again) and re-chains downstream autoscheduled followers; chain math passes
+   through overridden/completed/in-progress slots without touching them. Pure
+   helpers in `packages/domain/src/scheduling/business-days.ts` (TDD'd).
+   Auto/Edited badges on the activities table and editor.
+3. **`a06fff8` — calendar → activity editor (Task 6).** `ScheduledEvent`
+   responses gain `jobActivityId`; calendar month/agenda clicks open
+   `/projects/[id]/activities/[activityId]` when linked, standalone events
+   keep the event detail page.
 
 ### Files touched
-- `apps/web/src/app/customers/[id]/quotes/[quoteId]/DrawingCanvasInner.tsx` - `withPieceKinds` bakes shape; live memo uses it.
-- `db/migrations/059_add_area_sink_faucet_pricing_selections.sql` - per-area sink/faucet columns.
-- `packages/domain/src/quotes/quote-pricing.types.ts` + `quote-pricing.schemas.ts` - per-area sink/faucet fields.
-- `apps/api/src/quotes/quote-pricing-selections.repository.ts` - read/write new columns (merge-preserving upsert).
-- `apps/api/src/quotes/quote-pricing.service.ts` - generation reads sink/faucet from area selection.
-- `docs/specs/api/openapi.yaml` - `QuoteAreaPricingSelection` + upsert request gain sink/faucet.
-- `packages/api-client/src/schema.ts` - regenerated.
-- `apps/web/src/app/customers/[id]/quotes/_actions.ts` - `saveAreaPricingAction`.
-- `apps/web/src/app/customers/[id]/quotes/[quoteId]/PricingAccordion.tsx` - new accordion UI.
-- `apps/web/src/app/customers/[id]/quotes/[quoteId]/PricingCard.tsx` - rewritten to render the accordion.
-- `apps/web/src/app/customers/[id]/quotes/[quoteId]/MeasurementsCard.tsx` + quote `page.tsx` - removed Generate Final Price + `isDraft` prop.
-- `docs/superpowers/specs/2026-06-08-area-accordion-pricing-design.md` - design doc.
-- `tests/integration/quote-pricing.test.ts` - per-area sink/faucet generation regression.
+See the three commits for full lists. Key new files:
+- `db/migrations/064_create_assignees.sql` — assignees + join, seed, column drop.
+- `docs/adr/0008-assignees-no-backfill.md` — no-backfill decision record.
+- `apps/api/src/assignees/`, `packages/domain/src/assignees/` — assignee module.
+- `apps/web/src/components/assignee-select.tsx` — shared picker + quick-create.
+- `packages/domain/src/scheduling/business-days.ts` (+ test) — chain math.
+- `apps/api/src/job-activities/job-activities.service.ts` — `autoscheduleFollowers` / `rechainFollowers`.
+- `tests/integration/assignees.test.ts`, `tests/integration/autoschedule.test.ts`.
 
 ### Business logic affected
-- Quotes/pricing: Sink and Faucet Hole selection is now per-area. Generated price lines
-  per area = `selected item rate x area drawing-derived quantity`. Lines stay frozen
-  until the area is saved again. Money still stored as integer cents.
-- Measurements: drawing-derived per-area measurements now persist correctly (shape is
-  saved into the layout), so the quote Measurements page matches the canvas.
-- Job lifecycle / accounting: unchanged.
+- Scheduling: assignees are resources (person/team/truck/...), not users;
+  events may have zero assignees; historical event→user assignment data was
+  intentionally destroyed (no backfill, user-approved 2026-06-09). Scheduling
+  an anchor activity now auto-creates events for ALL later activities of the
+  job (e.g. Standard Job = 8 activities → 8 events from one click).
+- Job lifecycle: `job_activities.autoschedule_state` is now a real state
+  machine (`autoscheduled` ↔ `manual_override`); manual edits win forever.
+- Quotes/pricing, Measurements, Accounting/invoicing, Customer communication,
+  Deployment/ops: unchanged.
 
-### Assumptions
-- Per-area sink/faucet replaces quote-level for new pricing; legacy quote-level columns
-  remain but are not read during generation.
-- Per-line price Override UI is intentionally not surfaced in the accordion this pass
-  (backend override endpoint/action still exist). Re-add later if needed.
-- `generateAllPricingAction` in `_actions.ts` is now dead but left in place (not deleted).
+### Assumptions made
+- The uncommitted Task-3 backend found in the tree was finished work; I
+  validated it via the full suite instead of rewriting it (one leftover raw
+  SQL in `pipeline-board.test.ts` still inserted the dropped column — fixed).
+- 08:00 UTC placeholder times (not shop-local) are acceptable v1 per the plan.
+- `autoscheduleOffsetUnit` is ignored v1; offsets are business days.
+- Leaving migration 061/roles/`inventory_manager` work uncommitted is fine —
+  it is a separate slice (orders/reports/slabs role guards + admin UI).
 
-### Validation
-- `pnpm typecheck` (domain), `pnpm -C apps/api typecheck`, `pnpm -C apps/web typecheck`,
-  `pnpm -C packages/api-client typecheck` - all clean.
-- `pnpm db:migrate` - migration 059 applied.
-- `pnpm test` - 514 passed / 48 files. Includes the new per-area sink/faucet regression.
-- Not yet done: manual browser walkthrough of the real accordion; final git commit.
+### Validation performed
+- Per slice and at the end: `pnpm typecheck`, `pnpm -C apps/api typecheck`,
+  `pnpm -C apps/web typecheck`, `pnpm -C packages/api-client typecheck`,
+  `pnpm spec:check` — all clean.
+- `pnpm test`: 545 passed / 52 files (13 new tests: business-days unit,
+  autoschedule chaining/weekend-skip/manual-override/completed-immunity,
+  linked-vs-standalone `jobActivityId`).
+- `pnpm db:migrate` idempotent (0 applied on re-run); `pnpm db:test:reset` ok.
+- NOT done: manual browser walkthrough of the full loop (create job →
+  schedule anchor → followers on calendar → calendar click → editor). All
+  behavior is integration-tested, but eyes on the real UI are still owed.
 
-### Risks
-- The live estimate in `PricingAccordion` duplicates the server's
-  `quantityForMeasurementBasis`. It is preview-only (truth comes from the server on
-  save), but the two could drift if the server math changes — keep them in sync.
-- Dropping the legacy quote-level sink/faucet columns is deferred to a future migration.
-
-### Next step
-- Manual browser verification: draw a rectangle, save; open the quote; open an area in
-  the accordion, pick sink/faucet, Save area, confirm frozen lines + Grand Total.
-- Then commit. Optionally re-introduce per-line override UI and drop legacy quote-level
-  sink/faucet columns in a later PR.
+### Risks / follow-up
+- **Browser verification owed** (plan Task 7 final bullet): run `pnpm dev`,
+  use `dev-smoke-session-token` cookie, walk the loop above; check the
+  AssigneeSelect quick-create refresh UX in particular.
+- Scheduling an anchor creates events for every follower — if a shop never
+  wants some activities (e.g. Repair), they must cancel them; consider a
+  template flag later.
+- `rechainFollowers` issues one event UPDATE per follower (no transaction
+  across the chain); a crash mid-chain leaves a partially re-chained job.
+  Low stakes (placeholder times), but a known gap.
+- Dirty tree still holds ~70 files of OLDER uncommitted slices: inventory
+  manager role (migration 061 + role guards + admin users UI), price-list /
+  slab / drawing / quote changes, doc/skill edits. Same drill: stage by
+  coherent slice. Test-robustness tweaks in `dashboard.test.ts`,
+  `customer-addresses.test.ts`, `price-lists.test.ts` are also uncommitted.
+- Desired-workflow phases still open: calendar drag/drop (Phase 7),
+  forms/files (Phase 8) — both deliberately out of scope.
+- Next step: browser-verify the loop, then commit the inventory-manager
+  slice, then pick the next phase from `docs/current_dashboard_notes.md`.

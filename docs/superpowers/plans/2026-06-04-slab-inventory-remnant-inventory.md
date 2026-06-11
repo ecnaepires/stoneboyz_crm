@@ -271,19 +271,37 @@ Map to camelCase properties.
 
 Update `SlabsRepository.create` insert columns and values. Use `kind = parentSlabId === null ? 'full_slab' : 'remnant'`; default `availability = input.availability ?? (input.storageLocationId === undefined ? 'hold' : 'available')`; default `ownership = input.ownership ?? 'shop_owned'`; default `condition = input.condition ?? 'good'`.
 
+Create a dedicated PostgreSQL sequence for generated slab tags:
+
+```sql
+CREATE SEQUENCE IF NOT EXISTS slab_tag_sequence;
+```
+
+Keep `tag_code` unique for active slabs:
+
+```sql
+CREATE UNIQUE INDEX IF NOT EXISTS slabs_tag_code_unique_idx
+  ON slabs (tag_code)
+  WHERE tag_code IS NOT NULL AND deleted_at IS NULL;
+```
+
 Generate tag code in `SlabsService.create` before repository create:
 
 ```ts
 const tagCode = input.tagCode ?? await this.slabsRepository.nextTagCode();
 ```
 
-Add `nextTagCode()` in repository using count/id sequence logic:
+Add `nextTagCode()` in repository using the sequence, not `count(*) + 1`:
 
 ```ts
 const result = await this.pool.query<{ next: string }>(
-  "SELECT 'S-' || lpad((count(*) + 1)::text, 4, '0') AS next FROM slabs"
+  "SELECT 'S-' || lpad(nextval('slab_tag_sequence')::text, 4, '0') AS next"
 );
 ```
+
+Wrap `SlabsService.create` in limited retry-on-conflict logic: on a `tag_code`
+unique violation for an auto-generated tag, fetch a fresh `nextTagCode()` and retry
+the repository create. Do not retry indefinitely.
 
 For remnants, use `${parentTagCode}-R${n}` in `cut`.
 
