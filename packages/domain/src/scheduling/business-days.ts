@@ -1,28 +1,31 @@
+// packages/domain/src/scheduling/business-days.ts
+import type { ShopCalendar } from './shop-calendar.types.js';
+
 const DAY_MS = 24 * 60 * 60 * 1000;
 
-// v1 computes placeholder times in UTC for determinism; shop-local timezone is
-// a later config concern. Autoscheduled times are meant to be edited.
 export const DEFAULT_AUTOSCHEDULE_HOUR_UTC = 8;
 
-const isWeekend = (date: Date): boolean => {
-  const day = date.getUTCDay();
-  return day === 0 || day === 6;
+export const isWorkingDate = (date: Date, calendar: ShopCalendar): boolean => {
+  const dayOfWeek = date.getUTCDay();
+  if (!calendar.workDays.includes(dayOfWeek)) return false;
+  const isoDate = date.toISOString().slice(0, 10);
+  return !calendar.holidays.includes(isoDate);
 };
 
-export const addBusinessDays = (from: Date, amount: number): Date => {
+export const addBusinessDays = (from: Date, amount: number, calendar: ShopCalendar): Date => {
   const result = new Date(from.getTime());
   let remaining = amount;
   while (remaining > 0) {
     result.setTime(result.getTime() + DAY_MS);
-    if (!isWeekend(result)) {
+    if (isWorkingDate(result, calendar)) {
       remaining -= 1;
     }
   }
   return result;
 };
 
-export const nextBusinessDayAt = (from: Date, hourUtc: number): Date => {
-  const next = addBusinessDays(from, 1);
+export const nextBusinessDayAt = (from: Date, hourUtc: number, calendar: ShopCalendar): Date => {
+  const next = addBusinessDays(from, 1, calendar);
   next.setUTCHours(hourUtc, 0, 0, 0);
   return next;
 };
