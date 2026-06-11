@@ -25,6 +25,7 @@ import * as multer from "multer";
 import * as path from "path";
 import { z } from "zod";
 import { CurrentUser } from "../auth/current-user.decorator.js";
+import { Roles } from "../auth/roles.decorator.js";
 import { StorageService } from "../storage/storage.service.js";
 import { SlabsService } from "./slabs.service.js";
 
@@ -74,6 +75,7 @@ export class SlabsController {
   }
 
   @Post()
+  @Roles("admin", "inventory_manager")
   async create(@Body() body: unknown, @CurrentUser() actorUserId: string) {
     const parsedBody = createSlabSchema.safeParse(body);
 
@@ -90,6 +92,7 @@ export class SlabsController {
   }
 
   @Patch(":slabId")
+  @Roles("admin", "inventory_manager")
   async update(
     @Param("slabId") slabId: string,
     @Body() body: unknown,
@@ -109,6 +112,7 @@ export class SlabsController {
 
   @Delete(":slabId")
   @HttpCode(200)
+  @Roles("admin", "inventory_manager")
   async archive(
     @Param("slabId") slabId: string,
     @Body() body: unknown,
@@ -128,6 +132,7 @@ export class SlabsController {
 
   @Post(":slabId/cut")
   @HttpCode(200)
+  @Roles("admin", "inventory_manager", "cutter")
   async cut(
     @Param("slabId") slabId: string,
     @Body() body: unknown,
@@ -150,6 +155,7 @@ export class SlabsController {
   }
 
   @Post(":slabId/images")
+  @Roles("admin", "inventory_manager")
   @UseInterceptors(
     FileInterceptor("image", {
       storage: memStorage,
@@ -193,6 +199,7 @@ export class SlabsController {
 
   @Delete(":slabId/images")
   @HttpCode(200)
+  @Roles("admin", "inventory_manager")
   async deleteImage(
     @Param("slabId") slabId: string,
     @Body("url") url: string,
