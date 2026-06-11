@@ -27,9 +27,13 @@ const vertexSchema = z.object({
 
 const outlineSchema = z
   .object({ vertices: z.array(vertexSchema).min(3) })
-  .superRefine((outline, ctx) => {
+  .transform((outline, ctx): OutlineV2 => {
     const r = validateOutline(outline as unknown as OutlineV2);
-    if (!r.ok) ctx.addIssue({ code: "custom", message: r.error });
+    if (!r.ok) {
+      ctx.addIssue({ code: "custom", message: r.error });
+      return z.NEVER;
+    }
+    return r.outline;
   });
 
 const cutoutSchema = z.discriminatedUnion("shape", [
@@ -103,7 +107,7 @@ export const layoutV2Schema = z
         ctx.addIssue({ code: "custom", message: `sink ${sink.sinkId} references unknown piece` });
         continue;
       }
-      if (!pointInOutline(piece.outline as unknown as OutlineV2, sink.centerIn)) {
+      if (!pointInOutline(piece.outline, sink.centerIn)) {
         ctx.addIssue({ code: "custom", message: `sink ${sink.sinkId} center is outside its piece` });
       }
     }

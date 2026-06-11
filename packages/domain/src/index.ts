@@ -1,4 +1,3 @@
-export * from './activity-types/index.js';
 export * from './customers/index.js';
 export type {
   ChainShapeLayout,

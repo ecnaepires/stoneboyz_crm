@@ -1,4 +1,4 @@
-import { MIN_EDGE_IN, type OutlineV2 } from "./types.js";
+import { EPS, MIN_EDGE_IN, type OutlineV2 } from "./types.js";
 import { outwardNormal, ptDist, ptSub, vecNorm } from "./util.js";
 import { validateOutline, type ValidateResult } from "./validate.js";
 
@@ -28,7 +28,7 @@ export function offsetEdge(outline: OutlineV2, startVertexId: string, distanceIn
     const nxt = merged[(k + 1) % merged.length]!;
     const crossV =
       (cur.xIn - prev.xIn) * (nxt.yIn - cur.yIn) - (cur.yIn - prev.yIn) * (nxt.xIn - cur.xIn);
-    return Math.abs(crossV) > 1e-9 || cur.corner !== undefined || cur.bulge !== undefined;
+    return Math.abs(crossV) > EPS || cur.corner !== undefined || cur.bulge !== undefined;
   });
   return validateOutline({ vertices: cleaned });
 }
