@@ -5,3 +5,4 @@ export * from "./calendar-view.schemas.js";
 export * from "./business-days.js";
 export * from "./shop-calendar.types.js";
 export * from "./shop-calendar.schemas.js";
+export * from "./day-subtotals.js";
