@@ -11,11 +11,21 @@ import type {
 import type { Pool } from "pg";
 import { DATABASE_POOL } from "../database.provider.js";
 import {
+  computeAreaTotals,
+  type CounterPieceRow,
+  type LayoutRow,
+} from "../quotes/layout-sqft.js";
+import {
   mapCalendarEventRow,
   mapScheduledEventRow,
   type CalendarEventRow,
   type ScheduledEventRow,
 } from "./scheduled-event.mapper.js";
+
+interface SqftResolution {
+  sqft: number;
+  isEstimate: boolean;
+}
 
 interface ScheduledEventListInput {
   cursor?: string | undefined;
@@ -185,6 +195,8 @@ export class ScheduledEventsRepository {
           at.seed_slug AS activity_seed_slug,
           at.name AS activity_type_name,
           at.color AS activity_type_color,
+          at.counts_square_footage AS activity_type_counts_sqft,
+          at.sort_order AS activity_type_sort_order,
           c.name AS customer_name,
           p.title AS project_title,
           p.job_number AS job_number
@@ -205,14 +217,42 @@ export class ScheduledEventsRepository {
       this.loadJobActivityIds(eventIds),
     ]);
 
+    // Collect project IDs for events eligible for sqft enrichment
+    const qualifyingProjectIds = [
+      ...new Set(
+        result.rows
+          .filter(
+            (row) =>
+              row.event_type === 'appointment' &&
+              row.activity_type_counts_sqft === true &&
+              row.project_id !== null,
+          )
+          .map((row) => row.project_id as string),
+      ),
+    ];
+
+    const sqftByProjectId: Map<string, SqftResolution> =
+      qualifyingProjectIds.length > 0
+        ? await this.resolveProjectSqft(qualifyingProjectIds)
+        : new Map();
+
     return {
-      data: result.rows.map((row) =>
-        mapCalendarEventRow(
+      data: result.rows.map((row) => {
+        const isQualifying =
+          row.event_type === 'appointment' &&
+          row.activity_type_counts_sqft === true &&
+          row.project_id !== null;
+        const sqftRes = isQualifying
+          ? (sqftByProjectId.get(row.project_id as string) ?? { sqft: 0, isEstimate: false })
+          : null;
+        return mapCalendarEventRow(
           row,
           assigneeIdsByEvent.get(row.id) ?? [],
           jobActivityIdByEvent.get(row.id) ?? null,
-        ),
-      ),
+          sqftRes !== null ? sqftRes.sqft : null,
+          sqftRes !== null ? sqftRes.isEstimate : false,
+        );
+      }),
     };
   }
 
@@ -749,5 +789,98 @@ export class ScheduledEventsRepository {
     }
 
     return null;
+  }
+
+  private async resolveProjectSqft(
+    projectIds: string[],
+  ): Promise<Map<string, SqftResolution>> {
+    // Accepted leg: sum material-category generated_price_lines from accepted quotes
+    const acceptedResult = await this.pool.query<{
+      project_id: string;
+      sqft: string;
+    }>(
+      `SELECT q.project_id, COALESCE(SUM(gpl.quantity), 0)::float AS sqft
+       FROM quotes q
+       JOIN quote_areas qa ON qa.quote_id = q.id
+       JOIN generated_price_lines gpl
+         ON gpl.quote_area_id = qa.id AND gpl.category = 'material'
+       WHERE q.deleted_at IS NULL
+         AND q.status = 'accepted'
+         AND q.project_id = ANY($1::uuid[])
+       GROUP BY q.project_id`,
+      [projectIds],
+    );
+
+    const result = new Map<string, SqftResolution>();
+    const coveredByAccepted = new Set<string>();
+    for (const row of acceptedResult.rows) {
+      result.set(row.project_id, { sqft: Number(row.sqft), isEstimate: false });
+      coveredByAccepted.add(row.project_id);
+    }
+
+    // Draft leg: for remaining projects, use latest active (draft/sent) quote's drawing-derived combinedSqFt
+    const draftProjectIds = projectIds.filter((id) => !coveredByAccepted.has(id));
+    if (draftProjectIds.length > 0) {
+      const draftSqft = await this.resolveDraftSqft(draftProjectIds);
+      for (const [projectId, sqft] of draftSqft) {
+        result.set(projectId, { sqft, isEstimate: true });
+      }
+    }
+
+    return result;
+  }
+
+  private async resolveDraftSqft(
+    projectIds: string[],
+  ): Promise<Map<string, number>> {
+    // Get latest active (draft/sent) quote per project, then all areas for that quote
+    const areasResult = await this.pool.query<{
+      project_id: string;
+      area_id: string;
+    }>(
+      `WITH latest_draft AS (
+         SELECT DISTINCT ON (project_id) id AS quote_id, project_id
+         FROM quotes
+         WHERE deleted_at IS NULL
+           AND status IN ('draft', 'sent')
+           AND project_id = ANY($1::uuid[])
+         ORDER BY project_id, updated_at DESC
+       )
+       SELECT ld.project_id, qa.id AS area_id
+       FROM latest_draft ld
+       JOIN quote_areas qa ON qa.quote_id = ld.quote_id`,
+      [projectIds],
+    );
+
+    if (areasResult.rows.length === 0) {
+      return new Map();
+    }
+
+    const areaIds = areasResult.rows.map((r) => r.area_id);
+
+    const [layoutRows, counterPieceRows] = await Promise.all([
+      this.pool.query<LayoutRow>(
+        `SELECT DISTINCT ON (quote_area_id) quote_area_id, layout
+           FROM drawing_revisions
+          WHERE quote_area_id = ANY($1::uuid[])
+          ORDER BY quote_area_id, revision_number DESC`,
+        [areaIds],
+      ),
+      this.pool.query<CounterPieceRow>(
+        `SELECT quote_area_id, id, length_in, width_in, kind
+           FROM counter_pieces
+          WHERE quote_area_id = ANY($1::uuid[])`,
+        [areaIds],
+      ),
+    ]);
+
+    const totalsByArea = computeAreaTotals(layoutRows.rows, counterPieceRows.rows);
+
+    const sqftByProject = new Map<string, number>();
+    for (const row of areasResult.rows) {
+      const areaSqFt = totalsByArea.get(row.area_id)?.combinedSqFt ?? 0;
+      sqftByProject.set(row.project_id, (sqftByProject.get(row.project_id) ?? 0) + areaSqFt);
+    }
+    return sqftByProject;
   }
 }
