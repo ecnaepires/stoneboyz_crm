@@ -31,6 +31,8 @@ export interface CalendarEventRow extends ScheduledEventRow {
   customer_name: string;
   project_title: string | null;
   job_number: string | null;
+  activity_type_counts_sqft: boolean | null;
+  activity_type_sort_order: number | null;
 }
 
 const toIso = (value: Date): string => value.toISOString();
@@ -71,6 +73,8 @@ export const mapCalendarEventRow = (
   row: CalendarEventRow,
   assigneeIds: string[],
   jobActivityId: string | null,
+  sqft: number | null,
+  sqftIsEstimate: boolean,
 ): CalendarEventItem => ({
   ...mapScheduledEventRow(row, assigneeIds, jobActivityId),
   customerName: row.customer_name,
@@ -78,4 +82,6 @@ export const mapCalendarEventRow = (
   jobNumber: row.job_number,
   activityTypeName: row.activity_type_name ?? null,
   activityTypeColor: row.activity_type_color ?? null,
+  sqft,
+  sqftIsEstimate,
 });

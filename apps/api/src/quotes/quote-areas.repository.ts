@@ -1,9 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
 import {
-  drawingV2,
-  measurementTotalsFromLayout,
-  type CanvasChainShapeLayout,
-  type CanvasLayout,
   type CreateQuoteAreaInput,
   type QuoteArea,
   type QuoteMeasurementAreaTotals,
@@ -12,6 +8,7 @@ import {
 import type { Pool } from 'pg';
 import { DATABASE_POOL } from '../database.provider.js';
 import { mapQuoteAreaRow, type QuoteAreaRow } from './quote-area.mapper.js';
+import { computeAreaTotals, type CounterPieceRow, type LayoutRow } from './layout-sqft.js';
 
 const areaSubtotalSelect = (areaAlias: string): string => `
   COALESCE(
@@ -43,91 +40,6 @@ const UPDATE_COLUMNS: Record<string, string> = {
   notes: 'notes'
 };
 
-type CounterPieceMeasurementRow = {
-  quote_area_id: string;
-  id: string;
-  length_in: number | string;
-  width_in: number | string;
-  kind: string;
-};
-
-const RECTANGLE_SHAPE_SCALE = 3;
-
-const rectangleChainShape = (lengthIn: number, widthIn: number): CanvasChainShapeLayout => {
-  const halfLengthIn = lengthIn / 2;
-
-  return {
-    type: 'chain',
-    segments: [
-      {
-        x: 0,
-        y: 0,
-        w: halfLengthIn * RECTANGLE_SHAPE_SCALE,
-        h: widthIn * RECTANGLE_SHAPE_SCALE,
-        lengthIn: halfLengthIn,
-        widthIn,
-        orientation: 'horizontal'
-      },
-      {
-        x: halfLengthIn * RECTANGLE_SHAPE_SCALE,
-        y: 0,
-        w: halfLengthIn * RECTANGLE_SHAPE_SCALE,
-        h: widthIn * RECTANGLE_SHAPE_SCALE,
-        lengthIn: halfLengthIn,
-        widthIn,
-        orientation: 'horizontal'
-      }
-    ]
-  };
-};
-
-const layoutWithCounterPieceDimensions = (
-  layout: CanvasLayout,
-  piecesById: Map<string, CounterPieceMeasurementRow>
-): CanvasLayout => ({
-  ...layout,
-  pieces: layout.pieces.map((piece) => {
-    const counterPiece = piecesById.get(piece.pieceId);
-    if (counterPiece === undefined) {
-      return piece;
-    }
-
-    return {
-      ...piece,
-      kind: piece.kind ?? (counterPiece.kind === 'backsplash' ? 'backsplash' : 'countertop'),
-      shape: piece.shape ?? rectangleChainShape(Number(counterPiece.length_in), Number(counterPiece.width_in))
-    };
-  })
-});
-
-const parseCanvasLayout = (value: CanvasLayout | string): CanvasLayout | null => {
-  const parsed = (() => {
-    if (typeof value !== 'string') {
-      return value;
-    }
-
-    try {
-      return JSON.parse(value) as unknown;
-    } catch {
-      return null;
-    }
-  })();
-
-  if (
-    typeof parsed !== 'object' ||
-    parsed === null ||
-    !Array.isArray((parsed as { pieces?: unknown }).pieces)
-  ) {
-    return null;
-  }
-
-  // v2 layouts (schemaVersion: 2) use a different structure — skip for legacy totals
-  if ((parsed as { schemaVersion?: unknown }).schemaVersion === 2) {
-    return null;
-  }
-
-  return parsed as CanvasLayout;
-};
 
 @Injectable()
 export class QuoteAreasRepository {
@@ -279,61 +191,27 @@ export class QuoteAreasRepository {
   }
 
   private async measurementTotalsForAreas(rows: QuoteAreaRow[]): Promise<Map<string, QuoteMeasurementAreaTotals>> {
-    const totals = new Map<string, QuoteMeasurementAreaTotals>();
     const areaIds = rows.map((row) => row.id);
     if (areaIds.length === 0) {
-      return totals;
+      return new Map();
     }
 
-    const layouts = await this.pool.query<{ quote_area_id: string; layout: CanvasLayout | string }>(
-      `SELECT DISTINCT ON (quote_area_id) quote_area_id, layout
-         FROM drawing_revisions
-        WHERE quote_area_id = ANY($1::uuid[])
-        ORDER BY quote_area_id, revision_number DESC`,
-      [areaIds]
-    );
-    const counterPieces = await this.pool.query<CounterPieceMeasurementRow>(
-      `SELECT quote_area_id, id, length_in, width_in, kind
-         FROM counter_pieces
-        WHERE quote_area_id = ANY($1::uuid[])`,
-      [areaIds]
-    );
-    const counterPiecesByArea = new Map<string, Map<string, CounterPieceMeasurementRow>>();
-    for (const piece of counterPieces.rows) {
-      const areaPieces = counterPiecesByArea.get(piece.quote_area_id) ?? new Map<string, CounterPieceMeasurementRow>();
-      areaPieces.set(piece.id, piece);
-      counterPiecesByArea.set(piece.quote_area_id, areaPieces);
-    }
+    const [layouts, counterPieces] = await Promise.all([
+      this.pool.query<LayoutRow>(
+        `SELECT DISTINCT ON (quote_area_id) quote_area_id, layout
+           FROM drawing_revisions
+          WHERE quote_area_id = ANY($1::uuid[])
+          ORDER BY quote_area_id, revision_number DESC`,
+        [areaIds],
+      ),
+      this.pool.query<CounterPieceRow>(
+        `SELECT quote_area_id, id, length_in, width_in, kind
+           FROM counter_pieces
+          WHERE quote_area_id = ANY($1::uuid[])`,
+        [areaIds],
+      ),
+    ]);
 
-    for (const row of layouts.rows) {
-      // Parse raw value to inspect schemaVersion before v1 parsing
-      const rawLayout = typeof row.layout === 'string' ? (() => {
-        try { return JSON.parse(row.layout) as unknown; } catch { return null; }
-      })() : row.layout as unknown;
-
-      if (rawLayout && typeof rawLayout === 'object' && (rawLayout as { schemaVersion?: number }).schemaVersion === 2) {
-        const parsed = drawingV2.layoutV2Schema.safeParse(rawLayout);
-        totals.set(
-          row.quote_area_id,
-          parsed.success
-            ? drawingV2.quoteAreaTotalsFromLayoutV2(parsed.data)
-            : { pieceCount: 0, countertopSqFt: 0, backsplashSqFt: 0, combinedSqFt: 0, finishedEdgeLinFt: 0, splashSqFt: 0, sinkCutoutCount: 0, faucetHoleCount: 0 }
-        );
-        continue;
-      }
-
-      // Existing v1 path unchanged
-      const layout = parseCanvasLayout(row.layout);
-      if (layout === null) {
-        continue;
-      }
-
-      totals.set(
-        row.quote_area_id,
-        measurementTotalsFromLayout(layoutWithCounterPieceDimensions(layout, counterPiecesByArea.get(row.quote_area_id) ?? new Map()))
-      );
-    }
-
-    return totals;
+    return computeAreaTotals(layouts.rows, counterPieces.rows);
   }
 }
