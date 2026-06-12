@@ -2908,6 +2908,8 @@ export interface components {
             jobNumber: string | null;
             activityTypeName: string | null;
             activityTypeColor: string | null;
+            sqft: number | null;
+            sqftIsEstimate: boolean;
         };
         CalendarEventsResponse: {
             data: components["schemas"]["CalendarEventItem"][];

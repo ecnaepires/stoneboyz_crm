@@ -61,6 +61,8 @@ export interface CalendarEventItem extends ScheduledEvent {
   jobNumber: string | null;
   activityTypeName: string | null;
   activityTypeColor: string | null;
+  sqft: number | null;
+  sqftIsEstimate: boolean;
 }
 
 export interface CreateScheduledEventInput {

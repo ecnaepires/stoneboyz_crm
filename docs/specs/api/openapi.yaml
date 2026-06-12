@@ -3169,6 +3169,8 @@ components:
             - jobNumber
             - activityTypeName
             - activityTypeColor
+            - sqft
+            - sqftIsEstimate
           properties:
             customerName:
               type: string
@@ -3184,6 +3186,11 @@ components:
             activityTypeColor:
               type: string
               nullable: true
+            sqft:
+              type: number
+              nullable: true
+            sqftIsEstimate:
+              type: boolean
 
     CalendarEventsResponse:
       type: object
