@@ -5,7 +5,6 @@ import { getApiClientWithAuth } from '@/lib/api';
 
 export async function patchWorkDaysAction(formData: FormData): Promise<void> {
   const workDays = formData.getAll('workDay').map(Number);
-  if (workDays.length === 0) return;
   const client = await getApiClientWithAuth();
   await client.PATCH('/shop-settings', { body: { workDays } });
   revalidatePath('/admin/shop-settings');
