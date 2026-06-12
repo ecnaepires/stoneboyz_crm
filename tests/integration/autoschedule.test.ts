@@ -112,6 +112,24 @@ const transitionEvent = async (eventId: string, action: 'confirm' | 'start' | 'f
 };
 
 describe('autoschedule engine', () => {
+  const patchWorkDays = async (workDays: number[]): Promise<void> => {
+    const res = await fetch(`${baseUrl}/api/v1/shop-settings`, {
+      method: 'PATCH',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ workDays }),
+    });
+    expect(res.status).toBe(200);
+  };
+
+  const createHolidayForCalendarTest = async (holidayDate: string, name: string): Promise<void> => {
+    const res = await fetch(`${baseUrl}/api/v1/shop-settings/holidays`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ holidayDate, name }),
+    });
+    expect(res.status).toBe(201);
+  };
+
   beforeAll(async () => {
     app = await NestFactory.create(AppModule, { logger: false });
     app.setGlobalPrefix('api/v1');
@@ -293,5 +311,43 @@ describe('autoschedule engine', () => {
 
     const materialEvent = await getEvent(material.scheduledEventId as string);
     expect(materialEvent.scheduledAt).toBe('2026-06-19T08:00:00.000Z');
+  });
+
+  it('autoschedule skips holiday when chaining: lands on next working date', async () => {
+    // Tue–Sat shop; holiday blocks first follower slot (Tue June 16)
+    await patchWorkDays([2, 3, 4, 5, 6]);
+    await createHolidayForCalendarTest('2026-06-16', 'Test Holiday');
+
+    const projectId = await createProject('Calendar-Aware Autoschedule Job');
+    const activities = await listActivities(projectId);
+    const anchor = activities[0] as ActivityResponse;
+
+    // Schedule anchor on Mon June 15 — manual placement not blocked by work-day rules
+    const schedRes = await scheduleActivity(projectId, anchor.id, MONDAY_ANCHOR);
+    expect(schedRes.status).toBe(200);
+
+    const scheduled = await listActivities(projectId);
+    const follower = scheduled.find(
+      (a) => a.id !== anchor.id && a.autoscheduleState === 'autoscheduled'
+    ) as ActivityResponse | undefined;
+    expect(follower).toBeDefined();
+
+    if (follower?.scheduledEventId) {
+      const event = await getEvent(follower.scheduledEventId) as { scheduledAt: string };
+      // Tue June 16 is blocked (holiday); should land Wed June 17 at 08:00 UTC
+      expect(event.scheduledAt).toBe('2026-06-17T08:00:00.000Z');
+    }
+  });
+
+  it('manual reschedule onto a non-work-day succeeds', async () => {
+    await patchWorkDays([2, 3, 4, 5, 6]); // Tue–Sat
+
+    const projectId = await createProject('Manual Non-Work-Day Job');
+    const activities = await listActivities(projectId);
+    const anchor = activities[0] as ActivityResponse;
+
+    // Monday is not a Tue–Sat work day — manual scheduling must still accept it
+    const schedRes = await scheduleActivity(projectId, anchor.id, MONDAY_ANCHOR);
+    expect(schedRes.status).toBe(200);
   });
 });
