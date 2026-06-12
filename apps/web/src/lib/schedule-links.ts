@@ -66,6 +66,7 @@ export const buildScheduleHref = ({
   colorBy,
   wrapText,
   autoRefreshSeconds,
+  showDaySubtotals,
 }: {
   date?: string | undefined;
   customerId?: string | undefined;
@@ -83,6 +84,7 @@ export const buildScheduleHref = ({
   colorBy?: ScheduleColorBy | undefined;
   wrapText?: boolean | undefined;
   autoRefreshSeconds?: number | null | undefined;
+  showDaySubtotals?: boolean | undefined;
 }) => {
   const params = new URLSearchParams();
   if (date) params.set('date', date);
@@ -103,6 +105,7 @@ export const buildScheduleHref = ({
   if (autoRefreshSeconds !== undefined && autoRefreshSeconds !== null) {
     params.set('autoRefreshSeconds', String(autoRefreshSeconds));
   }
+  if (showDaySubtotals !== undefined) params.set('showDaySubtotals', String(showDaySubtotals));
   const query = params.toString();
   return query ? `/schedule?${query}` : '/schedule';
 };

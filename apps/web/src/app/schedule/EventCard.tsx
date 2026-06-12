@@ -149,8 +149,12 @@ const titleForField = (
   if (field === "assignees") {
     return assigneeLabel;
   }
-  if (field === "notes" || field === "sqft") {
+  if (field === "notes") {
     return null;
+  }
+  if (field === "sqft") {
+    if (event.sqft === null) return null;
+    return event.sqftIsEstimate ? `~${Math.round(event.sqft)} sqft` : `${Math.round(event.sqft)} sqft`;
   }
   return null;
 };

@@ -12,6 +12,8 @@ type CalendarView = components["schemas"]["CalendarView"];
 type CalendarViewConfig = components["schemas"]["CalendarViewConfig"];
 type ActivityType = components["schemas"]["ActivityType"];
 type Assignee = components["schemas"]["Assignee"];
+type Customer = components["schemas"]["Customer"];
+type Project = components["schemas"]["Project"];
 type ScheduledEventType = components["schemas"]["ScheduledEventType"];
 type ScheduledEventStatus = components["schemas"]["ScheduledEventStatus"];
 type CalendarDisplayField = components["schemas"]["CalendarDisplayField"];
@@ -256,6 +258,7 @@ const applyUrlConfigOverrides = (
     colorBy?: string | undefined;
     wrapText?: string | undefined;
     autoRefreshSeconds?: string | undefined;
+    showDaySubtotals?: string | undefined;
     activityTypes: ActivityType[];
   },
 ): CalendarViewConfig => {
@@ -282,6 +285,7 @@ const applyUrlConfigOverrides = (
       : config.colorBy;
   const wrapText = boolFromParam(params.wrapText);
   const autoRefreshSeconds = numberInRange(params.autoRefreshSeconds, 15, 600);
+  const showDaySubtotals = boolFromParam(params.showDaySubtotals);
 
   const nextConfig: CalendarViewConfig = {
     ...config,
@@ -307,6 +311,7 @@ const applyUrlConfigOverrides = (
       params.autoRefreshSeconds !== undefined
         ? (autoRefreshSeconds ?? null)
         : config.autoRefreshSeconds,
+    showDaySubtotals: showDaySubtotals ?? config.showDaySubtotals,
   };
 
   if (rangeDays !== undefined) {
@@ -318,25 +323,36 @@ const applyUrlConfigOverrides = (
   return nextConfig;
 };
 
-const normalizeEvent = (event: CalendarEventItem): CalendarEvent => ({
-  id: event.id,
-  customerId: event.customerId,
-  customerName: event.customerName,
-  projectId: event.projectId ?? null,
-  projectTitle: event.projectTitle,
-  jobActivityId: event.jobActivityId ?? null,
-  eventType: event.eventType,
-  appointmentType: event.appointmentType ?? null,
-  activityTypeId: event.activityTypeId ?? null,
-  activityTypeName: event.activityTypeName ?? null,
-  activityTypeColor: event.activityTypeColor ?? null,
-  title: event.title,
-  scheduledAt: event.scheduledAt,
-  durationMinutes: event.durationMinutes,
-  assigneeIds: event.assigneeIds,
-  address: event.address ?? null,
-  status: event.status,
-});
+type CalendarEventWithSqft = CalendarEventItem & {
+  sqft?: number | null;
+  sqftIsEstimate?: boolean;
+};
+
+const normalizeEvent = (event: CalendarEventItem): CalendarEvent => {
+  const eventWithSqft = event as CalendarEventWithSqft;
+
+  return {
+    id: event.id,
+    customerId: event.customerId,
+    customerName: event.customerName,
+    projectId: event.projectId ?? null,
+    projectTitle: event.projectTitle,
+    jobActivityId: event.jobActivityId ?? null,
+    eventType: event.eventType,
+    appointmentType: event.appointmentType ?? null,
+    activityTypeId: event.activityTypeId ?? null,
+    activityTypeName: event.activityTypeName ?? null,
+    activityTypeColor: event.activityTypeColor ?? null,
+    title: event.title,
+    scheduledAt: event.scheduledAt,
+    durationMinutes: event.durationMinutes,
+    assigneeIds: event.assigneeIds,
+    address: event.address ?? null,
+    status: event.status,
+    sqft: eventWithSqft.sqft ?? null,
+    sqftIsEstimate: eventWithSqft.sqftIsEstimate ?? false,
+  };
+};
 
 const viewMatchesEvent = (
   view: CalendarView | null,
@@ -407,6 +423,7 @@ export default async function SchedulePage({
     colorBy?: string;
     wrapText?: string;
     autoRefreshSeconds?: string;
+    showDaySubtotals?: string;
   }>;
 }) {
   const {
@@ -427,6 +444,7 @@ export default async function SchedulePage({
     colorBy,
     wrapText,
     autoRefreshSeconds,
+    showDaySubtotals,
   } = await searchParams;
   const selectedDate =
     date && /^\d{4}-\d{2}-\d{2}$/.test(date) ? dateFromKey(date) : new Date();
@@ -434,7 +452,7 @@ export default async function SchedulePage({
   const client = await getApiClientWithAuth();
 
   const [
-    { error: customersError },
+    { data: customersRes, error: customersError },
     { data: projectsRes },
     { data: assigneesRes },
     { data: calendarViewsRes, error: calendarViewsError },
@@ -475,7 +493,8 @@ export default async function SchedulePage({
     );
   }
 
-  const projects = projectsRes?.data ?? [];
+  const customers = (customersRes?.data ?? []) as Customer[];
+  const projects = (projectsRes?.data ?? []) as Project[];
   const assignees = (assigneesRes ?? []) as Assignee[];
   const calendarViews = calendarViewsRes?.data ?? [];
   const activityTypes = activityTypesRes?.data ?? [];
@@ -498,6 +517,7 @@ export default async function SchedulePage({
         colorBy,
         wrapText,
         autoRefreshSeconds,
+        showDaySubtotals,
         activityTypes,
       })
     : null;
@@ -573,6 +593,8 @@ export default async function SchedulePage({
 
   return (
     <ScheduleCalendar
+      customers={customers}
+      projects={projects}
       assignees={assignees.map((assignee) => ({
         id: assignee.id,
         name: assignee.name,

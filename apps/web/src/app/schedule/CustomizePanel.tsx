@@ -133,6 +133,7 @@ export function CustomizePanel({
         colorBy: draft.colorBy,
         wrapText: draft.wrapText,
         autoRefreshSeconds: draft.autoRefreshSeconds,
+        showDaySubtotals: draft.showDaySubtotals,
       }),
     );
   };
@@ -169,7 +170,7 @@ export function CustomizePanel({
   };
 
   return (
-    <div className="space-y-2">
+    <div className="relative space-y-2">
       <Button
         type="button"
         variant="outline"
@@ -180,7 +181,7 @@ export function CustomizePanel({
         Customize
       </Button>
       {isOpen ? (
-        <div className="w-full max-w-5xl rounded-md border bg-white p-4 shadow-sm">
+        <div className="absolute right-0 top-full z-50 mt-2 w-[min(92vw,64rem)] rounded-md border bg-white p-4 shadow-lg">
           <div className="mb-4 flex items-center justify-between gap-3">
             <h3 className="text-base font-semibold">Customize View</h3>
             <Button
@@ -262,6 +263,20 @@ export function CustomizePanel({
                   className="size-4"
                 />
                 Wrap text
+              </label>
+              <label className="flex items-center gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  checked={draft.showDaySubtotals}
+                  onChange={(event) =>
+                    setDraft((current) => ({
+                      ...current,
+                      showDaySubtotals: event.currentTarget.checked,
+                    }))
+                  }
+                  className="size-4"
+                />
+                Show day subtotals
               </label>
               <div className="space-y-1">
                 <Label htmlFor="calendar-refresh">Auto refresh</Label>
