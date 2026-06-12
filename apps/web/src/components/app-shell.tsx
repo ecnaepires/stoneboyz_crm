@@ -7,6 +7,7 @@ import {
   Archive,
   Briefcase,
   Calendar,
+  CalendarDays,
   KanbanSquare,
   Layers,
   LayoutDashboard,
@@ -111,6 +112,15 @@ export function AppShell({ isAdmin, children }: AppShellProps) {
                     >
                       <SlidersHorizontal className="h-4 w-4 shrink-0" />
                       Activity Types
+                    </Link>
+                  </li>
+                  <li>
+                    <Link
+                      href="/admin/shop-settings"
+                      className={navLinkClass(isActive("/admin/shop-settings"))}
+                    >
+                      <CalendarDays className="h-4 w-4 shrink-0" />
+                      Shop Settings
                     </Link>
                   </li>
                 </ul>
