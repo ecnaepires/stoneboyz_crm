@@ -844,7 +844,7 @@ export class ScheduledEventsRepository {
          WHERE deleted_at IS NULL
            AND status IN ('draft', 'sent')
            AND project_id = ANY($1::uuid[])
-         ORDER BY project_id, updated_at DESC
+         ORDER BY project_id, updated_at DESC, id DESC
        )
        SELECT ld.project_id, qa.id AS area_id
        FROM latest_draft ld
